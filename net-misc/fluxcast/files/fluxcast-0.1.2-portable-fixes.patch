@@ -1,8 +1,7 @@
-diff --git a/src/capture.py b/src/capture.py
-index 9510e18..02b484c 100644
---- a/src/capture.py
-+++ b/src/capture.py
-@@ -410,6 +410,10 @@ def _start_capture_portal(
+diff -ruN a/src/capture.py b/src/capture.py
+--- a/src/capture.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/capture.py	2026-07-04 22:01:15.528714435 +0700
+@@ -410,6 +410,10 @@
          # always-copy=true!! immediately copy PipeWire buffer to CPU memory so
          # x264enc doesn't stall waiting for DMA-buf download mid-pipeline
          "always-copy=true",
@@ -13,11 +12,10 @@ index 9510e18..02b484c 100644
          "!", "queue", "max-size-buffers=8", "max-size-time=0", "leaky=downstream",
          "!", "videorate", "skip-to-first=true",
          "!", f"video/x-raw,framerate={fps}/1",
-diff --git a/src/cast.py b/src/cast.py
-index 17aee4d..fefded0 100644
---- a/src/cast.py
-+++ b/src/cast.py
-@@ -18,27 +18,53 @@ def discover_devices(timeout: int = 10) -> list:
+diff -ruN a/src/cast.py b/src/cast.py
+--- a/src/cast.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/cast.py	2026-07-04 22:01:15.528828271 +0700
+@@ -18,27 +18,53 @@
  
  
  def connect_by_ip(ip: str, port: int = 8009):
@@ -82,7 +80,7 @@ index 17aee4d..fefded0 100644
  def prompt_device(devices: list, device_name: Optional[str] = None):
      if not devices:
          print("[FluxCast] ERROR: No Cast devices found on the network.")
-@@ -78,7 +104,18 @@ def prompt_device(devices: list, device_name: Optional[str] = None):
+@@ -78,7 +104,18 @@
  def start_cast(device, stream_url: str) -> None:
      device.wait()
      mc = device.media_controller
@@ -102,11 +100,10 @@ index 17aee4d..fefded0 100644
      mc.block_until_active(timeout=15)
      print(f"[FluxCast] Cast started → {device.cast_info.friendly_name}")
  
-diff --git a/src/main.py b/src/main.py
-index 95f485c..f767487 100644
---- a/src/main.py
-+++ b/src/main.py
-@@ -48,6 +48,7 @@ Wi-Fi Display (Miracast) Options:
+diff -ruN a/src/main.py b/src/main.py
+--- a/src/main.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/main.py	2026-07-04 22:01:51.989676478 +0700
+@@ -48,6 +48,7 @@
      --wfd-interface IFACE    Wi-Fi interface to use, e.g. wlan0
      --wfd-timeout N          Wi-Fi Direct scan timeout in seconds (default: 8)
      --wfd-monitor NAME       Pre-select monitor by name, e.g. eDP-1
@@ -114,15 +111,16 @@ index 95f485c..f767487 100644
  """
  
  import argparse
-@@ -55,6 +56,7 @@ import glob
+@@ -55,6 +56,8 @@
  import os
  import signal
  import socket
 +import subprocess
++import threading
  import time
  import sys
  import termios
-@@ -108,7 +110,7 @@ def parse_args() -> argparse.Namespace:
+@@ -108,7 +111,7 @@
      dlna_cast.add_argument("--discover-timeout", type=int, default=5,
                             dest="discover_timeout",
                             help="Discovery timeout in seconds (default: 5)")
@@ -131,7 +129,7 @@ index 95f485c..f767487 100644
                             choices=["progressive-ts", "hls", "live-ts"],
                             help="DLNA stream transport: progressive-ts for low latency "
                                  "(default), hls as a stable fallback, or live-ts experimental")
-@@ -157,6 +159,10 @@ def parse_args() -> argparse.Namespace:
+@@ -157,6 +160,10 @@
                       help="Wi-Fi Direct scan timeout in seconds (default: 8)")
      wfd.add_argument("--wfd-monitor", default=None, dest="wfd_monitor",
                       help="Monitor name for WFD capture, e.g. eDP-1 (skips interactive picker)")
@@ -142,7 +140,7 @@ index 95f485c..f767487 100644
  
      return parser.parse_args()
  
-@@ -216,9 +222,45 @@ def _wait_for_hls_segments(required_segments: int = 2, timeout: float = 15.0) ->
+@@ -216,9 +223,45 @@
  def main() -> None:
      args = parse_args()
  
@@ -190,7 +188,86 @@ index 95f485c..f767487 100644
          return
  
      if args.doctor or args.doctor_json:
-@@ -333,14 +375,18 @@ def main() -> None:
+@@ -265,25 +308,68 @@
+     ffmpeg_procs = None
+     stream_server = None
+     tv = None
++    _shutting_down = threading.Event()
+ 
+     def shutdown(signum=None, frame=None):
++        # Re-entrancy guard: a second SIGINT/SIGTERM (e.g. the tray escalating,
++        # or an impatient Ctrl+C) must not restart teardown and wedge us.
++        if _shutting_down.is_set():
++            return
++        _shutting_down.set()
+         print("\n[FluxCast] Stopping…")
++
++        # 1) Tell the receiver to stop. pychromecast/DLNA talk over the network
++        #    and can block on a half-open socket, so run it in a watchdog thread
++        #    with a hard timeout — teardown must never hinge on the TV replying.
+         if tv is not None:
++            def _stop_receiver():
++                try:
++                    if args.protocol == "dlna":
++                        from dlna import stop_cast
++                        stop_cast(tv)
++                    else:
++                        import cast as cast_backend
++                        cast_backend.stop_cast(tv)
++                except Exception:
++                    pass
++            t = threading.Thread(target=_stop_receiver, daemon=True)
++            t.start()
++            t.join(timeout=6)
++
++        # 2) Release :8080 and 3) kill the capture pipeline. These ALWAYS run so
++        #    the next cast can rebind the port and reopen the screen-share portal.
++        if stream_server:
+             try:
+-                if args.protocol == "dlna":
+-                    from dlna import stop_cast
+-                    stop_cast(tv)
+-                else:
+-                    import cast as cast_backend
+-                    cast_backend.stop_cast(tv)
++                stream_server.stop()
+             except Exception:
+                 pass
+-        if stream_server:
+-            stream_server.stop()
+-        stop_capture(ffmpeg_procs)
++        try:
++            stop_capture(ffmpeg_procs)
++        except Exception:
++            pass
++
++        # 4) Remove this run's HLS artefacts so /tmp/fluxcast never accumulates
++        #    and a restart can't trip over stale segments/playlists.
++        try:
++            for f in (glob.glob(os.path.join(HLS_DIR, "*.ts"))
++                      + glob.glob(os.path.join(HLS_DIR, "*.m3u8"))):
++                try:
++                    os.remove(f)
++                except OSError:
++                    pass
++        except Exception:
++            pass
++
+         _restore_term(_tty_state)
+         print("[FluxCast] Stopped. Goodbye!")
+-        sys.exit(0)
++        # os._exit (not sys.exit): pychromecast/zeroconf leave worker threads
++        # alive, and the interpreter would block joining them on a normal exit —
++        # leaving a zombie session that blocks the next cast. Force-exit now.
++        try:
++            sys.stdout.flush()
++        except Exception:
++            pass
++        os._exit(0)
+ 
+     signal.signal(signal.SIGINT, shutdown)
+     signal.signal(signal.SIGTERM, shutdown)
+@@ -333,14 +419,18 @@
          start_cast(tv, stream_url)
  
      else:  # cast protocol
@@ -212,11 +289,10 @@ index 95f485c..f767487 100644
          start_cast(tv, stream_url)
  
      print("[FluxCast] Casting started. Press Ctrl+C to stop.")
-diff --git a/src/portal_capture.py b/src/portal_capture.py
-index 01993f2..26d6551 100644
---- a/src/portal_capture.py
-+++ b/src/portal_capture.py
-@@ -397,6 +397,16 @@ def start_portal_capture(
+diff -ruN a/src/portal_capture.py b/src/portal_capture.py
+--- a/src/portal_capture.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/portal_capture.py	2026-07-04 22:01:15.529232186 +0700
+@@ -397,6 +397,16 @@
                  pass
          runtime.stop()
          raise PortalCaptureError(f"Portal capture setup failed: {exc}") from exc
@@ -233,11 +309,10 @@ index 01993f2..26d6551 100644
  
  
  async def _close_portal_capture_async(session_handle: str, bus: Optional[Any] = None) -> None:
-diff --git a/src/server.py b/src/server.py
-index c238875..a351054 100644
---- a/src/server.py
-+++ b/src/server.py
-@@ -231,6 +231,10 @@ class HLSRequestHandler(http.server.BaseHTTPRequestHandler):
+diff -ruN a/src/server.py b/src/server.py
+--- a/src/server.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/server.py	2026-07-04 22:01:15.529439558 +0700
+@@ -231,6 +231,10 @@
  
      def _send_common_headers(self, local_path: str) -> None:
          self.send_header("Content-Type", _content_type(local_path))
@@ -248,11 +323,81 @@ index c238875..a351054 100644
          self.send_header("Accept-Ranges", "bytes")
          self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
          self.send_header("Pragma", "no-cache")
-diff --git a/src/tray.py b/src/tray.py
-index 22e4424..812f75b 100644
---- a/src/tray.py
-+++ b/src/tray.py
-@@ -161,6 +161,45 @@ def _on_exit(icon, item) -> None:
+diff -ruN a/src/tray.py b/src/tray.py
+--- a/src/tray.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/tray.py	2026-07-04 22:02:16.490129330 +0700
+@@ -1,4 +1,5 @@
+ import os
++import signal
+ import sys
+ import subprocess
+ import threading
+@@ -138,7 +139,12 @@
+     global _proc, _cast_target
+     log_fp = open(_LOG_PATH, "ab", buffering=0)
+     log_fp.write(f"\n=== {target} :: {' '.join(cmd)} ===\n".encode())
+-    proc = subprocess.Popen(cmd, stdout=log_fp, stderr=subprocess.STDOUT)
++    # start_new_session=True puts main.py (and its gst-launch child) in their own
++    # process group so _stop() can signal the whole group — a wedged pipeline
++    # can't survive and block the next cast.
++    proc = subprocess.Popen(
++        cmd, stdout=log_fp, stderr=subprocess.STDOUT, start_new_session=True
++    )
+     log_fp.close()
+     with _lock:
+         _proc = proc
+@@ -149,18 +155,93 @@
+     threading.Thread(target=_watch, args=(proc, target), daemon=True).start()
+ 
+ 
++def _terminate_proc(proc: "subprocess.Popen") -> None:
++    """Stop a cast worker cleanly: TERM the whole process group, then escalate
++    to KILL if it doesn't exit — so a stuck session never blocks the next cast."""
++    if proc is None or proc.poll() is not None:
++        return
++    try:
++        pgid = os.getpgid(proc.pid)
++    except OSError:
++        pgid = None
++
++    def _signal(sig) -> None:
++        try:
++            if pgid is not None:
++                os.killpg(pgid, sig)
++            else:
++                proc.send_signal(sig)
++        except OSError:
++            pass
++
++    _signal(signal.SIGTERM)
++    try:
++        proc.wait(timeout=6)
++        return
++    except subprocess.TimeoutExpired:
++        pass
++    _log("worker ignored SIGTERM; escalating to SIGKILL")
++    _signal(signal.SIGKILL)
++    try:
++        proc.wait(timeout=3)
++    except subprocess.TimeoutExpired:
++        pass
++
++
+ def _stop() -> None:
+     with _lock:
+         proc = _proc
+-    if proc and proc.poll() is None:
+-        proc.terminate()
++    # Run off the GTK thread so the tray menu never freezes while we wait.
++    threading.Thread(target=_terminate_proc, args=(proc,), daemon=True).start()
+ 
+ 
+ def _on_exit(icon, item) -> None:
+-    _stop()
++    with _lock:
++        proc = _proc
++    # Synchronous on exit: don't orphan a running cast when the tray quits.
++    _terminate_proc(proc)
      icon.stop()
  
  
@@ -298,7 +443,7 @@ index 22e4424..812f75b 100644
  # ── discovery ─────────────────────────────────────────────────────────────────
  
  def _scan_wfd() -> None:
-@@ -495,6 +534,11 @@ def _build_menu():
+@@ -495,6 +576,11 @@
          items.append(pystray.MenuItem("Rescan Devices", lambda *_: _rescan_all()))
  
      items.append(pystray.Menu.SEPARATOR)
@@ -310,7 +455,7 @@ index 22e4424..812f75b 100644
      items.append(pystray.MenuItem("About FluxCast", lambda *_: _show_about()))
      items.append(pystray.MenuItem("Exit", _on_exit))
  
-@@ -516,6 +560,10 @@ def run_tray() -> None:
+@@ -516,6 +602,10 @@
  
      def kickoff():
          _log("kickoff: GTK loop is alive, starting scans")
@@ -321,11 +466,10 @@ index 22e4424..812f75b 100644
          _rescan_all()
          return False  # don't repeat
  
-diff --git a/src/wfd.py b/src/wfd.py
-index dc9072c..f21b1a7 100644
---- a/src/wfd.py
-+++ b/src/wfd.py
-@@ -159,6 +159,18 @@ class WFDMediaConfig:
+diff -ruN a/src/wfd.py b/src/wfd.py
+--- a/src/wfd.py	2026-06-18 02:40:27.000000000 +0700
++++ b/src/wfd.py	2026-07-04 22:01:15.530202002 +0700
+@@ -159,6 +159,18 @@
      latency_log_path: Optional[str] = None
      capture_backend: str = "auto"
      peer_name: str = ""
@@ -344,7 +488,7 @@ index dc9072c..f21b1a7 100644
  
  
  @dataclass
-@@ -541,6 +553,8 @@ def _desired_resolution(config: WFDMediaConfig) -> Optional[tuple[int, int]]:
+@@ -541,6 +553,8 @@
      resolution = _parse_resolution(config.output_resolution)
      if resolution is not None:
          return resolution
@@ -353,7 +497,7 @@ index dc9072c..f21b1a7 100644
      if config.monitor is not None:
          monitor = config.monitor
          return monitor.width, monitor.height
-@@ -561,7 +575,11 @@ def _choose_cea_mode(
+@@ -561,7 +575,11 @@
      max_level = _max_wfd_level(sink_format.level) if sink_format else WFD_LEVEL_42
      resolution = _desired_resolution(config)
      wants_720 = resolution is None or (resolution[0] <= 1280 and resolution[1] <= 720)
@@ -366,7 +510,7 @@ index dc9072c..f21b1a7 100644
      wants_60 = config.fps > 30
  
      all_modes = {**WFD_CEA_MODES, **WFD_VESA_MODES}
-@@ -777,7 +795,8 @@ class WFDMediaPipeline:
+@@ -777,7 +795,8 @@
          self.processes: list[subprocess.Popen[bytes]] = []
          self.tx_interface: Optional[str] = None
          self.tx_baseline: Optional[int] = None
@@ -376,7 +520,7 @@ index dc9072c..f21b1a7 100644
          self._portal_gst_cmd: Optional[list[str]] = None
          self._portal_pw_fd: Optional[int] = None
          self._lpcm_muxer = None   # WFDLPCMMuxer instance for Microsoft adapter
-@@ -1079,7 +1098,11 @@ class WFDMediaPipeline:
+@@ -1079,7 +1098,11 @@
  
          is_lg = "LG" in self.config.peer_name.upper()
          if is_lg:
@@ -389,7 +533,7 @@ index dc9072c..f21b1a7 100644
  
          effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
          if effective_kbits > requested_kbits:
-@@ -1088,17 +1111,21 @@ class WFDMediaPipeline:
+@@ -1088,17 +1111,21 @@
                  f"{self.config.bitrate} -> {effective_bitrate}"
              )
  
@@ -420,7 +564,7 @@ index dc9072c..f21b1a7 100644
          # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
          if session.source_type is not None and session.source_type not in (1, 4):
              close_portal_capture(self.portal_session)
-@@ -1124,9 +1151,13 @@ class WFDMediaPipeline:
+@@ -1124,9 +1151,13 @@
          def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
              # Use more buffers for high-res 1440p capture and move videorate early
              props = _gst_pipewiresrc_properties()
@@ -435,7 +579,7 @@ index dc9072c..f21b1a7 100644
              if "resend-last" in props:
                  pipewire_args.append("resend-last=true")
              if "min-force-user-latency" in props:
-@@ -1189,7 +1220,7 @@ class WFDMediaPipeline:
+@@ -1189,7 +1220,7 @@
                      )
              else:
                  if "vbv-buf-capacity" in x264_props:
@@ -444,7 +588,7 @@ index dc9072c..f21b1a7 100644
                  # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
                  if "option-string" in x264_props:
                      opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
-@@ -1205,13 +1236,16 @@ class WFDMediaPipeline:
+@@ -1205,13 +1236,16 @@
                  f"fd={session.pw_fd}",
                  *pipewire_args,
                  "do-timestamp=true",
@@ -464,7 +608,7 @@ index dc9072c..f21b1a7 100644
                  "!", video_caps,
                  "!", "videoconvert",
                  "!", "video/x-raw,format=I420",
-@@ -1373,6 +1407,7 @@ class WFDMediaPipeline:
+@@ -1373,6 +1407,7 @@
                      f"selector={selector_name}, caps={attempt_name}"
                  )
                  gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
@@ -472,7 +616,7 @@ index dc9072c..f21b1a7 100644
                  gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
                  time.sleep(2.5)
                  if gst_proc.poll() is not None:
-@@ -1390,6 +1425,27 @@ class WFDMediaPipeline:
+@@ -1390,6 +1425,27 @@
                      )
                      continue
  
@@ -500,7 +644,7 @@ index dc9072c..f21b1a7 100644
                  self.processes = [gst_proc]
                  self._portal_gst_cmd = gst_cmd
                  self._portal_pw_fd = session.pw_fd
-@@ -2049,12 +2105,15 @@ class _WFDRTSPHandler(socketserver.StreamRequestHandler):
+@@ -2049,12 +2105,15 @@
              raise WFDNotReady("Cannot start media before the TV RTP port is known.")
          if self.media is None:
              mode = self._cea_mode()
@@ -516,7 +660,7 @@ index dc9072c..f21b1a7 100644
              )
              print(
                  f"[FluxCast WFD RTSP] Starting media as {mode.name}; "
-@@ -3044,12 +3103,15 @@ def _active_rtsp_probe(
+@@ -3044,12 +3103,15 @@
                      elif method == "PLAY":
                          _reply(msg, extra={"Range": "npt=now-"})
                          mode = _choose_cea_mode(media_config, st["sink_vfmt"])
@@ -532,7 +676,7 @@ index dc9072c..f21b1a7 100644
                          )
                          media = WFDMediaPipeline(
                              eff_cfg,
-@@ -3104,6 +3166,7 @@ def start_experimental_backend(args) -> None:
+@@ -3104,6 +3166,7 @@
          )
  
      monitor = None
@@ -540,7 +684,7 @@ index dc9072c..f21b1a7 100644
      if not getattr(args, "wfd_test_pattern", False) and not getattr(args, "wfd_dry_run", False):
          selected_backend = getattr(args, "wfd_capture_backend", "auto")
          portal_mode = selected_backend == "portal" or (
-@@ -3145,6 +3208,24 @@ def start_experimental_backend(args) -> None:
+@@ -3145,6 +3208,24 @@
          )
          return
  
@@ -565,7 +709,7 @@ index dc9072c..f21b1a7 100644
      no_audio = getattr(args, "wfd_no_audio", False)
      if getattr(args, "wfd_test_pattern", False):
          if no_audio:
-@@ -3165,6 +3246,8 @@ def start_experimental_backend(args) -> None:
+@@ -3165,6 +3246,8 @@
          latency_log_path=getattr(args, "wfd_latency_log", None),
          capture_backend=getattr(args, "wfd_capture_backend", "auto"),
          peer_name=peer.name,
@@ -574,7 +718,7 @@ index dc9072c..f21b1a7 100644
      )
      if media_config.latency_log_path:
          print(f"[FluxCast WFD] Latency log file: {media_config.latency_log_path}")
-@@ -3207,6 +3290,8 @@ def start_experimental_backend(args) -> None:
+@@ -3207,6 +3290,8 @@
      finally:
          rtsp.stop_all_media()
          rtsp.stop()
