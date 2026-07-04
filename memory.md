@@ -102,9 +102,10 @@ The overlay should be hosted on GitHub and registered through
 [edorp]
 location = /var/db/repos/edorp
 sync-type = git
-sync-uri = git@github.com:USERNAME/edorp-overlay.git
+sync-uri = https://github.com/firesand/edorp-overlay.git
 auto-sync = yes
 masters = gentoo
+priority = 70
 ```
 
 Sync command:
@@ -113,8 +114,15 @@ Sync command:
 emerge --sync edorp
 ```
 
-If the GitHub repo is private, root must have SSH access to GitHub, usually via
-a deploy key or root-readable SSH configuration. This is a likely failure point.
+The repo is public, so use HTTPS for Portage sync. Do not use SSH for
+`sync-uri` unless the repo becomes private and root has GitHub SSH access.
+
+`metadata/edorp.conf` contains the ready-to-copy Portage config. Installing it
+requires root:
+
+```bash
+doas cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
+```
 
 ## Repository Hygiene
 
