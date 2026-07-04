@@ -30,9 +30,11 @@ Status as of 2026-07-04:
 - Local Git identity is configured as `firesand <firesand@gmail.com>`.
 - Initial commit exists: `51f128b Initial EDORP Gentoo overlay`.
 - Remote `origin` is configured as `git@github.com:firesand/edorp-overlay.git`.
-- Push is not done yet. SSH to GitHub currently fails with
-  `Permission denied (publickey)`, so the local public key needs to be added to
-  GitHub or another authenticated push method must be used.
+- Push is not done yet. SSH authentication to GitHub now succeeds as `firesand`,
+  but `git ls-remote origin` returns `Repository not found` for
+  `firesand/edorp-overlay.git`. The likely remaining issue is that the GitHub
+  repo named `edorp-overlay` has not been created under `firesand`, or the local
+  remote URL does not match the actual repo name.
 - `/home/edo/mame` does not exist. Existing related paths found:
   `/home/edo/MAME` is a symlink to `/home/edo/ArcadeDev/LinuxMAMEUI`, and
   `/home/edo/ArcadeDev/MAME` is empty.
