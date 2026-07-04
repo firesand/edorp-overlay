@@ -103,7 +103,7 @@ index 17aee4d..fefded0 100644
      print(f"[FluxCast] Cast started → {device.cast_info.friendly_name}")
  
 diff --git a/src/main.py b/src/main.py
-index 95f485c..2b9567d 100644
+index 95f485c..f767487 100644
 --- a/src/main.py
 +++ b/src/main.py
 @@ -48,6 +48,7 @@ Wi-Fi Display (Miracast) Options:
@@ -122,6 +122,15 @@ index 95f485c..2b9567d 100644
  import time
  import sys
  import termios
+@@ -108,7 +110,7 @@ def parse_args() -> argparse.Namespace:
+     dlna_cast.add_argument("--discover-timeout", type=int, default=5,
+                            dest="discover_timeout",
+                            help="Discovery timeout in seconds (default: 5)")
+-    dlna_cast.add_argument("--transport", default="progressive-ts",
++    dlna_cast.add_argument("--transport", default=None,
+                            choices=["progressive-ts", "hls", "live-ts"],
+                            help="DLNA stream transport: progressive-ts for low latency "
+                                 "(default), hls as a stable fallback, or live-ts experimental")
 @@ -157,6 +159,10 @@ def parse_args() -> argparse.Namespace:
                       help="Wi-Fi Direct scan timeout in seconds (default: 8)")
      wfd.add_argument("--wfd-monitor", default=None, dest="wfd_monitor",
@@ -133,9 +142,16 @@ index 95f485c..2b9567d 100644
  
      return parser.parse_args()
  
-@@ -217,8 +223,38 @@ def main() -> None:
+@@ -216,9 +222,45 @@ def _wait_for_hls_segments(required_segments: int = 2, timeout: float = 15.0) ->
+ def main() -> None:
      args = parse_args()
  
++    if args.transport is None:
++        # Cast receivers (Chromecast/Google TV/Android TV incl. Xiaomi) play
++        # HLS reliably but not a raw progressive MPEG-TS, so default cast->hls.
++        # DLNA keeps progressive-ts for lower latency.
++        args.transport = "hls" if args.protocol == "cast" else "progressive-ts"
++
      if args.tray:
 -        from tray import run_tray
 -        run_tray()
@@ -174,7 +190,7 @@ index 95f485c..2b9567d 100644
          return
  
      if args.doctor or args.doctor_json:
-@@ -333,14 +369,18 @@ def main() -> None:
+@@ -333,14 +375,18 @@ def main() -> None:
          start_cast(tv, stream_url)
  
      else:  # cast protocol
