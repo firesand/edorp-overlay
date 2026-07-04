@@ -3,19 +3,19 @@ EAPI=8
 DISTUTILS_USE_PEP517=hatchling
 PYTHON_COMPAT=( python3_{10..14} )
 
-inherit desktop distutils-r1 git-r3 xdg
+inherit desktop distutils-r1 xdg
 
 PATCHES=(
 	"${FILESDIR}/fluxcast-0.1.5-portable-fixes.patch"
 )
 
 DESCRIPTION="Stream your Linux desktop to a Smart TV via Miracast/WFD, DLNA, or Chromecast"
-HOMEPAGE="https://github.com/IlyaP358/fluxcast"
-EGIT_REPO_URI="https://github.com/IlyaP358/fluxcast.git"
+HOMEPAGE="https://github.com/IlyaP358/fluxcast https://pypi.org/project/fluxcast/"
+SRC_URI="https://github.com/IlyaP358/fluxcast/archive/refs/tags/v${PV}.tar.gz -> ${P}.gh.tar.gz"
 
 LICENSE="GPL-3+"
 SLOT="0"
-KEYWORDS=""
+KEYWORDS="~amd64 ~x86"
 
 RDEPEND="
 	dev-libs/libayatana-appindicator
