@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Proprietary UNIGINE Superposition benchmark. Unlike the ASUS laptop
+		packages in this overlay, this ebuild is hardware-agnostic and has no
+		systemd requirement.
+	</longdescription>
+	<upstream>
+		<remote-id type="homepage">https://benchmark.unigine.com/superposition</remote-id>
+	</upstream>
+</pkgmetadata>

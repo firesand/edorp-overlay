@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Graphical front-end for equery from app-portage/gentoolkit. Runs equery
+		in a PTY so ANSI colours are preserved. Works on any Gentoo profile with
+		a graphical session (X11 or Wayland).
+	</longdescription>
+	<upstream>
+		<remote-id type="github">firesand/equery-gui</remote-id>
+		<bugs-to>https://github.com/firesand/equery-gui/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

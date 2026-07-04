@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Target audience: ASUS hybrid-GPU laptops running Gentoo Linux with
+		systemd. Provides supergfxd for graphics mode switching. Requires
+		systemd and is not intended for OpenRC profiles or systems without
+		ASUS hybrid graphics.
+	</longdescription>
+	<upstream>
+		<remote-id type="gitlab">asus-linux/supergfxctl</remote-id>
+	</upstream>
+</pkgmetadata>

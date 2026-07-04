@@ -39,6 +39,12 @@ Status as of 2026-07-04:
   `/home/edo/Fluxcast/fluxcast-overlay-bundle.tar.gz`.
 - LinuxMAMEUI/MAME/HBMAME ebuilds were imported from
   `/home/edo/ArcadeDev/LinuxMAMEUI/packaging/gentoo`.
+- ASUS laptop ebuilds (`asusctl`, `supergfxctl`, `unigine-superposition`) were
+  imported from `/home/edo/Downloads/Asus-Gentoo/asus-gentoo-overlay` on the
+  Intel Gentoo laptop (`192.168.0.10`). Only the overlay packages were imported;
+  local setup scripts from that directory were excluded.
+- `equery-gui` source lives at `https://github.com/firesand/equery-gui`. The
+  overlay ebuild is `app-portage/equery-gui/equery-gui-0.1.0.ebuild`.
 
 ## Overlay Direction
 
@@ -86,11 +92,14 @@ sign-manifests = false
 Actual categories currently listed:
 
 ```text
-app-misc
+app-benchmarks
 app-emulation
+app-misc
+app-portage
 dev-python
 games-emulation
 net-misc
+sys-power
 ```
 
 ## Sync Model
@@ -154,6 +163,16 @@ Actual imported package placement:
 - `app-emulation/linuxmameui`
 - `app-emulation/mame`
 - `app-emulation/hbmame`
+- `app-portage/equery-gui`
+- `sys-power/asusctl` (ASUS ROG laptop, systemd only)
+- `sys-power/supergfxctl` (ASUS hybrid-GPU laptop, systemd only)
+- `app-benchmarks/unigine-superposition` (general benchmark, not ASUS-specific)
+
+ASUS laptop scope:
+
+- `sys-power/asusctl` and `sys-power/supergfxctl` require `sys-apps/systemd` and
+  are intended for ASUS laptops running Gentoo with systemd.
+- `app-benchmarks/unigine-superposition` has no ASUS or systemd requirement.
 
 Do not move LinuxMAMEUI/MAME/HBMAME categories casually. The existing local
 packaging uses `app-emulation`, and that category exists in the local Gentoo
@@ -179,9 +198,13 @@ Validation already performed:
 
 ```bash
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-misc/fluxcast/fluxcast-9999.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-portage/equery-gui/equery-gui-0.1.0.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mame/mame-0.288.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
 ```
 
 All four basic parse checks passed after enabling thin manifests and using a

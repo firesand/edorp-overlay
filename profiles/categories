@@ -1,5 +1,8 @@
-app-misc
+app-benchmarks
 app-emulation
+app-misc
+app-portage
 dev-python
 games-emulation
 net-misc
+sys-power

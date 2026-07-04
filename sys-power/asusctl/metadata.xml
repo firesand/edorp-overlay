@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Target audience: ASUS ROG laptops running Gentoo Linux with systemd.
+		Provides the asus-linux daemon stack (asusd, asusctl, and optional
+		rog-control-center). Not intended for OpenRC profiles or non-ASUS
+		hardware.
+	</longdescription>
+	<use>
+		<flag name="gui">Install the Wayland rog-control-center GUI</flag>
+	</use>
+	<upstream>
+		<remote-id type="github">OpenGamingCollective/asusctl</remote-id>
+	</upstream>
+</pkgmetadata>
