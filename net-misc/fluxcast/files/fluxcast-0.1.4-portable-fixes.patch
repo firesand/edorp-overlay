@@ -1,0 +1,547 @@
+diff -ruN a/src/capture.py b/src/capture.py
+--- a/src/capture.py	2026-06-29 23:56:08.000000000 +0700
++++ b/src/capture.py	2026-07-04 22:20:59.858026893 +0700
+@@ -411,6 +411,10 @@
+         # always-copy=true!! immediately copy PipeWire buffer to CPU memory so
+         # x264enc doesn't stall waiting for DMA-buf download mid-pipeline
+         "always-copy=true",
++        # keepalive-time re-sends the last PipeWire buffer periodically so the
++        # encoder keeps producing a constant framerate when the desktop is idle
++        # (KWin/Wayland portal is damage-driven and would otherwise starve HLS).
++        f"keepalive-time={max(1, round(1000 / fps))}",
+         "!", "queue", "max-size-buffers=8", "max-size-time=0", "leaky=downstream",
+         "!", "videorate", "skip-to-first=true",
+         "!", f"video/x-raw,framerate={fps}/1",
+diff -ruN a/src/main.py b/src/main.py
+--- a/src/main.py	2026-06-29 23:56:08.000000000 +0700
++++ b/src/main.py	2026-07-04 22:22:54.781909988 +0700
+@@ -48,6 +48,7 @@
+     --wfd-interface IFACE    Wi-Fi interface to use, e.g. wlan0
+     --wfd-timeout N          Wi-Fi Direct scan timeout in seconds (default: 8)
+     --wfd-monitor NAME       Pre-select monitor by name, e.g. eDP-1
++    --wfd-latency PROFILE     Buffering profile: low (default), balanced, smooth
+ """
+ 
+ import argparse
+@@ -55,6 +56,7 @@
+ import os
+ import signal
+ import socket
++import threading
+ import time
+ import sys
+ import termios
+@@ -160,6 +162,10 @@
+                      help="Wi-Fi Direct scan timeout in seconds (default: 8)")
+     wfd.add_argument("--wfd-monitor", default=None, dest="wfd_monitor",
+                      help="Monitor name for WFD capture, e.g. eDP-1 (skips interactive picker)")
++    wfd.add_argument("--wfd-latency", default="low",
++                     choices=["low", "balanced", "smooth"], dest="wfd_latency",
++                     help="WFD buffering profile: low (default, lowest lag), "
++                          "balanced, or smooth (largest buffers for weak Wi-Fi)")
+ 
+     return parser.parse_args()
+ 
+@@ -271,25 +277,68 @@
+     ffmpeg_procs = None
+     stream_server = None
+     tv = None
++    _shutting_down = threading.Event()
+ 
+     def shutdown(signum=None, frame=None):
++        # Re-entrancy guard: a second SIGINT/SIGTERM (e.g. the tray escalating,
++        # or an impatient Ctrl+C) must not restart teardown and wedge us.
++        if _shutting_down.is_set():
++            return
++        _shutting_down.set()
+         print("\n[FluxCast] Stopping…")
++
++        # 1) Tell the receiver to stop. pychromecast/DLNA talk over the network
++        #    and can block on a half-open socket, so run it in a watchdog thread
++        #    with a hard timeout — teardown must never hinge on the TV replying.
+         if tv is not None:
++            def _stop_receiver():
++                try:
++                    if args.protocol == "dlna":
++                        from dlna import stop_cast
++                        stop_cast(tv)
++                    else:
++                        import cast as cast_backend
++                        cast_backend.stop_cast(tv)
++                except Exception:
++                    pass
++            t = threading.Thread(target=_stop_receiver, daemon=True)
++            t.start()
++            t.join(timeout=6)
++
++        # 2) Release :8080 and 3) kill the capture pipeline. These ALWAYS run so
++        #    the next cast can rebind the port and reopen the screen-share portal.
++        if stream_server:
+             try:
+-                if args.protocol == "dlna":
+-                    from dlna import stop_cast
+-                    stop_cast(tv)
+-                else:
+-                    import cast as cast_backend
+-                    cast_backend.stop_cast(tv)
++                stream_server.stop()
+             except Exception:
+                 pass
+-        if stream_server:
+-            stream_server.stop()
+-        stop_capture(ffmpeg_procs)
++        try:
++            stop_capture(ffmpeg_procs)
++        except Exception:
++            pass
++
++        # 4) Remove this run's HLS artefacts so /tmp/fluxcast never accumulates
++        #    and a restart can't trip over stale segments/playlists.
++        try:
++            for f in (glob.glob(os.path.join(HLS_DIR, "*.ts"))
++                      + glob.glob(os.path.join(HLS_DIR, "*.m3u8"))):
++                try:
++                    os.remove(f)
++                except OSError:
++                    pass
++        except Exception:
++            pass
++
+         _restore_term(_tty_state)
+         print("[FluxCast] Stopped. Goodbye!")
+-        sys.exit(0)
++        # os._exit (not sys.exit): pychromecast/zeroconf leave worker threads
++        # alive, and the interpreter would block joining them on a normal exit —
++        # leaving a zombie session that blocks the next cast. Force-exit now.
++        try:
++            sys.stdout.flush()
++        except Exception:
++            pass
++        os._exit(0)
+ 
+     signal.signal(signal.SIGINT, shutdown)
+     signal.signal(signal.SIGTERM, shutdown)
+diff -ruN a/src/portal_capture.py b/src/portal_capture.py
+--- a/src/portal_capture.py	2026-06-29 23:56:08.000000000 +0700
++++ b/src/portal_capture.py	2026-07-04 22:24:34.313222193 +0700
+@@ -397,6 +397,16 @@
+                 pass
+         runtime.stop()
+         raise PortalCaptureError(f"Portal capture setup failed: {exc}") from exc
++    except BaseException:
++        # KeyboardInterrupt and other control-flow exceptions must not leave
++        # the portal event-loop thread or D-Bus connection running.
++        if bus is not None:
++            try:
++                runtime.call_soon(bus.disconnect)
++            except Exception:
++                pass
++        runtime.stop()
++        raise
+ 
+ 
+ async def _close_portal_capture_async(session_handle: str, bus: Optional[Any] = None) -> None:
+diff -ruN a/src/tray.py b/src/tray.py
+--- a/src/tray.py	2026-06-29 23:56:08.000000000 +0700
++++ b/src/tray.py	2026-07-04 22:20:59.851599062 +0700
+@@ -1,4 +1,5 @@
+ import os
++import signal
+ import sys
+ import subprocess
+ import threading
+@@ -138,7 +139,12 @@
+     global _proc, _cast_target
+     log_fp = open(_LOG_PATH, "ab", buffering=0)
+     log_fp.write(f"\n=== {target} :: {' '.join(cmd)} ===\n".encode())
+-    proc = subprocess.Popen(cmd, stdout=log_fp, stderr=subprocess.STDOUT)
++    # start_new_session=True puts main.py (and its gst-launch child) in their own
++    # process group so _stop() can signal the whole group — a wedged pipeline
++    # can't survive and block the next cast.
++    proc = subprocess.Popen(
++        cmd, stdout=log_fp, stderr=subprocess.STDOUT, start_new_session=True
++    )
+     log_fp.close()
+     with _lock:
+         _proc = proc
+@@ -149,18 +155,93 @@
+     threading.Thread(target=_watch, args=(proc, target), daemon=True).start()
+ 
+ 
++def _terminate_proc(proc: "subprocess.Popen") -> None:
++    """Stop a cast worker cleanly: TERM the whole process group, then escalate
++    to KILL if it doesn't exit — so a stuck session never blocks the next cast."""
++    if proc is None or proc.poll() is not None:
++        return
++    try:
++        pgid = os.getpgid(proc.pid)
++    except OSError:
++        pgid = None
++
++    def _signal(sig) -> None:
++        try:
++            if pgid is not None:
++                os.killpg(pgid, sig)
++            else:
++                proc.send_signal(sig)
++        except OSError:
++            pass
++
++    _signal(signal.SIGTERM)
++    try:
++        proc.wait(timeout=6)
++        return
++    except subprocess.TimeoutExpired:
++        pass
++    _log("worker ignored SIGTERM; escalating to SIGKILL")
++    _signal(signal.SIGKILL)
++    try:
++        proc.wait(timeout=3)
++    except subprocess.TimeoutExpired:
++        pass
++
++
+ def _stop() -> None:
+     with _lock:
+         proc = _proc
+-    if proc and proc.poll() is None:
+-        proc.terminate()
++    # Run off the GTK thread so the tray menu never freezes while we wait.
++    threading.Thread(target=_terminate_proc, args=(proc,), daemon=True).start()
+ 
+ 
+ def _on_exit(icon, item) -> None:
+-    _stop()
++    with _lock:
++        proc = _proc
++    # Synchronous on exit: don't orphan a running cast when the tray quits.
++    _terminate_proc(proc)
+     icon.stop()
+ 
+ 
++# ── autostart on login ────────────────────────────────────────────────────────
++
++def _autostart_file() -> str:
++    base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
++    return os.path.join(base, "autostart", "fluxcast-tray.desktop")
++
++
++def _autostart_enabled() -> bool:
++    return os.path.isfile(_autostart_file())
++
++
++def _toggle_autostart() -> None:
++    path = _autostart_file()
++    if _autostart_enabled():
++        try:
++            os.remove(path)
++            _notify("FluxCast", "Autostart on login disabled.")
++        except OSError as e:
++            _log(f"autostart remove failed: {e}")
++    else:
++        try:
++            os.makedirs(os.path.dirname(path), exist_ok=True)
++            with open(path, "w", encoding="utf-8") as fp:
++                fp.write(
++                    "[Desktop Entry]\n"
++                    "Type=Application\n"
++                    "Name=FluxCast\n"
++                    "Comment=Stream your desktop to a Smart TV\n"
++                    "Exec=fluxcast --tray\n"
++                    f"Icon={_ICON_PATH}\n"
++                    "Terminal=false\n"
++                    "X-GNOME-Autostart-enabled=true\n"
++                )
++            _notify("FluxCast", "FluxCast will now start automatically on login.")
++        except OSError as e:
++            _log(f"autostart write failed: {e}")
++    _refresh()
++
++
+ # ── discovery ─────────────────────────────────────────────────────────────────
+ 
+ def _scan_wfd() -> None:
+@@ -495,6 +576,11 @@
+         items.append(pystray.MenuItem("Rescan Devices", lambda *_: _rescan_all()))
+ 
+     items.append(pystray.Menu.SEPARATOR)
++    items.append(pystray.MenuItem(
++        "Start on login",
++        lambda *_: _toggle_autostart(),
++        checked=lambda item: _autostart_enabled(),
++    ))
+     items.append(pystray.MenuItem("About FluxCast", lambda *_: _show_about()))
+     items.append(pystray.MenuItem("Exit", _on_exit))
+ 
+@@ -516,6 +602,10 @@
+ 
+     def kickoff():
+         _log("kickoff: GTK loop is alive, starting scans")
++        _notify(
++            "FluxCast is running",
++            "Open the FluxCast icon in KDE's system tray to choose a TV.",
++        )
+         _rescan_all()
+         return False  # don't repeat
+ 
+diff -ruN a/src/wfd.py b/src/wfd.py
+--- a/src/wfd.py	2026-06-29 23:56:08.000000000 +0700
++++ b/src/wfd.py	2026-07-04 22:21:25.171264409 +0700
+@@ -159,6 +159,18 @@
+     latency_log_path: Optional[str] = None
+     capture_backend: str = "auto"
+     peer_name: str = ""
++    latency_profile: str = "low"
++    portal_session: Optional[PortalCaptureSession] = None
++
++
++# Latency profiles map to (queue max-size-buffers, pipewiresrc max-buffers).
++# "low" is the validated default (~sub-second); raise it on weak Wi-Fi to trade
++# a little latency for smoother playback.
++_WFD_LATENCY_PROFILES = {
++    "low": (3, 8),
++    "balanced": (6, 16),
++    "smooth": (16, 32),
++}
+ 
+ 
+ @dataclass
+@@ -541,6 +553,8 @@
+     resolution = _parse_resolution(config.output_resolution)
+     if resolution is not None:
+         return resolution
++    if config.portal_session is not None and config.portal_session.size is not None:
++        return config.portal_session.size
+     if config.monitor is not None:
+         monitor = config.monitor
+         return monitor.width, monitor.height
+@@ -561,7 +575,11 @@
+     max_level = _max_wfd_level(sink_format.level) if sink_format else WFD_LEVEL_42
+     resolution = _desired_resolution(config)
+     wants_720 = resolution is None or (resolution[0] <= 1280 and resolution[1] <= 720)
+-    wants_1200 = resolution is not None and resolution[0] >= 1920 and resolution[1] > 1080
++    wants_1200 = (
++        resolution is not None
++        and resolution[1] > 1080
++        and abs((resolution[0] / resolution[1]) - (16 / 10)) < 0.05
++    )
+     wants_60 = config.fps > 30
+ 
+     all_modes = {**WFD_CEA_MODES, **WFD_VESA_MODES}
+@@ -777,7 +795,8 @@
+         self.processes: list[subprocess.Popen[bytes]] = []
+         self.tx_interface: Optional[str] = None
+         self.tx_baseline: Optional[int] = None
+-        self.portal_session: Optional[PortalCaptureSession] = None
++        self.portal_session = config.portal_session
++        self.config.portal_session = None
+         self._portal_gst_cmd: Optional[list[str]] = None
+         self._portal_pw_fd: Optional[int] = None
+         self._lpcm_muxer = None   # WFDLPCMMuxer instance for Microsoft adapter
+@@ -1079,7 +1098,11 @@
+ 
+         is_lg = "LG" in self.config.peer_name.upper()
+         if is_lg:
+-            effective_kbits = min(effective_kbits, 4000)
++            # 4 Mbps is adequate for 720p but smears desktop text at 1080p.
++            # Keep the conservative LG cap while allowing enough detail for
++            # the higher-resolution portal stream.
++            lg_cap_kbits = 6000 if parsed_out[0] > 1280 or parsed_out[1] > 720 else 4000
++            effective_kbits = min(effective_kbits, lg_cap_kbits)
+ 
+         effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
+         if effective_kbits > requested_kbits:
+@@ -1088,17 +1111,21 @@
+                 f"{self.config.bitrate} -> {effective_bitrate}"
+             )
+ 
+-        print("[FluxCast WFD Media] Opening portal screen-share dialog (KDE/GNOME Wayland)...")
+-        try:
+-            self.portal_session = start_portal_capture(
+-                timeout=120.0,
+-                preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
+-                preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
+-            )
+-        except PortalCaptureError as exc:
+-            raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
++        if self.portal_session is None:
++            print("[FluxCast WFD Media] Opening portal screen-share dialog (KDE/GNOME Wayland)...")
++            try:
++                self.portal_session = start_portal_capture(
++                    timeout=120.0,
++                    preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
++                    preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
++                )
++            except PortalCaptureError as exc:
++                raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
++        else:
++            print("[FluxCast WFD Media] Using pre-authorized portal screen share.")
+ 
+         session = self.portal_session
++        assert session is not None
+         # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
+         if session.source_type is not None and session.source_type not in (1, 4):
+             close_portal_capture(self.portal_session)
+@@ -1124,9 +1151,13 @@
+         def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
+             # Use more buffers for high-res 1440p capture and move videorate early
+             props = _gst_pipewiresrc_properties()
++            queue_buffers, pw_buffers = _WFD_LATENCY_PROFILES.get(
++                getattr(self.config, "latency_profile", "low"),
++                _WFD_LATENCY_PROFILES["low"],
++            )
+             pipewire_args = [*selector_args]
+             if "max-buffers" in props:
+-                pipewire_args.append("max-buffers=64")
++                pipewire_args.append(f"max-buffers={pw_buffers}")
+             if "resend-last" in props:
+                 pipewire_args.append("resend-last=true")
+             if "min-force-user-latency" in props:
+@@ -1189,7 +1220,7 @@
+                     )
+             else:
+                 if "vbv-buf-capacity" in x264_props:
+-                    encoder_args.append("vbv-buf-capacity=200")
++                    encoder_args.append("vbv-buf-capacity=120")
+                 # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
+                 if "option-string" in x264_props:
+                     opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
+@@ -1205,13 +1236,16 @@
+                 f"fd={session.pw_fd}",
+                 *pipewire_args,
+                 "do-timestamp=true",
+-                "always-copy=false",
++                # Copy portal DMA-BUFs immediately. This avoids the
++                # gst_mini_object_unref/stall seen with PipeWire 1.6 and
++                # GStreamer 1.24 when the encoder retains imported buffers.
++                "always-copy=true",
+                 "keepalive-time=33",
+-                "!", "queue", "max-size-buffers=64", "max-size-time=1000000000", "leaky=downstream",
++                "!", "queue", f"max-size-buffers={queue_buffers}", "max-size-time=0", "max-size-bytes=0", "leaky=downstream",
+                 "!", "videorate", "skip-to-first=true",
+                 "!", f"video/x-raw,framerate={self.config.fps}/1",
+                 "!", "videoconvert",
+-                "!", "videoscale",
++                "!", "videoscale", "method=bilinear", "n-threads=0",
+                 "!", video_caps,
+                 "!", "videoconvert",
+                 "!", "video/x-raw,format=I420",
+@@ -1373,6 +1407,7 @@
+                     f"selector={selector_name}, caps={attempt_name}"
+                 )
+                 gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
++                attempt_tx_baseline = _netdev_tx_bytes(self.tx_interface)
+                 gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
+                 time.sleep(2.5)
+                 if gst_proc.poll() is not None:
+@@ -1390,6 +1425,27 @@
+                     )
+                     continue
+ 
++                attempt_tx_current = _netdev_tx_bytes(self.tx_interface)
++                if attempt_tx_baseline is not None and attempt_tx_current is not None:
++                    attempt_tx_delta = max(0, attempt_tx_current - attempt_tx_baseline)
++                    if attempt_tx_delta < 64 * 1024:
++                        print(
++                            "[FluxCast WFD Media] Portal attempt produced no usable RTP "
++                            f"traffic ({attempt_tx_delta} bytes); trying next combination..."
++                        )
++                        gst_proc.terminate()
++                        try:
++                            gst_proc.wait(timeout=2)
++                        except subprocess.TimeoutExpired:
++                            gst_proc.kill()
++                            gst_proc.wait(timeout=1)
++                        continue
++                    print(
++                        "[FluxCast WFD Media] Portal startup transmitted "
++                        f"{attempt_tx_delta // 1024} KiB."
++                    )
++                    self.tx_baseline = attempt_tx_baseline
++
+                 self.processes = [gst_proc]
+                 self._portal_gst_cmd = gst_cmd
+                 self._portal_pw_fd = session.pw_fd
+@@ -2049,12 +2105,15 @@
+             raise WFDNotReady("Cannot start media before the TV RTP port is known.")
+         if self.media is None:
+             mode = self._cea_mode()
++            portal_session = self.media_config.portal_session
++            self.media_config.portal_session = None
+             effective_config = replace(
+                 self.media_config,
+                 source_port=self.source_rtp_port,
+                 output_resolution=mode.resolution,
+                 fps=mode.fps,
+                 no_audio=self.media_config.no_audio or self.negotiated_no_audio,
++                portal_session=portal_session,
+             )
+             print(
+                 f"[FluxCast WFD RTSP] Starting media as {mode.name}; "
+@@ -3092,12 +3151,15 @@
+                     elif method == "PLAY":
+                         _reply(msg, extra={"Range": "npt=now-"})
+                         mode = _choose_cea_mode(media_config, st["sink_vfmt"])
++                        portal_session = media_config.portal_session
++                        media_config.portal_session = None
+                         eff_cfg = replace(
+                             media_config,
+                             source_port=st["src_port"],
+                             output_resolution=mode.resolution,
+                             fps=mode.fps,
+                             no_audio=st["no_audio"],
++                            portal_session=portal_session,
+                         )
+                         media = WFDMediaPipeline(
+                             eff_cfg,
+@@ -3152,6 +3214,7 @@
+         )
+ 
+     monitor = None
++    portal_mode = False
+     if not getattr(args, "wfd_test_pattern", False) and not getattr(args, "wfd_dry_run", False):
+         selected_backend = getattr(args, "wfd_capture_backend", "auto")
+         portal_mode = selected_backend == "portal" or (
+@@ -3193,6 +3256,24 @@
+         )
+         return
+ 
++    portal_session = None
++    if portal_mode and not getattr(args, "wfd_test_pattern", False):
++        print(
++            "[FluxCast WFD] Opening the portal before connecting the TV, so "
++            "screen selection cannot consume the WFD session timeout."
++        )
++        try:
++            portal_session = start_portal_capture(
++                timeout=120.0,
++                preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
++                preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
++            )
++        except KeyboardInterrupt:
++            print("\n[FluxCast WFD] Screen sharing was not authorized; no TV connection was started.")
++            return
++        except PortalCaptureError as exc:
++            raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
++
+     no_audio = getattr(args, "wfd_no_audio", False)
+     if getattr(args, "wfd_test_pattern", False):
+         if no_audio:
+@@ -3213,6 +3294,8 @@
+         latency_log_path=getattr(args, "wfd_latency_log", None),
+         capture_backend=getattr(args, "wfd_capture_backend", "auto"),
+         peer_name=peer.name,
++        latency_profile=getattr(args, "wfd_latency", "low"),
++        portal_session=portal_session,
+     )
+     if media_config.latency_log_path:
+         print(f"[FluxCast WFD] Latency log file: {media_config.latency_log_path}")
+@@ -3262,6 +3345,8 @@
+     finally:
+         rtsp.stop_all_media()
+         rtsp.stop()
++        close_portal_capture(media_config.portal_session)
++        media_config.portal_session = None
+         if firewall_opened:
+             _close_wfd_firewall_port(rtsp_port)
+         if connected:
