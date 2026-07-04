@@ -26,8 +26,13 @@ The overlay is intended for personal packages and experiments, starting with:
 Status as of 2026-07-04:
 
 - `/home/edo/EDORP` has been initialized as the EDORP overlay root.
-- Git has been initialized locally on branch `main`, but there is no commit yet
-  because local `user.name` and `user.email` are not configured.
+- Git has been initialized locally on branch `main`.
+- Local Git identity is configured as `firesand <firesand@gmail.com>`.
+- Initial commit exists: `51f128b Initial EDORP Gentoo overlay`.
+- Remote `origin` is configured as `git@github.com:firesand/edorp-overlay.git`.
+- Push is not done yet. SSH to GitHub currently fails with
+  `Permission denied (publickey)`, so the local public key needs to be added to
+  GitHub or another authenticated push method must be used.
 - `/home/edo/mame` does not exist. Existing related paths found:
   `/home/edo/MAME` is a symlink to `/home/edo/ArcadeDev/LinuxMAMEUI`, and
   `/home/edo/ArcadeDev/MAME` is empty.
