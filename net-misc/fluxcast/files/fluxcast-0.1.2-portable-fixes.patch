@@ -1,0 +1,569 @@
+diff --git a/src/capture.py b/src/capture.py
+index 9510e18..02b484c 100644
+--- a/src/capture.py
++++ b/src/capture.py
+@@ -410,6 +410,10 @@ def _start_capture_portal(
+         # always-copy=true!! immediately copy PipeWire buffer to CPU memory so
+         # x264enc doesn't stall waiting for DMA-buf download mid-pipeline
+         "always-copy=true",
++        # keepalive-time re-sends the last PipeWire buffer periodically so the
++        # encoder keeps producing a constant framerate when the desktop is idle
++        # (KWin/Wayland portal is damage-driven and would otherwise starve HLS).
++        f"keepalive-time={max(1, round(1000 / fps))}",
+         "!", "queue", "max-size-buffers=8", "max-size-time=0", "leaky=downstream",
+         "!", "videorate", "skip-to-first=true",
+         "!", f"video/x-raw,framerate={fps}/1",
+diff --git a/src/cast.py b/src/cast.py
+index 17aee4d..fefded0 100644
+--- a/src/cast.py
++++ b/src/cast.py
+@@ -18,27 +18,53 @@ def discover_devices(timeout: int = 10) -> list:
+ 
+ 
+ def connect_by_ip(ip: str, port: int = 8009):
++    """Connect straight to a Cast device by IP, without mDNS discovery.
++
++    Uses get_chromecast_from_host so it works on any network (including ones
++    that block multicast) and avoids the get_listed_chromecasts / zeroconf
++    breakage in pychromecast >= 14.
++    """
++    import uuid
++
+     print(f"[FluxCast] Connecting directly to Cast device at {ip}:{port}…")
+     try:
+-        known = [f"{ip}:{port}"] if port != 8009 else [ip]
+-        chromecasts, browser = pychromecast.get_listed_chromecasts(known_hosts=known)
+-        pychromecast.discovery.stop_discovery(browser)
++        cast = pychromecast.get_chromecast_from_host(
++            (ip, port, uuid.uuid4(), None, None)
++        )
+     except Exception as exc:
+-        print(f"[FluxCast] ERROR: Discovery failed — {exc}")
+-        sys.exit(1)
+-
+-    if not chromecasts:
+-        print(f"[FluxCast] ERROR: No Cast device responded at {ip}:{port}.")
++        print(f"[FluxCast] ERROR: Connection failed — {exc}")
+         print("[FluxCast] Make sure the TV is ON, on the same network, "
+               "and Cast is enabled in Settings → General → External Device Manager.")
+         sys.exit(1)
+ 
+-    cast = chromecasts[0]
+-    cast.wait(timeout=10)
+-    print(f"[FluxCast] Connected: {cast.cast_info.friendly_name}")
++    try:
++        cast.wait(timeout=10)
++    except Exception as exc:
++        print(f"[FluxCast] ERROR: No Cast device responded at {ip}:{port} — {exc}")
++        sys.exit(1)
++
++    print(f"[FluxCast] Connected: {cast.cast_info.friendly_name or f'{ip}:{port}'}")
+     return cast
+ 
+ 
++def connect_device(device):
++    """Rebuild a discovered device from its host address.
++
++    discover_devices() stops the zeroconf browser as soon as it returns, which
++    on pychromecast >= 14 leaves the discovered Chromecast objects unusable
++    ("Zeroconf instance loop must be running"). Reconnecting via the host makes
++    the returned object self-contained so casting works on any network.
++    """
++    info = device.cast_info
++    host = info.host
++    port = getattr(info, "port", 8009) or 8009
++    fresh = pychromecast.get_chromecast_from_host(
++        (host, port, info.uuid, info.model_name, info.friendly_name)
++    )
++    fresh.wait(timeout=10)
++    return fresh
++
++
+ def prompt_device(devices: list, device_name: Optional[str] = None):
+     if not devices:
+         print("[FluxCast] ERROR: No Cast devices found on the network.")
+@@ -78,7 +104,18 @@ def prompt_device(devices: list, device_name: Optional[str] = None):
+ def start_cast(device, stream_url: str) -> None:
+     device.wait()
+     mc = device.media_controller
+-    mc.play_media(stream_url, "video/mp2t")
++    # HLS (.m3u8) must be announced as a playlist, not a single MPEG-TS
++    # file, or the Cast receiver downloads the manifest, fails to demux it
++    # as video, and shows only the idle "cast" splash. LIVE pins it to the
++    # live edge; the hls*SegmentFormat hints tell CAF the segments are TS.
++    base = stream_url.split("?", 1)[0].lower()
++    if base.endswith(".m3u8"):
++        content_type = "application/x-mpegurl"
++        media_info = {"hlsSegmentFormat": "ts", "hlsVideoSegmentFormat": "mpeg2_ts"}
++    else:
++        content_type = "video/mp2t"
++        media_info = None
++    mc.play_media(stream_url, content_type, stream_type="LIVE", media_info=media_info)
+     mc.block_until_active(timeout=15)
+     print(f"[FluxCast] Cast started → {device.cast_info.friendly_name}")
+ 
+diff --git a/src/main.py b/src/main.py
+index 95f485c..2b9567d 100644
+--- a/src/main.py
++++ b/src/main.py
+@@ -48,6 +48,7 @@ Wi-Fi Display (Miracast) Options:
+     --wfd-interface IFACE    Wi-Fi interface to use, e.g. wlan0
+     --wfd-timeout N          Wi-Fi Direct scan timeout in seconds (default: 8)
+     --wfd-monitor NAME       Pre-select monitor by name, e.g. eDP-1
++    --wfd-latency PROFILE     Buffering profile: low (default), balanced, smooth
+ """
+ 
+ import argparse
+@@ -55,6 +56,7 @@ import glob
+ import os
+ import signal
+ import socket
++import subprocess
+ import time
+ import sys
+ import termios
+@@ -157,6 +159,10 @@ def parse_args() -> argparse.Namespace:
+                      help="Wi-Fi Direct scan timeout in seconds (default: 8)")
+     wfd.add_argument("--wfd-monitor", default=None, dest="wfd_monitor",
+                      help="Monitor name for WFD capture, e.g. eDP-1 (skips interactive picker)")
++    wfd.add_argument("--wfd-latency", default="low",
++                     choices=["low", "balanced", "smooth"], dest="wfd_latency",
++                     help="WFD buffering profile: low (default, lowest lag), "
++                          "balanced, or smooth (largest buffers for weak Wi-Fi)")
+ 
+     return parser.parse_args()
+ 
+@@ -217,8 +223,38 @@ def main() -> None:
+     args = parse_args()
+ 
+     if args.tray:
+-        from tray import run_tray
+-        run_tray()
++        try:
++            from tray import run_tray
++            run_tray()
++        except Exception as exc:
++            import traceback
++
++            log_path = os.path.expanduser("~/.cache/fluxcast/tray.log")
++            try:
++                os.makedirs(os.path.dirname(log_path), exist_ok=True)
++                with open(log_path, "a", encoding="utf-8") as log:
++                    log.write("\n=== FluxCast tray startup failure ===\n")
++                    traceback.print_exc(file=log)
++            except OSError:
++                log_path = "/tmp/fluxcast-tray.log"
++                try:
++                    with open(log_path, "a", encoding="utf-8") as log:
++                        traceback.print_exc(file=log)
++                except OSError:
++                    pass
++
++            message = f"{exc}\nDetails: {log_path}"
++            try:
++                subprocess.Popen(
++                    ["notify-send", "-u", "critical", "-a", "FluxCast",
++                     "FluxCast could not start", message],
++                    stdout=subprocess.DEVNULL,
++                    stderr=subprocess.DEVNULL,
++                )
++            except OSError:
++                pass
++            print(f"[FluxCast] Tray startup failed: {message}", file=sys.stderr)
++            sys.exit(1)
+         return
+ 
+     if args.doctor or args.doctor_json:
+@@ -333,14 +369,18 @@ def main() -> None:
+         start_cast(tv, stream_url)
+ 
+     else:  # cast protocol
+-        from cast import discover_devices, connect_by_ip, prompt_device, start_cast
++        from cast import (discover_devices, connect_by_ip, connect_device,
++                          prompt_device, start_cast)
+         if args.tv_ip:
+             tv = connect_by_ip(args.tv_ip)
+         else:
+             print("[FluxCast] Searching for Cast devices on the network…")
+             devices = discover_devices(timeout=args.discover_timeout)
+-            tv = prompt_device(devices, args.device_name)
+-            print(f"[FluxCast] Found: {tv.cast_info.friendly_name}")
++            selected = prompt_device(devices, args.device_name)
++            print(f"[FluxCast] Found: {selected.cast_info.friendly_name}")
++            # discover_devices() already stopped the zeroconf browser; reconnect
++            # via the host so device.wait() works on pychromecast >= 14.
++            tv = connect_device(selected)
+         start_cast(tv, stream_url)
+ 
+     print("[FluxCast] Casting started. Press Ctrl+C to stop.")
+diff --git a/src/portal_capture.py b/src/portal_capture.py
+index 01993f2..26d6551 100644
+--- a/src/portal_capture.py
++++ b/src/portal_capture.py
+@@ -397,6 +397,16 @@ def start_portal_capture(
+                 pass
+         runtime.stop()
+         raise PortalCaptureError(f"Portal capture setup failed: {exc}") from exc
++    except BaseException:
++        # KeyboardInterrupt and other control-flow exceptions must not leave
++        # the portal event-loop thread or D-Bus connection running.
++        if bus is not None:
++            try:
++                runtime.call_soon(bus.disconnect)
++            except Exception:
++                pass
++        runtime.stop()
++        raise
+ 
+ 
+ async def _close_portal_capture_async(session_handle: str, bus: Optional[Any] = None) -> None:
+diff --git a/src/server.py b/src/server.py
+index c238875..a351054 100644
+--- a/src/server.py
++++ b/src/server.py
+@@ -231,6 +231,10 @@ class HLSRequestHandler(http.server.BaseHTTPRequestHandler):
+ 
+     def _send_common_headers(self, local_path: str) -> None:
+         self.send_header("Content-Type", _content_type(local_path))
++        # Cast web receiver requires CORS on adaptive (HLS) manifests/segments.
++        self.send_header("Access-Control-Allow-Origin", "*")
++        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
++        self.send_header("Access-Control-Allow-Headers", "*")
+         self.send_header("Accept-Ranges", "bytes")
+         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+         self.send_header("Pragma", "no-cache")
+diff --git a/src/tray.py b/src/tray.py
+index 22e4424..812f75b 100644
+--- a/src/tray.py
++++ b/src/tray.py
+@@ -161,6 +161,45 @@ def _on_exit(icon, item) -> None:
+     icon.stop()
+ 
+ 
++# ── autostart on login ────────────────────────────────────────────────────────
++
++def _autostart_file() -> str:
++    base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
++    return os.path.join(base, "autostart", "fluxcast-tray.desktop")
++
++
++def _autostart_enabled() -> bool:
++    return os.path.isfile(_autostart_file())
++
++
++def _toggle_autostart() -> None:
++    path = _autostart_file()
++    if _autostart_enabled():
++        try:
++            os.remove(path)
++            _notify("FluxCast", "Autostart on login disabled.")
++        except OSError as e:
++            _log(f"autostart remove failed: {e}")
++    else:
++        try:
++            os.makedirs(os.path.dirname(path), exist_ok=True)
++            with open(path, "w", encoding="utf-8") as fp:
++                fp.write(
++                    "[Desktop Entry]\n"
++                    "Type=Application\n"
++                    "Name=FluxCast\n"
++                    "Comment=Stream your desktop to a Smart TV\n"
++                    "Exec=fluxcast --tray\n"
++                    f"Icon={_ICON_PATH}\n"
++                    "Terminal=false\n"
++                    "X-GNOME-Autostart-enabled=true\n"
++                )
++            _notify("FluxCast", "FluxCast will now start automatically on login.")
++        except OSError as e:
++            _log(f"autostart write failed: {e}")
++    _refresh()
++
++
+ # ── discovery ─────────────────────────────────────────────────────────────────
+ 
+ def _scan_wfd() -> None:
+@@ -495,6 +534,11 @@ def _build_menu():
+         items.append(pystray.MenuItem("Rescan Devices", lambda *_: _rescan_all()))
+ 
+     items.append(pystray.Menu.SEPARATOR)
++    items.append(pystray.MenuItem(
++        "Start on login",
++        lambda *_: _toggle_autostart(),
++        checked=lambda item: _autostart_enabled(),
++    ))
+     items.append(pystray.MenuItem("About FluxCast", lambda *_: _show_about()))
+     items.append(pystray.MenuItem("Exit", _on_exit))
+ 
+@@ -516,6 +560,10 @@ def run_tray() -> None:
+ 
+     def kickoff():
+         _log("kickoff: GTK loop is alive, starting scans")
++        _notify(
++            "FluxCast is running",
++            "Open the FluxCast icon in KDE's system tray to choose a TV.",
++        )
+         _rescan_all()
+         return False  # don't repeat
+ 
+diff --git a/src/wfd.py b/src/wfd.py
+index dc9072c..f21b1a7 100644
+--- a/src/wfd.py
++++ b/src/wfd.py
+@@ -159,6 +159,18 @@ class WFDMediaConfig:
+     latency_log_path: Optional[str] = None
+     capture_backend: str = "auto"
+     peer_name: str = ""
++    latency_profile: str = "low"
++    portal_session: Optional[PortalCaptureSession] = None
++
++
++# Latency profiles map to (queue max-size-buffers, pipewiresrc max-buffers).
++# "low" is the validated default (~sub-second); raise it on weak Wi-Fi to trade
++# a little latency for smoother playback.
++_WFD_LATENCY_PROFILES = {
++    "low": (3, 8),
++    "balanced": (6, 16),
++    "smooth": (16, 32),
++}
+ 
+ 
+ @dataclass
+@@ -541,6 +553,8 @@ def _desired_resolution(config: WFDMediaConfig) -> Optional[tuple[int, int]]:
+     resolution = _parse_resolution(config.output_resolution)
+     if resolution is not None:
+         return resolution
++    if config.portal_session is not None and config.portal_session.size is not None:
++        return config.portal_session.size
+     if config.monitor is not None:
+         monitor = config.monitor
+         return monitor.width, monitor.height
+@@ -561,7 +575,11 @@ def _choose_cea_mode(
+     max_level = _max_wfd_level(sink_format.level) if sink_format else WFD_LEVEL_42
+     resolution = _desired_resolution(config)
+     wants_720 = resolution is None or (resolution[0] <= 1280 and resolution[1] <= 720)
+-    wants_1200 = resolution is not None and resolution[0] >= 1920 and resolution[1] > 1080
++    wants_1200 = (
++        resolution is not None
++        and resolution[1] > 1080
++        and abs((resolution[0] / resolution[1]) - (16 / 10)) < 0.05
++    )
+     wants_60 = config.fps > 30
+ 
+     all_modes = {**WFD_CEA_MODES, **WFD_VESA_MODES}
+@@ -777,7 +795,8 @@ class WFDMediaPipeline:
+         self.processes: list[subprocess.Popen[bytes]] = []
+         self.tx_interface: Optional[str] = None
+         self.tx_baseline: Optional[int] = None
+-        self.portal_session: Optional[PortalCaptureSession] = None
++        self.portal_session = config.portal_session
++        self.config.portal_session = None
+         self._portal_gst_cmd: Optional[list[str]] = None
+         self._portal_pw_fd: Optional[int] = None
+         self._lpcm_muxer = None   # WFDLPCMMuxer instance for Microsoft adapter
+@@ -1079,7 +1098,11 @@ class WFDMediaPipeline:
+ 
+         is_lg = "LG" in self.config.peer_name.upper()
+         if is_lg:
+-            effective_kbits = min(effective_kbits, 4000)
++            # 4 Mbps is adequate for 720p but smears desktop text at 1080p.
++            # Keep the conservative LG cap while allowing enough detail for
++            # the higher-resolution portal stream.
++            lg_cap_kbits = 6000 if parsed_out[0] > 1280 or parsed_out[1] > 720 else 4000
++            effective_kbits = min(effective_kbits, lg_cap_kbits)
+ 
+         effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
+         if effective_kbits > requested_kbits:
+@@ -1088,17 +1111,21 @@ class WFDMediaPipeline:
+                 f"{self.config.bitrate} -> {effective_bitrate}"
+             )
+ 
+-        print("[FluxCast WFD Media] Opening portal screen-share dialog (KDE/GNOME Wayland)...")
+-        try:
+-            self.portal_session = start_portal_capture(
+-                timeout=120.0,
+-                preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
+-                preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
+-            )
+-        except PortalCaptureError as exc:
+-            raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
++        if self.portal_session is None:
++            print("[FluxCast WFD Media] Opening portal screen-share dialog (KDE/GNOME Wayland)...")
++            try:
++                self.portal_session = start_portal_capture(
++                    timeout=120.0,
++                    preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
++                    preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
++                )
++            except PortalCaptureError as exc:
++                raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
++        else:
++            print("[FluxCast WFD Media] Using pre-authorized portal screen share.")
+ 
+         session = self.portal_session
++        assert session is not None
+         # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
+         if session.source_type is not None and session.source_type not in (1, 4):
+             close_portal_capture(self.portal_session)
+@@ -1124,9 +1151,13 @@ class WFDMediaPipeline:
+         def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
+             # Use more buffers for high-res 1440p capture and move videorate early
+             props = _gst_pipewiresrc_properties()
++            queue_buffers, pw_buffers = _WFD_LATENCY_PROFILES.get(
++                getattr(self.config, "latency_profile", "low"),
++                _WFD_LATENCY_PROFILES["low"],
++            )
+             pipewire_args = [*selector_args]
+             if "max-buffers" in props:
+-                pipewire_args.append("max-buffers=64")
++                pipewire_args.append(f"max-buffers={pw_buffers}")
+             if "resend-last" in props:
+                 pipewire_args.append("resend-last=true")
+             if "min-force-user-latency" in props:
+@@ -1189,7 +1220,7 @@ class WFDMediaPipeline:
+                     )
+             else:
+                 if "vbv-buf-capacity" in x264_props:
+-                    encoder_args.append("vbv-buf-capacity=200")
++                    encoder_args.append("vbv-buf-capacity=120")
+                 # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
+                 if "option-string" in x264_props:
+                     opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
+@@ -1205,13 +1236,16 @@ class WFDMediaPipeline:
+                 f"fd={session.pw_fd}",
+                 *pipewire_args,
+                 "do-timestamp=true",
+-                "always-copy=false",
++                # Copy portal DMA-BUFs immediately. This avoids the
++                # gst_mini_object_unref/stall seen with PipeWire 1.6 and
++                # GStreamer 1.24 when the encoder retains imported buffers.
++                "always-copy=true",
+                 "keepalive-time=33",
+-                "!", "queue", "max-size-buffers=64", "max-size-time=1000000000", "leaky=downstream",
++                "!", "queue", f"max-size-buffers={queue_buffers}", "max-size-time=0", "max-size-bytes=0", "leaky=downstream",
+                 "!", "videorate", "skip-to-first=true",
+                 "!", f"video/x-raw,framerate={self.config.fps}/1",
+                 "!", "videoconvert",
+-                "!", "videoscale",
++                "!", "videoscale", "method=bilinear", "n-threads=0",
+                 "!", video_caps,
+                 "!", "videoconvert",
+                 "!", "video/x-raw,format=I420",
+@@ -1373,6 +1407,7 @@ class WFDMediaPipeline:
+                     f"selector={selector_name}, caps={attempt_name}"
+                 )
+                 gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
++                attempt_tx_baseline = _netdev_tx_bytes(self.tx_interface)
+                 gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
+                 time.sleep(2.5)
+                 if gst_proc.poll() is not None:
+@@ -1390,6 +1425,27 @@ class WFDMediaPipeline:
+                     )
+                     continue
+ 
++                attempt_tx_current = _netdev_tx_bytes(self.tx_interface)
++                if attempt_tx_baseline is not None and attempt_tx_current is not None:
++                    attempt_tx_delta = max(0, attempt_tx_current - attempt_tx_baseline)
++                    if attempt_tx_delta < 64 * 1024:
++                        print(
++                            "[FluxCast WFD Media] Portal attempt produced no usable RTP "
++                            f"traffic ({attempt_tx_delta} bytes); trying next combination..."
++                        )
++                        gst_proc.terminate()
++                        try:
++                            gst_proc.wait(timeout=2)
++                        except subprocess.TimeoutExpired:
++                            gst_proc.kill()
++                            gst_proc.wait(timeout=1)
++                        continue
++                    print(
++                        "[FluxCast WFD Media] Portal startup transmitted "
++                        f"{attempt_tx_delta // 1024} KiB."
++                    )
++                    self.tx_baseline = attempt_tx_baseline
++
+                 self.processes = [gst_proc]
+                 self._portal_gst_cmd = gst_cmd
+                 self._portal_pw_fd = session.pw_fd
+@@ -2049,12 +2105,15 @@ class _WFDRTSPHandler(socketserver.StreamRequestHandler):
+             raise WFDNotReady("Cannot start media before the TV RTP port is known.")
+         if self.media is None:
+             mode = self._cea_mode()
++            portal_session = self.media_config.portal_session
++            self.media_config.portal_session = None
+             effective_config = replace(
+                 self.media_config,
+                 source_port=self.source_rtp_port,
+                 output_resolution=mode.resolution,
+                 fps=mode.fps,
+                 no_audio=self.media_config.no_audio or self.negotiated_no_audio,
++                portal_session=portal_session,
+             )
+             print(
+                 f"[FluxCast WFD RTSP] Starting media as {mode.name}; "
+@@ -3044,12 +3103,15 @@ def _active_rtsp_probe(
+                     elif method == "PLAY":
+                         _reply(msg, extra={"Range": "npt=now-"})
+                         mode = _choose_cea_mode(media_config, st["sink_vfmt"])
++                        portal_session = media_config.portal_session
++                        media_config.portal_session = None
+                         eff_cfg = replace(
+                             media_config,
+                             source_port=st["src_port"],
+                             output_resolution=mode.resolution,
+                             fps=mode.fps,
+                             no_audio=st["no_audio"],
++                            portal_session=portal_session,
+                         )
+                         media = WFDMediaPipeline(
+                             eff_cfg,
+@@ -3104,6 +3166,7 @@ def start_experimental_backend(args) -> None:
+         )
+ 
+     monitor = None
++    portal_mode = False
+     if not getattr(args, "wfd_test_pattern", False) and not getattr(args, "wfd_dry_run", False):
+         selected_backend = getattr(args, "wfd_capture_backend", "auto")
+         portal_mode = selected_backend == "portal" or (
+@@ -3145,6 +3208,24 @@ def start_experimental_backend(args) -> None:
+         )
+         return
+ 
++    portal_session = None
++    if portal_mode and not getattr(args, "wfd_test_pattern", False):
++        print(
++            "[FluxCast WFD] Opening the portal before connecting the TV, so "
++            "screen selection cannot consume the WFD session timeout."
++        )
++        try:
++            portal_session = start_portal_capture(
++                timeout=120.0,
++                preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
++                preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
++            )
++        except KeyboardInterrupt:
++            print("\n[FluxCast WFD] Screen sharing was not authorized; no TV connection was started.")
++            return
++        except PortalCaptureError as exc:
++            raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
++
+     no_audio = getattr(args, "wfd_no_audio", False)
+     if getattr(args, "wfd_test_pattern", False):
+         if no_audio:
+@@ -3165,6 +3246,8 @@ def start_experimental_backend(args) -> None:
+         latency_log_path=getattr(args, "wfd_latency_log", None),
+         capture_backend=getattr(args, "wfd_capture_backend", "auto"),
+         peer_name=peer.name,
++        latency_profile=getattr(args, "wfd_latency", "low"),
++        portal_session=portal_session,
+     )
+     if media_config.latency_log_path:
+         print(f"[FluxCast WFD] Latency log file: {media_config.latency_log_path}")
+@@ -3207,6 +3290,8 @@ def start_experimental_backend(args) -> None:
+     finally:
+         rtsp.stop_all_media()
+         rtsp.stop()
++        close_portal_capture(media_config.portal_session)
++        media_config.portal_session = None
+         if connected:
+             _deactivate_connection(active_path)
+             _disconnect_device(device_path)

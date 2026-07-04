@@ -1,0 +1,39 @@
+# Build outputs
+build/
+dist/
+out/
+target/
+.portage-tmp/
+*.o
+*.so
+*.a
+*.log
+
+# Large archives and disk images
+*.zip
+*.7z
+*.tar
+*.tar.*
+*.iso
+
+# Emulator/runtime data
+roms/
+chds/
+samples/
+nvram/
+cfg/
+snap/
+sta/
+diff/
+
+# Local secrets/config
+.env
+*.local
+id_rsa*
+*.pem
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~

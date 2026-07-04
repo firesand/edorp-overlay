@@ -1,0 +1,12 @@
+diff --git a/src/hbmame/video/cps2.cpp b/src/hbmame/video/cps2.cpp
+index 7911dfe0a53..a0d1c5db321 100644
+--- a/src/hbmame/video/cps2.cpp
++++ b/src/hbmame/video/cps2.cpp
+@@ -4,6 +4,7 @@
+ 
+ *****************************************************************************************************************************/
+ #include "includes/cps2.h"
++#include "input.h"
+ 
+ /********************************************************************
+ 

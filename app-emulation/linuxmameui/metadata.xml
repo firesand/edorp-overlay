@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+  <maintainer type="project">
+    <email>linuxmameui-maintainers@example.invalid</email>
+    <name>LinuxMAMEUI maintainers</name>
+  </maintainer>
+  <use>
+    <flag name="hbmame">Install HBMAME as a frontend emulator profile target</flag>
+    <flag name="mame">Install MAME as a frontend emulator profile target</flag>
+  </use>
+  <upstream>
+    <remote-id type="github">linuxmameui/linuxmameui</remote-id>
+  </upstream>
+</pkgmetadata>

@@ -1,0 +1,15 @@
+--- a/src/hbmame/video/cps1.cpp
++++ b/src/hbmame/video/cps1.cpp
+@@ -2057,9 +2057,9 @@ void cps_state::cps1_cps_b_w(offs_t offset, u16 data, u16 mem_mask)
+ 			offset != m_mult_factor1 / 2 &&
+ 			offset != m_mult_factor2 / 2 &&
+ 			offset != m_layer_control / 2 &&
+-			offset != m_unknown1 / 2 &&
+-			offset != m_unknown2 / 2 &&
+-			offset != m_unknown3 / 2 &&
++			offset != m_game_config->unknown1 / 2 &&
++			offset != m_game_config->unknown2 / 2 &&
++			offset != m_game_config->unknown3 / 2 &&
+ 			offset != m_priority[0] / 2 &&
+ 			offset != m_priority[1] / 2 &&
+ 			offset != m_priority[2] / 2 &&

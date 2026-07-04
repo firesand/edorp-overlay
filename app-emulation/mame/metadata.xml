@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+  <maintainer type="project">
+    <email>linuxmameui-maintainers@example.invalid</email>
+    <name>LinuxMAMEUI maintainers</name>
+  </maintainer>
+  <upstream>
+    <remote-id type="github">mamedev/mame</remote-id>
+    <bugs-to>https://github.com/mamedev/mame/issues</bugs-to>
+    <doc>https://docs.mamedev.org/</doc>
+  </upstream>
+</pkgmetadata>
