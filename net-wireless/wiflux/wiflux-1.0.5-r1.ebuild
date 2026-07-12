@@ -20,6 +20,7 @@ KEYWORDS="~amd64"
 RDEPEND="
 	>=dev-python/rich-13[${PYTHON_USEDEP}]
 	net-wireless/aircrack-ng
+	net-wireless/hcxtools
 	net-wireless/iw
 	sys-apps/iproute2
 "
@@ -50,9 +51,14 @@ pkg_postinst() {
 	optfeature "WPA/WPA2 password recovery" app-crypt/hashcat
 	optfeature "WPS auditing" net-wireless/reaver
 	optfeature "capture analysis via tshark" "net-analyzer/wireshark[tshark]"
+	optfeature "clientless PMKID capture" net-wireless/hcxdumptool
+	optfeature "offline Pixie-Dust WPS analysis" net-wireless/pixiewps
+	optfeature "additional deauthentication backend" net-wireless/mdk4
+	optfeature "alternative WPS backend selected with --bully" net-wireless/bully
+	optfeature "additional deauthentication backend" net-analyzer/bettercap
 
-	elog "Wiflux also supports hcxdumptool, hcxpcapngtool, pixiewps, bully,"
-	elog "mdk3, mdk4, and bettercap when those commands are installed."
+	elog "Wiflux also supports legacy mdk3 when that command is installed."
+	elog "It is an alternative backend and is not required."
 	elog "Compressed dictionaries under /usr are not unpacked automatically."
 	elog "Decompress one to a writable path and select it with --dict FILE."
 	elog "Use Wiflux only on networks you own or are authorized to audit."

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		hcxdumptool captures WLAN traffic in pcapng format and tests access
+		points and clients for weaknesses in the WPA protocol. It supports
+		monitor-mode adapters with full frame injection and is intended only
+		for controlled, authorized wireless security assessments.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">ZerBea/hcxdumptool</remote-id>
+		<bugs-to>https://github.com/ZerBea/hcxdumptool/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

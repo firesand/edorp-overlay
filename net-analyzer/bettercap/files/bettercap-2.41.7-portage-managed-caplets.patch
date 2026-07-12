@@ -1,0 +1,56 @@
+--- a/modules/caplets/caplets.go
++++ b/modules/caplets/caplets.go
+@@ -5,3 +4,0 @@
+-	"io"
+-	"net/http"
+-	"os"
+@@ -13,2 +9,0 @@
+-
+-	"github.com/evilsocket/islazy/fs"
+@@ -16 +10,0 @@
+-	"github.com/evilsocket/islazy/zip"
+@@ -41 +35 @@
+-		"Install/updates the caplets.",
++		"Explain how to update the Portage-managed caplets.",
+@@ -54 +48 @@
+-	return "A module to list and update caplets."
++	return "A module to list Portage-managed caplets."
+@@ -76 +70 @@
+-		return fmt.Errorf("no installed caplets on this system, use the caplets.update command to download them")
++		return fmt.Errorf("no installed caplets on this system; reinstall or update net-analyzer/bettercap")
+@@ -116,34 +110 @@
+-	if !fs.Exists(caplets.InstallBase) {
+-		mod.Info("creating caplets install path %s ...", caplets.InstallBase)
+-		if err := os.MkdirAll(caplets.InstallBase, os.ModePerm); err != nil {
+-			return err
+-		}
+-	}
+-
+-	out, err := os.Create(caplets.ArchivePath)
+-	if err != nil {
+-		return err
+-	}
+-	defer out.Close()
+-
+-	mod.Info("downloading caplets from %s ...", caplets.InstallArchive)
+-
+-	resp, err := http.Get(caplets.InstallArchive)
+-	if err != nil {
+-		return err
+-	}
+-	defer resp.Body.Close()
+-
+-	if _, err := io.Copy(out, resp.Body); err != nil {
+-		return err
+-	}
+-
+-	mod.Info("installing caplets to %s ...", caplets.InstallPath)
+-
+-	if _, err = zip.Unzip(caplets.ArchivePath, caplets.InstallBase); err != nil {
+-		return err
+-	}
+-
+-	os.RemoveAll(caplets.InstallPath)
+-
+-	return os.Rename(caplets.InstallPathArchive, caplets.InstallPath)
++	return fmt.Errorf("caplets are managed by Portage; update net-analyzer/bettercap instead")
