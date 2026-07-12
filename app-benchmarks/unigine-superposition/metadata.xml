@@ -10,7 +10,4 @@
 		packages in this overlay, this ebuild is hardware-agnostic and has no
 		systemd requirement.
 	</longdescription>
-	<upstream>
-		<remote-id type="homepage">https://benchmark.unigine.com/superposition</remote-id>
-	</upstream>
 </pkgmetadata>
