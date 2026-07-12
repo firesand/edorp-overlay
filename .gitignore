@@ -4,6 +4,7 @@ dist/
 out/
 target/
 .portage-tmp/
+.distfiles/
 *.o
 *.so
 *.a
