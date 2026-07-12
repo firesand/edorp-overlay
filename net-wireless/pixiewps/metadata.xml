@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Pixiewps recovers WPS PINs offline from protocol parameters exposed by
+		access points whose pseudorandom number generators have little or no
+		entropy. It can also recover WPA passphrases from complete passive WPS
+		captures for a limited set of vulnerable devices.
+	</longdescription>
+	<use>
+		<flag name="openssl">
+			Use OpenSSL's SHA-256 implementation for improved performance
+		</flag>
+	</use>
+	<upstream>
+		<remote-id type="github">wiire-a/pixiewps</remote-id>
+		<bugs-to>https://github.com/wiire-a/pixiewps/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

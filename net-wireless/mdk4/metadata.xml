@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		MDK4 is a wireless testing tool for exercising common IEEE 802.11
+		protocol weaknesses, including deauthentication, beacon flooding,
+		packet fuzzing, and other proof-of-concept test modes. It should only
+		be used on networks where the operator has explicit authorization.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">aircrack-ng/mdk4</remote-id>
+		<bugs-to>https://github.com/aircrack-ng/mdk4/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

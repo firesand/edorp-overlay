@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Bully is a WPS brute-force implementation with support for session
+		resumption, WPS lock detection, Pixie Dust attacks, modern nl80211
+		channel control, and optional Lua PIN-generation scripts. It should
+		only be used on networks where the operator has explicit authorization.
+	</longdescription>
+	<use>
+		<flag name="lua">Enable custom PIN-generation scripts through
+			<pkg>dev-lang/lua</pkg>.</flag>
+	</use>
+	<upstream>
+		<remote-id type="github">kimocoder/bully</remote-id>
+		<bugs-to>https://github.com/kimocoder/bully/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

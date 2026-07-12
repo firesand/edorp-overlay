@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		hcxtools converts wireless packet captures to formats understood by
+		Hashcat and John the Ripper and provides tools for filtering, inspecting,
+		and converting wireless hashes.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">ZerBea/hcxtools</remote-id>
+		<bugs-to>https://github.com/ZerBea/hcxtools/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

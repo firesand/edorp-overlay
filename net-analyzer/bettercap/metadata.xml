@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Bettercap is a modular network security framework for WiFi, Bluetooth
+		Low Energy, Ethernet, CAN bus, and 2.4 GHz HID reconnaissance and
+		testing. It includes packet capture and injection, spoofing and proxy
+		modules, a REST API, an embedded web interface, and a pinned set of
+		upstream caplets. Use it only on systems where explicit authorization
+		has been granted.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">bettercap/bettercap</remote-id>
+		<bugs-to>https://github.com/bettercap/bettercap/issues</bugs-to>
+		<changelog>https://github.com/bettercap/bettercap/releases</changelog>
+	</upstream>
+</pkgmetadata>

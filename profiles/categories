@@ -4,6 +4,7 @@ app-misc
 app-portage
 dev-python
 games-emulation
+net-analyzer
 net-misc
 net-wireless
 sys-power

@@ -65,6 +65,20 @@ local machine configuration do not belong in the overlay.
   ([source](https://github.com/Leadrogue/Wiflux)). The versioned ebuild builds
   the official source distribution through PEP 517; it does not use `pip` or
   the upstream Debian-oriented installer.
+- `net-wireless/hcxtools`: wireless capture conversion and hash-analysis tools,
+  including `hcxpcapngtool` required by Wiflux's handshake workflow.
+- `net-wireless/hcxdumptool`: monitor-mode capture tool used by Wiflux for
+  clientless PMKID collection.
+- `net-wireless/pixiewps`: offline WPS Pixie-Dust analysis tool with optional
+  OpenSSL acceleration.
+- `net-wireless/mdk4`: additional IEEE 802.11 testing and deauthentication
+  backend. The ebuild uses a pinned 2026 upstream snapshot because the 4.2
+  release tag predates required modern-compiler fixes.
+- `net-wireless/bully`: alternative WPS backend. The ebuild uses a pinned
+  `2.0_p20260622` snapshot because the last tagged release predates major
+  bounds checks, nl80211 support, and current compiler fixes.
+- `net-analyzer/bettercap`: modular network reconnaissance and auditing
+  framework, built reproducibly from source with offline Go module distfiles.
 
 ### Wiflux
 
@@ -75,9 +89,17 @@ Wiflux:
 
 ```bash
 echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5-r1 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
 doas emerge -av net-wireless/wiflux
 ```
+
+Wiflux now pulls in `hcxtools` because its primary handshake validation path
+does not have a working fallback without `hcxpcapngtool`. `hcxdumptool`,
+`pixiewps`, `mdk4`, `bully`, and `bettercap` remain optional capability
+packages; install only the workflows you need and accept their `~amd64`
+keywords explicitly. Bully is only selected when Wiflux is run with
+`--bully`; Bettercap is an alternative deauthentication backend.
 
 Wiflux requires root for monitor mode and packet injection. Use it only on
 networks you own or have explicit permission to audit. It will not unpack a
@@ -120,7 +142,13 @@ PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mame/mame-0.288.ebuild c
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mameuix/mameuix-0.1.6.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mameuix/mameuix-9999.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/wiflux/wiflux-1.0.5.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/hcxtools/hcxtools-7.1.2.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/hcxdumptool/hcxdumptool-7.1.2.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/pixiewps/pixiewps-1.4.2.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/mdk4/mdk4-4.2_p20260529.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/bully/bully-2.0_p20260622.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-analyzer/bettercap/bettercap-2.41.7.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean

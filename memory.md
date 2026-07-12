@@ -98,6 +98,7 @@ app-misc
 app-portage
 dev-python
 games-emulation
+net-analyzer
 net-misc
 net-wireless
 sys-power
@@ -170,6 +171,12 @@ Actual imported package placement:
 - `sys-power/supergfxctl` (ASUS hybrid-GPU laptop, systemd only)
 - `app-benchmarks/unigine-superposition` (general benchmark, not ASUS-specific)
 - `net-wireless/wiflux` (wireless security auditor; versioned upstream release)
+- `net-wireless/hcxtools` (capture conversion and hash-analysis tools)
+- `net-wireless/hcxdumptool` (monitor-mode capture and PMKID collection)
+- `net-wireless/pixiewps` (offline Pixie-Dust analysis)
+- `net-wireless/mdk4` (additional IEEE 802.11/deauthentication backend)
+- `net-wireless/bully` (alternative WPS backend)
+- `net-analyzer/bettercap` (modular network and wireless auditing framework)
 
 ASUS laptop scope:
 
@@ -244,7 +251,7 @@ Portable AppImage (non-Gentoo / no emerge):
 ## Wiflux (Jul 2026)
 
 - Upstream: https://github.com/Leadrogue/Wiflux
-- Overlay package: `net-wireless/wiflux/wiflux-1.0.5.ebuild`, keyword
+- Overlay package: `net-wireless/wiflux/wiflux-1.0.5-r1.ebuild`, keyword
   `~amd64`, based on upstream release `v1.0.5` (2026-07-10).
 - Fetch the official sdist `wiflux-1.0.5.tar.gz`, not the wheel or Linux
   installer. Upstream SHA256 is
@@ -252,12 +259,18 @@ Portable AppImage (non-Gentoo / no emerge):
 - Build model: `distutils-r1` + PEP 517/setuptools. `dev-python/pip` is not an
   ebuild dependency. Python runtime dependency is only `dev-python/rich`;
   Python itself must provide `sqlite` and `ssl`.
-- Required external tools are `net-wireless/aircrack-ng`, `net-wireless/iw`,
-  and `sys-apps/iproute2`.
+- Required external tools are `net-wireless/aircrack-ng`,
+  `net-wireless/hcxtools`, `net-wireless/iw`, and `sys-apps/iproute2`.
+  `hcxtools` became a hard dependency in `-r1` because Wiflux's primary
+  handshake detection path has no effective fallback without
+  `hcxpcapngtool`.
 - Available optional integrations are advertised after install:
   `app-crypt/hashcat`, `net-wireless/reaver`, and
-  `net-analyzer/wireshark[tshark]`. Several upstream optional tools are not in
-  the current Gentoo/GURU trees, so they are not invalid hard dependencies.
+  `net-analyzer/wireshark[tshark]`, plus EDORP packages
+  `net-wireless/hcxdumptool`, `net-wireless/pixiewps`,
+  `net-wireless/mdk4`, `net-wireless/bully`, and
+  `net-analyzer/bettercap`. Do not turn these optional executable backends
+  into USE-controlled dependencies merely to remove startup warnings.
 - Downstream patch `wiflux-1.0.5-no-apt-prompt-on-non-debian.patch` prevents
   Wiflux from offering its Debian `apt-get` auto-installer on Gentoo. Keep this
   patch until upstream provides distribution-neutral package handling.
@@ -280,7 +293,8 @@ Install:
 
 ```bash
 echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5-r1 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
 doas emerge -av net-wireless/wiflux
 ```
 
@@ -297,6 +311,67 @@ Validation completed on 2026-07-12:
   `PORTAGE_USERNAME=edo PORTAGE_GRPNAME=edo` because user `edo` is not in the
   `portage` group. The `/etc/gitconfig` permission warning comes from the local
   Portage environment and does not fail the ebuild.
+
+## Wiflux support packages (Jul 2026)
+
+- `net-wireless/hcxtools-7.1.2` uses the official release asset and provides
+  `hcxpcapngtool`; it is a Wiflux hard dependency.
+- `net-wireless/hcxdumptool-7.1.2` uses the matching official release and
+  advertises the same-version hcxtools package for capture conversion.
+- `net-wireless/pixiewps-1.4.2` uses the official `.tar.xz` release asset and
+  exposes an enabled-by-default `openssl` USE flag. Its bundled crypto fallback
+  remains buildable with `USE=-openssl`.
+- `net-wireless/mdk4-4.2_p20260529` is pinned to upstream commit
+  `3e214fc90710c9185f3783783b3b3c6c4e3098c2`. The old 4.2 tag lacks modern
+  compiler fixes and has build/data-path defects, so do not replace the
+  snapshot with that tag merely because it is labeled a release.
+- `net-wireless/bully-2.0_p20260622` is pinned to upstream commit
+  `a9ab51b2d66dfd318db9448f25f93b0397e10cf6`. The source snapshot contains a
+  tracked prebuilt `src/bully`; the ebuild must remove it before compilation.
+  Bully is only used by Wiflux when the operator selects `--bully`.
+- `net-analyzer/bettercap-2.41.7` is built from source using `go-module` with
+  module distfiles declared in the Manifest so compilation remains offline.
+  Bettercap is an alternative deauthentication backend, not a Wiflux hard
+  dependency. Its embedded web UI includes Font Awesome assets, so package
+  license metadata must include their CC-BY-4.0, OFL-1.1, and MIT terms in
+  addition to Bettercap's GPL-3 code.
+- Bettercap caplets are pinned to commit
+  `eb626871ad99ea8c4f9771f216caa2290e06a058` and installed under
+  `/usr/share/bettercap/caplets`. A downstream patch disables
+  `caplets.update` and corrects its help text because Portage owns those files;
+  keep the patch unless upstream gains a package-manager-safe update mode.
+- The Bettercap ebuild temporarily uses deprecated `EGO_SUM`/
+  `go-module_set_globals` because EDORP has no immutable location for a
+  generated dependency tarball. This is known packaging debt, not a clean
+  long-term design. Migrate to a pinned dependency tarball before the eclass
+  turns the deprecation into a fatal error.
+- Bettercap's `iptables`, `net-tools`, `iproute2`, `iw`, `wireless-tools`, and
+  `wpa_supplicant` integrations are runtime capabilities and remain
+  `optfeature` suggestions. Do not add stale `libnetfilter_queue` or
+  `libnfnetlink` dependencies: the built ELF does not link either library.
+- Keep these tools optional by capability. Installing every backend does not
+  improve every Wiflux run, and several operations still require a compatible
+  monitor-mode adapter, full-frame injection support, and root privileges.
+
+Validation completed on 2026-07-12:
+
+- Bully built and installed through Portage with both `USE=-lua` and
+  `USE=lua`. Both staged binaries reported `v2.0-00`; linkage matched the USE
+  selection and neither image had an RPATH/RUNPATH. Upstream provides no test
+  suite, so validation was limited to build, install, smoke, and ELF checks.
+- Bettercap completed a fresh offline Portage build, all `go test ./...`
+  tests, and image installation with the downstream caplets patch applied.
+  The staged binary reported `v2.41.7`, installed 182 caplet files, linked only
+  `libpcap`, `libusb-1.0`, and libc, and had no RPATH/RUNPATH.
+- The Bettercap patch passed both `gpatch --dry-run` and `git apply --check`.
+  Dependency resolution for Wiflux, hcxtools, Bully, and Bettercap completed
+  without backtracking.
+- Targeted `pkgcheck scan` found no package-specific issues outside the known
+  Bettercap Go-eclass deprecations and Wiflux's informational Python 3.15
+  compatibility suggestion.
+- No live WPS, PMKID, deauthentication, injection, Bluetooth, or HID operation
+  was attempted. Those checks require compatible hardware and an explicitly
+  authorized test network.
 
 ## Future Session Checklist
 
@@ -318,7 +393,13 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mame/mame-0.288
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-0.1.6.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-9999.ebuild clean
-PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/hcxtools/hcxtools-7.1.2.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/hcxdumptool/hcxdumptool-7.1.2.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/pixiewps/pixiewps-1.4.2.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/mdk4/mdk4-4.2_p20260529.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/bully/bully-2.0_p20260622.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-analyzer/bettercap/bettercap-2.41.7.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
