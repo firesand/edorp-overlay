@@ -251,7 +251,7 @@ Portable AppImage (non-Gentoo / no emerge):
 ## Wiflux (Jul 2026)
 
 - Upstream: https://github.com/Leadrogue/Wiflux
-- Overlay package: `net-wireless/wiflux/wiflux-1.0.5-r1.ebuild`, keyword
+- Overlay package: `net-wireless/wiflux/wiflux-1.0.5-r2.ebuild`, keyword
   `~amd64`, based on upstream release `v1.0.5` (2026-07-10).
 - Fetch the official sdist `wiflux-1.0.5.tar.gz`, not the wheel or Linux
   installer. Upstream SHA256 is
@@ -282,6 +282,17 @@ Portable AppImage (non-Gentoo / no emerge):
   `wiflux-1.0.5-fix-environment-dependent-tests.patch` skips inaccessible
   developer captures under `/root` and mocks the external `airodump-ng`
   process. It does not alter installed runtime behavior.
+- Revision `-r2` adds `wiflux-1.0.5-runtime-recovery.patch`. The Python
+  runtime identifies itself as `1.0.5.post1+edorp` and includes stable-device
+  interface recovery after driver reprobes, Airodump output diagnostics and
+  renamed-interface synchronization, newest-CAP selection, Reaver/Bully/Wash
+  fatal-signal circuit breakers, Bully PIN flag/routing fixes, a shared WPS
+  deadline, and terminal-output sanitization. Its added regression tests bring
+  the suite to 143 tests (130 pass, 13 environment-dependent skips).
+- The installed `/usr/bin/wiflux` is Portage-owned and intentionally has no
+  pip `RECORD`. Never run the upstream `install.sh`, `pip --ignore-installed`,
+  or create a fake RECORD against `/usr`; update it with `emerge`. The patched
+  standalone installer now detects package-manager ownership and exits safely.
 - Wiflux is a privileged wireless auditing tool. Use it only on owned or
   explicitly authorized networks.
 - Current Gentoo `net-wireless/aircrack-ng` defaults enable `airdrop-ng` and
@@ -293,7 +304,7 @@ Install:
 
 ```bash
 echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5-r1 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5-r2 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
 echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
 doas emerge -av net-wireless/wiflux
 ```
@@ -311,6 +322,21 @@ Validation completed on 2026-07-12:
   `PORTAGE_USERNAME=edo PORTAGE_GRPNAME=edo` because user `edo` is not in the
   `portage` group. The `/etc/gitconfig` permission warning comes from the local
   Portage environment and does not fail the ebuild.
+
+Revision `-r2` validation completed on 2026-07-13:
+
+- The complete `-r1` patch stack plus the runtime-recovery patch applied cleanly
+  to the official 1.0.5 sdist.
+- The real Portage `test` phase passed for Python 3.13 and 3.14. Each ran all
+  143 tests: 130 passed and 13 were skipped for unavailable local captures or
+  wordlists.
+- The Portage image-install phase passed for both Python implementations. Both
+  staged imports, distribution metadata, and `wiflux --help` report
+  `1.0.5.post1+edorp` successfully.
+- Manifest regeneration and `git diff --check` passed. `pkgcheck`/`repoman`
+  were not installed in the active environment for this validation run.
+- The failed wheel attempt did not modify the installed package: Portage still
+  owned and verified all 396 files of `net-wireless/wiflux-1.0.5`.
 
 ## Wiflux support packages (Jul 2026)
 
@@ -400,6 +426,7 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/mdk4/mdk4-4.2_p2
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/bully/bully-2.0_p20260622.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-analyzer/bettercap/bettercap-2.41.7.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
