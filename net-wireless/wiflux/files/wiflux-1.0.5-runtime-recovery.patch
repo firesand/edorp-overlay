@@ -1,0 +1,1866 @@
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7 +7 @@
+-version = "1.0.5"
++version = "1.0.5.post1+edorp"
+@@ -41 +41 @@
+-include = ["wiflux*"]
+\ No newline at end of file
++include = ["wiflux*"]
+--- a/wiflux/__init__.py
++++ b/wiflux/__init__.py
+@@ -3 +3 @@
+-__version__ = "1.0.5"
+\ No newline at end of file
++__version__ = "1.0.5.post1+edorp"
+--- a/wiflux/process.py
++++ b/wiflux/process.py
+@@ -6,0 +7 @@
++import re
+@@ -12,0 +14,40 @@
++_ANSI_CSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
++_ANSI_OSC_RE = re.compile(r"\x1b\].*?(?:\x07|\x1b\\|$)", re.DOTALL)
++_CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
++RUN_TIMEOUT = -10_000
++
++
++def sanitize_output(value: object) -> str:
++    """Strip terminal escape/control sequences from untrusted tool output."""
++    text = str(value or "")
++    text = _ANSI_OSC_RE.sub("", text)
++    text = _ANSI_CSI_RE.sub("", text)
++    return _CONTROL_RE.sub("", text)
++
++
++class ExternalToolCrash(RuntimeError):
++    """An external helper terminated from a fatal signal or launch failure."""
++
++    def __init__(
++        self,
++        tool: str,
++        returncode: int | None,
++        output: str = "",
++    ) -> None:
++        self.tool = tool
++        self.returncode = returncode
++        clean = sanitize_output(output).strip()
++        if returncode is None:
++            status = "could not be started"
++        elif returncode < 0:
++            signum = -returncode
++            try:
++                status = f"crashed with {signal.Signals(signum).name} (signal {signum})"
++            except ValueError:
++                status = f"crashed with signal {signum}"
++        else:
++            status = f"crashed with exit {returncode}"
++        detail = f": {clean[-320:]}" if clean else ""
++        super().__init__(f"{tool} {status}{detail}")
++
++
+@@ -47,0 +89,2 @@
++        capture_output_tail: bool = False,
++        output_tail_bytes: int = 16 * 1024,
+@@ -50,0 +94,4 @@
++        self._output_tail_bytes = max(1, output_tail_bytes)
++        self._output_tail = bytearray()
++        self._output_lock = threading.Lock()
++        self._output_thread: Optional[threading.Thread] = None
+@@ -52 +99,4 @@
+-        if devnull:
++        if capture_output_tail:
++            kwargs["stdout"] = subprocess.PIPE
++            kwargs["stderr"] = subprocess.STDOUT
++        elif devnull:
+@@ -60,0 +111,8 @@
++        if capture_output_tail and self.proc.stdout is not None:
++            self._output_thread = threading.Thread(
++                target=self._drain_output,
++                args=(self.proc.stdout,),
++                daemon=True,
++                name=f"wiflux-output-{self.proc.pid}",
++            )
++            self._output_thread.start()
+@@ -62,0 +121,42 @@
++    def _drain_output(self, stream) -> None:
++        try:
++            while chunk := stream.read(4096):
++                with self._output_lock:
++                    self._output_tail.extend(chunk)
++                    if len(self._output_tail) > self._output_tail_bytes:
++                        del self._output_tail[:-self._output_tail_bytes]
++        except (OSError, ValueError):
++            pass
++        finally:
++            try:
++                stream.close()
++            except (OSError, ValueError):
++                pass
++
++    def output_tail(self) -> str:
++        """Return bounded combined stdout/stderr captured from the child."""
++        if self.proc.poll() is not None and self._output_thread:
++            self._output_thread.join(timeout=0.2)
++        with self._output_lock:
++            raw = bytes(self._output_tail)
++        return raw.decode("utf-8", errors="replace")
++
++    def failure_summary(self, max_chars: int = 320) -> str:
++        """Return a compact exit/signal description with sanitized output."""
++        code = self.proc.poll()
++        if code is None:
++            status = "still running"
++        elif code < 0:
++            signum = -code
++            try:
++                status = f"signal {signum} ({signal.Signals(signum).name})"
++            except ValueError:
++                status = f"signal {signum}"
++        else:
++            status = f"exit {code}"
++        output = sanitize_output(self.output_tail())
++        tail = " | ".join(line.strip() for line in output.splitlines() if line.strip())
++        if len(tail) > max_chars:
++            tail = "..." + tail[-max_chars:]
++        return f"{status}: {tail}" if tail else status
++
+@@ -77,0 +178,2 @@
++            if self._output_thread:
++                self._output_thread.join(timeout=0.2)
+@@ -92 +194,2 @@
+-            except ProcessLookupError:
++                self.proc.wait(timeout=3)
++            except (ProcessLookupError, subprocess.TimeoutExpired):
+@@ -93,0 +197,2 @@
++        if self._output_thread:
++            self._output_thread.join(timeout=0.2)
+@@ -103 +208,7 @@
+-def run(cmd: list[str] | str, *, shell: bool = False, timeout: int = 60) -> tuple[str, str, int]:
++def run(
++    cmd: list[str] | str,
++    *,
++    shell: bool = False,
++    timeout: int = 60,
++    timeout_code: int = -1,
++) -> tuple[str, str, int]:
+@@ -125 +236 @@
+-        return stdout, stderr, -1
++        return stdout, stderr, timeout_code
+@@ -131 +242 @@
+-    return shutil.which(name) is not None
+\ No newline at end of file
++    return shutil.which(name) is not None
+--- a/wiflux/display.py
++++ b/wiflux/display.py
+@@ -16,0 +17 @@
++from .process import sanitize_output
+@@ -48 +49 @@
+-    return rich_escape(neutralize_mac_text(str(value or "")))
++    return rich_escape(neutralize_mac_text(sanitize_output(value)))
+@@ -55 +56 @@
+-    return Text(str(value or ""), style=style)
++    return Text(sanitize_output(value), style=style)
+@@ -376 +377 @@
+-    console.print(f"[bold green]+[/] {msg}")
+\ No newline at end of file
++    console.print(f"[bold green]+[/] {msg}")
+--- a/wiflux/cli.py
++++ b/wiflux/cli.py
+@@ -562,0 +563 @@
++        Airmon.remember_interface(iface)
+@@ -636,0 +638,2 @@
++        # Keep runtime health/circuit-breaker state across --infinite rescans.
++        orch = Orchestrator(cfg, store, tracker)
+@@ -660 +662,0 @@
+-            orch = Orchestrator(cfg, store, tracker)
+@@ -681 +683 @@
+-    sys.exit(main())
+\ No newline at end of file
++    sys.exit(main())
+--- a/wiflux/orchestrator.py
++++ b/wiflux/orchestrator.py
+@@ -16 +16 @@
+-from .display import print_crack, print_error, supports_live
++from .display import print_crack, print_error, safe_markup, supports_live
+@@ -18,0 +19 @@
++from .process import ExternalToolCrash
+@@ -19,0 +21 @@
++from .tools.interface import InterfaceRecoveryError
+@@ -35,0 +38 @@
++        self._wps_disabled_reason: str | None = None
+@@ -76,0 +80,6 @@
++            if self._wps_disabled_reason and attack_cls in (WPSPixieAttack, WPSPinAttack):
++                self.tracker.log(
++                    "[yellow]WPS skipped: backend disabled after fatal crash[/]",
++                    tag="wps",
++                )
++                continue
+@@ -90,0 +100,14 @@
++            except (ExternalToolCrash, InterfaceRecoveryError) as e:
++                if attack_cls in (WPSPixieAttack, WPSPinAttack):
++                    self._wps_disabled_reason = str(e)
++                    self.tracker.log(
++                        f"[red]{safe_markup(str(e))}[/] — "
++                        "disabling WPS attacks for this session",
++                        tag=attack.name,
++                    )
++                else:
++                    self.tracker.log(
++                        f"[red]error: {safe_markup(str(e))}[/]",
++                        tag=attack.name,
++                    )
++                result = AttackResult(False, message=str(e))
+@@ -92 +115,4 @@
+-                self.tracker.log(f"[red]error: {e}[/]", tag=attack.name)
++                self.tracker.log(
++                    f"[red]error: {safe_markup(str(e))}[/]",
++                    tag=attack.name,
++                )
+@@ -102 +127,0 @@
+-                from .display import safe_markup
+@@ -129,0 +155,2 @@
++            if self._wps_disabled_reason and cls in (WPSPixieAttack, WPSPinAttack):
++                continue
+@@ -134 +160,0 @@
+-
+--- a/wiflux/scanner.py
++++ b/wiflux/scanner.py
+@@ -13,0 +14 @@
++from .process import ExternalToolCrash
+@@ -27,0 +29 @@
++        self._wash_failure_logged = False
+@@ -69,3 +71,3 @@
+-        thread = threading.Thread(
+-            target=lambda: result.update({
+-                "cache": Wash.scan_live(
++        def probe() -> None:
++            try:
++                result["cache"] = Wash.scan_live(
+@@ -77,2 +79,6 @@
+-                ),
+-            }),
++                )
++            except ExternalToolCrash as exc:
++                result["error"] = str(exc)
++
++        thread = threading.Thread(
++            target=probe,
+@@ -88,0 +95,2 @@
++        if error := result.get("error"):
++            self._log_wash_failure(error)
+@@ -96,6 +104,22 @@
+-        return Wash.scan_live(
+-            self.cfg.scan.interface,
+-            timeout=10,
+-            band_2ghz=self.cfg.scan.band_2ghz,
+-            band_5ghz=self.cfg.scan.band_5ghz,
+-            band_6ghz=self.cfg.scan.band_6ghz,
++        try:
++            return Wash.scan_live(
++                self.cfg.scan.interface,
++                timeout=10,
++                band_2ghz=self.cfg.scan.band_2ghz,
++                band_5ghz=self.cfg.scan.band_5ghz,
++                band_6ghz=self.cfg.scan.band_6ghz,
++            )
++        except ExternalToolCrash as exc:
++            self._log_wash_failure(str(exc))
++            return {}
++
++    def _log_wash_failure(self, reason: str | None = None) -> None:
++        if self._wash_failure_logged:
++            return
++        reason = reason or Wash.disabled_reason()
++        if not reason:
++            return
++        self._wash_failure_logged = True
++        self.tracker.log(
++            f"[red]{safe_markup(reason)}[/] — WPS detection disabled for this session",
++            tag="scan",
+@@ -131,0 +156 @@
++            self._log_wash_failure()
+@@ -274 +299 @@
+-        return selected
+\ No newline at end of file
++        return selected
+--- a/wiflux/attacks/handshake.py
++++ b/wiflux/attacks/handshake.py
+@@ -11,0 +12 @@
++from ..display import safe_markup
+@@ -19 +20 @@
+-from ..tools.interface import set_channel
++from ..tools.interface import InterfaceRecoveryError, set_channel
+@@ -250 +251,4 @@
+-                self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
++                self.cfg.scan.interface,
++                self.ap.channel,
++                band=self.ap.radio_band,
++                kill_conflicts=self.cfg.kill_conflicting,
+@@ -709 +713,4 @@
+-            self.cfg.scan.interface, target.channel, band=target.radio_band,
++            self.cfg.scan.interface,
++            target.channel,
++            band=target.radio_band,
++            kill_conflicts=self.cfg.kill_conflicting,
+@@ -743,7 +750,3 @@
+-            self.tracker.log(f"[red]band-stalk error: {e}[/]", tag="handshake")
+-        finally:
+-            recover_interface(
+-                self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
+-            )
+-            set_channel(
+-                self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
++            self.tracker.log(
++                f"[red]band-stalk error: {safe_markup(str(e))}[/]",
++                tag="handshake",
+@@ -750,0 +754,16 @@
++        finally:
++            try:
++                iface = recover_interface(
++                    self.cfg.scan.interface,
++                    self.ap.channel,
++                    band=self.ap.radio_band,
++                    kill_conflicts=self.cfg.kill_conflicting,
++                )
++                self.cfg.scan.interface = iface
++                set_channel(iface, self.ap.channel, band=self.ap.radio_band)
++            except InterfaceRecoveryError as exc:
++                self.tracker.log(
++                    f"[red]failed to restore target band: "
++                    f"{safe_markup(str(exc))}[/]",
++                    tag="handshake",
++                )
+@@ -752,0 +772,16 @@
++    def _restart_capture(self, dump: Airodump) -> None:
++        """Recover the radio and restart capture on the returned interface."""
++        iface = recover_interface(
++            self.cfg.scan.interface,
++            self.ap.channel,
++            band=self.ap.radio_band,
++            kill_conflicts=self.cfg.kill_conflicting,
++        )
++        self.cfg.scan.interface = iface
++        dump.restart(interface=iface)
++        time.sleep(0.5)
++        if not dump.alive():
++            raise InterfaceRecoveryError(
++                f"airodump-ng restart failed: {dump.failure_summary()}",
++            )
++
+@@ -871,0 +907 @@
++                    failure = safe_markup(dump.failure_summary())
+@@ -873 +909,2 @@
+-                        "[yellow]airodump-ng failed — recovering interface and retrying[/]",
++                        f"[yellow]airodump-ng failed[/] ({failure}) — "
++                        "recovering interface and retrying",
+@@ -876,4 +913 @@
+-                    self.cfg.scan.interface = recover_interface(
+-                        self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
+-                    )
+-                    dump.restart()
++                    self._restart_capture(dump)
+@@ -881 +915,5 @@
+-                    self.tracker.log("[red]airodump-ng failed to start[/]", tag="handshake")
++                    failure = safe_markup(dump.failure_summary())
++                    self.tracker.log(
++                        f"[red]airodump-ng failed to start[/] ({failure})",
++                        tag="handshake",
++                    )
+@@ -925,2 +963,6 @@
+-                        if restart_count > 5:
+-                            self.tracker.log("[red]airodump-ng keeps dying — aborting[/]", tag="handshake")
++                        failure = safe_markup(dump.failure_summary())
++                        if restart_count > 2:
++                            self.tracker.log(
++                                f"[red]airodump-ng keeps dying[/] ({failure}) — aborting",
++                                tag="handshake",
++                            )
+@@ -928,6 +970,5 @@
+-                        self.tracker.log("[yellow]airodump-ng died — restarting[/]", tag="handshake")
+-                        self.cfg.scan.interface = recover_interface(
+-                        self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
+-                    )
+-                        dump.restart()
+-                        time.sleep(1)
++                        self.tracker.log(
++                            f"[yellow]airodump-ng died[/] ({failure}) — restarting",
++                            tag="handshake",
++                        )
++                        self._restart_capture(dump)
+@@ -1150,6 +1190,0 @@
+-                    self.cfg.scan.interface = recover_interface(
+-                        self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
+-                    )
+-                    set_channel(
+-                        self.cfg.scan.interface, self.ap.channel, band=self.ap.radio_band,
+-                    )
+@@ -1157 +1192 @@
+-                        dump.restart()
++                        self._restart_capture(dump)
+@@ -1178 +1213,4 @@
+-            self.tracker.log(f"[red]capture error: {e}[/]", tag="handshake")
++            self.tracker.log(
++                f"[red]capture error: {safe_markup(str(e))}[/]",
++                tag="handshake",
++            )
+@@ -1182 +1220 @@
+-        return None
+\ No newline at end of file
++        return None
+--- a/wiflux/attacks/pmkid.py
++++ b/wiflux/attacks/pmkid.py
+@@ -32,0 +33 @@
++            kill_conflicts=self.cfg.kill_conflicting,
+@@ -229 +230 @@
+-        return AttackResult(False, message="PMKID captured but not cracked")
+\ No newline at end of file
++        return AttackResult(False, message="PMKID captured but not cracked")
+--- a/wiflux/attacks/wep.py
++++ b/wiflux/attacks/wep.py
+@@ -35,0 +36 @@
++            kill_conflicts=self.cfg.kill_conflicting,
+@@ -126 +127 @@
+-        return None
+\ No newline at end of file
++        return None
+--- a/wiflux/attacks/wps.py
++++ b/wiflux/attacks/wps.py
+@@ -9,0 +10 @@
++from ..display import safe_markup
+@@ -62 +63,4 @@
+-        self.tracker.log(f"{mode} attack on {self.ap.display_name}", tag=tag)
++        self.tracker.log(
++            f"{mode} attack on {safe_markup(self.ap.display_name)}",
++            tag=tag,
++        )
+@@ -87 +91,3 @@
+-            self.status("cracked", f"Key found: {key}", started=started)
++            self.status(
++                "cracked", f"Key found: {safe_markup(key)}", started=started,
++            )
+@@ -102 +108,3 @@
+-            self.status("cracked", f"Key found: {key}", started=started)
++            self.status(
++                "cracked", f"Key found: {safe_markup(key)}", started=started,
++            )
+@@ -126 +134 @@
+-        return self._run_wps(pixie=False)
+\ No newline at end of file
++        return self._run_wps(pixie=False)
+--- a/wiflux/tools/airmon.py
++++ b/wiflux/tools/airmon.py
+@@ -4,0 +5 @@
++import os
+@@ -12,0 +14,33 @@
++    base_device_path: Optional[str] = None
++
++    @staticmethod
++    def device_path(interface: str) -> str | None:
++        """Return the stable sysfs device path backing a wireless interface."""
++        if not interface:
++            return None
++        path = f"/sys/class/net/{interface}/device"
++        if not os.path.exists(path):
++            return None
++        return os.path.realpath(path)
++
++    @classmethod
++    def remember_interface(cls, interface: str) -> None:
++        """Remember enough identity to find the radio after a driver reprobe."""
++        device_path = cls.device_path(interface)
++        if device_path:
++            cls.base_device_path = device_path
++        if cls.is_monitor(interface):
++            cls.base_interface = interface[:-3] if interface.endswith("mon") else interface
++        elif device_path:
++            # Do not replace a valid cached base with a stale name after a
++            # driver crash has already removed the interface.
++            cls.base_interface = interface
++
++    @classmethod
++    def interfaces_on_base_device(cls) -> list[dict]:
++        if not cls.base_device_path:
++            return []
++        return [
++            info for info in cls.list_interfaces()
++            if cls.device_path(info["name"]) == cls.base_device_path
++        ]
+@@ -18,0 +53 @@
++        current_phy = ""
+@@ -20 +55,6 @@
+-            if m := re.match(r"^\s*Interface\s+(\S+)", line):
++            if m := re.match(r"^\s*phy#(\d+)\s*$", line):
++                if current:
++                    interfaces.append(current)
++                    current = {}
++                current_phy = m.group(1)
++            elif m := re.match(r"^\s*Interface\s+(\S+)", line):
+@@ -23 +63,5 @@
+-                current = {"name": m.group(1), "type": "unknown", "phy": ""}
++                current = {
++                    "name": m.group(1),
++                    "type": "unknown",
++                    "phy": current_phy,
++                }
+@@ -77,0 +122,2 @@
++        cls.remember_interface(interface)
++
+@@ -80 +125,0 @@
+-            cls.base_interface = interface
+@@ -86,0 +132,3 @@
++            device_path = cls.device_path(mon_candidate)
++            if device_path:
++                cls.base_device_path = device_path
+@@ -97,0 +146,3 @@
++            device_path = cls.device_path(enabled)
++            if device_path:
++                cls.base_device_path = device_path
+@@ -143 +194 @@
+-            print("Invalid selection.")
+\ No newline at end of file
++            print("Invalid selection.")
+--- a/wiflux/tools/airodump.py
++++ b/wiflux/tools/airodump.py
+@@ -16 +16 @@
+-from ..process import ManagedProcess
++from ..process import ExternalToolCrash, ManagedProcess
+@@ -79 +79 @@
+-        self.proc = ManagedProcess(self._build_cmd())
++        self.proc = ManagedProcess(self._build_cmd(), capture_output_tail=True)
+@@ -88,2 +88,2 @@
+-    def restart(self) -> None:
+-        """Restart airodump without deleting captured pcap/csv files."""
++    def restart(self, *, interface: Optional[str] = None) -> None:
++        """Restart airodump on the recovered interface without deleting captures."""
+@@ -91 +91,5 @@
+-        self.proc = ManagedProcess(self._build_cmd())
++        recovered = interface or self.cfg.scan.interface
++        if not recovered:
++            raise RuntimeError("Cannot restart airodump-ng without an interface")
++        self.interface = recovered
++        self.proc = ManagedProcess(self._build_cmd(), capture_output_tail=True)
+@@ -102,0 +107,3 @@
++    def failure_summary(self) -> str:
++        return self.proc.failure_summary() if self.proc else "not started"
++
+@@ -107 +114 @@
+-        return str(max(caps, key=lambda p: p.stat().st_size))
++        return str(max(caps, key=lambda p: p.stat().st_mtime_ns))
+@@ -127,4 +134,2 @@
+-                    and (
+-                        cap_size != self._wps_cap_size
+-                        or now - self._wps_last_run >= WPS_SCAN_INTERVAL
+-                    )
++                    and cap_size != self._wps_cap_size
++                    and now - self._wps_last_run >= WPS_SCAN_INTERVAL
+@@ -133 +138,4 @@
+-                    states = Wash.scan_cap(capfile)
++                    try:
++                        states = Wash.scan_cap(capfile)
++                    except ExternalToolCrash:
++                        states = {}
+@@ -361 +369 @@
+-            pass
+\ No newline at end of file
++            pass
+--- a/wiflux/tools/interface.py
++++ b/wiflux/tools/interface.py
+@@ -11,0 +12,4 @@
++class InterfaceRecoveryError(RuntimeError):
++    """The wireless interface could not be restored to a usable monitor state."""
++
++
+@@ -35 +39,2 @@
+-    monitors = [i["name"] for i in Airmon.list_interfaces() if i["type"] == "monitor"]
++    interfaces = Airmon.list_interfaces()
++    monitors = [i["name"] for i in interfaces if i["type"] == "monitor"]
+@@ -42 +47,3 @@
+-    return monitors[0]
++    # Choosing an unrelated radio is worse than failing: deauth/capture would run
++    # on the wrong adapter. A single monitor remains a safe last resort.
++    return monitors[0] if len(interfaces) == 1 and len(monitors) == 1 else None
+@@ -45 +52,7 @@
+-def set_channel(iface: str, channel: int, band: str | None = None) -> str:
++def set_channel(
++    iface: str,
++    channel: int,
++    band: str | None = None,
++    *,
++    strict: bool = False,
++) -> str:
+@@ -51,0 +65 @@
++    stdout = stderr = ""
+@@ -53 +67 @@
+-        _, _, code = run(args, timeout=5)
++        stdout, stderr, code = run(args, timeout=5)
+@@ -59,0 +74,6 @@
++    if strict:
++        detail = (stderr or stdout).strip()
++        suffix = f": {detail}" if detail else ""
++        raise InterfaceRecoveryError(
++            f"Failed to tune {iface} to channel {channel}{suffix}",
++        )
+@@ -62,0 +83,52 @@
++def _base_name(interface: str) -> str:
++    return interface[:-3] if interface.endswith("mon") else interface
++
++
++def _select_recovery_candidate(
++    interfaces: list[dict],
++    *,
++    preferred: str,
++    base_name: str,
++    device_path: str | None,
++) -> dict | None:
++    """Select the same radio without silently switching to another adapter."""
++    if not interfaces:
++        return None
++
++    related = []
++    if device_path:
++        related = [
++            info for info in interfaces
++            if Airmon.device_path(info["name"]) == device_path
++        ]
++    pool = related or interfaces
++
++    for name in (preferred, base_name, f"{base_name}mon"):
++        matches = [info for info in pool if info["name"] == name]
++        if len(matches) == 1:
++            return matches[0]
++
++    related_names = [
++        info for info in pool
++        if _base_name(info["name"]) == base_name
++        or info["name"].startswith(base_name)
++    ]
++    if len(related_names) == 1:
++        return related_names[0]
++    if related:
++        monitors = [info for info in related if info["type"] == "monitor"]
++        if len(monitors) == 1:
++            return monitors[0]
++        if len(related) == 1:
++            return related[0]
++        return None
++
++    # A cached physical-device identity proves that a sole remaining interface
++    # can still be a different adapter. Wait for the target radio to return.
++    if device_path:
++        return None
++
++    # Only use an unrelated-name fallback when the machine exposes one radio.
++    return interfaces[0] if len(interfaces) == 1 else None
++
++
+@@ -66,0 +139,3 @@
++    *,
++    kill_conflicts: bool = False,
++    wait_timeout: float = 6.0,
+@@ -70 +145,2 @@
+-    Returns the active monitor interface name (may differ from the input after hcxdumptool).
++    Returns the active monitor interface name (may differ after a driver reprobe).
++    Raises InterfaceRecoveryError instead of returning a stale interface.
+@@ -72,2 +148,2 @@
+-    ProcessPool().cleanup_all()
+-    time.sleep(0.4)
++    if not interface:
++        raise InterfaceRecoveryError("No wireless interface configured")
+@@ -75,6 +151,4 @@
+-    iface = find_monitor_interface(interface) or interface
+-
+-    run(["ip", "link", "set", iface, "down"], timeout=5)
+-    time.sleep(0.2)
+-    run(["ip", "link", "set", iface, "up"], timeout=5)
+-    time.sleep(0.2)
++    device_path = Airmon.device_path(interface) or Airmon.base_device_path
++    base_name = Airmon.base_interface or _base_name(interface)
++    Airmon.remember_interface(interface)
++    ProcessPool().cleanup_all()
+@@ -82,2 +156,11 @@
+-    if not Airmon.is_monitor(iface):
+-        run(["iw", "dev", iface, "set", "type", "monitor"], timeout=5)
++    deadline = time.monotonic() + max(0.0, wait_timeout)
++    candidate: dict | None = None
++    while True:
++        candidate = _select_recovery_candidate(
++            Airmon.list_interfaces(),
++            preferred=interface,
++            base_name=base_name,
++            device_path=device_path,
++        )
++        if candidate is not None or time.monotonic() >= deadline:
++            break
+@@ -86,5 +169,30 @@
+-    if not Airmon.is_monitor(iface):
+-        try:
+-            iface = Airmon.start(iface, kill_conflicts=False)
+-        except RuntimeError:
+-            pass
++    if candidate is None:
++        available = ", ".join(
++            f"{item['name']} ({item['type']})" for item in Airmon.list_interfaces()
++        ) or "none"
++        raise InterfaceRecoveryError(
++            f"Wireless interface {interface} did not return after reprobe; "
++            f"available: {available}",
++        )
++
++    iface = candidate["name"]
++    if kill_conflicts and which("airmon-ng"):
++        run(["airmon-ng", "check", "kill"], timeout=15)
++
++    if candidate["type"] != "monitor" or not Airmon.is_monitor(iface):
++        run(["ip", "link", "set", "dev", iface, "down"], timeout=5)
++        _, direct_error, direct_code = run(
++            ["iw", "dev", iface, "set", "type", "monitor"], timeout=5,
++        )
++        run(["ip", "link", "set", "dev", iface, "up"], timeout=5)
++        time.sleep(0.25)
++
++        if direct_code != 0 or not Airmon.is_monitor(iface):
++            try:
++                iface = Airmon.start(iface, kill_conflicts=kill_conflicts)
++            except RuntimeError as exc:
++                detail = direct_error.strip()
++                suffix = f" ({detail})" if detail else ""
++                raise InterfaceRecoveryError(
++                    f"Failed to restore monitor mode on {iface}{suffix}",
++                ) from exc
+@@ -92 +200,4 @@
+-    iface = find_monitor_interface(iface) or iface
++    if not Airmon.is_monitor(iface):
++        raise InterfaceRecoveryError(
++            f"Recovered interface {iface} is not in monitor mode",
++        )
+@@ -93,0 +205 @@
++    Airmon.remember_interface(iface)
+@@ -95 +207 @@
+-        set_channel(iface, channel, band=band)
++        set_channel(iface, channel, band=band, strict=True)
+@@ -97,2 +209,2 @@
+-    time.sleep(0.3)
+-    return iface
+\ No newline at end of file
++    time.sleep(0.25)
++    return iface
+--- a/wiflux/tools/pmkid_capture.py
++++ b/wiflux/tools/pmkid_capture.py
+@@ -82,0 +83 @@
++            kill_conflicts=cfg.kill_conflicting,
+@@ -108 +109,6 @@
+-    iface = recover_interface(cfg.scan.interface, ap.channel, band=ap.radio_band)
++    iface = recover_interface(
++        cfg.scan.interface,
++        ap.channel,
++        band=ap.radio_band,
++        kill_conflicts=cfg.kill_conflicting,
++    )
+@@ -121 +127 @@
+-    )
+\ No newline at end of file
++    )
+--- a/wiflux/tools/reaver.py
++++ b/wiflux/tools/reaver.py
+@@ -10,0 +11 @@
++from collections import deque
+@@ -13,0 +15 @@
++from ..display import safe_markup
+@@ -15 +17 @@
+-from ..process import which
++from ..process import ExternalToolCrash, which
+@@ -45 +47,3 @@
+-        if cfg.attack.algorithmic_wps and which("reaver"):
++        deadline = time.monotonic() + max(0, timeout)
++        backend = "bully" if cfg.attack.use_bully else "reaver"
++        if cfg.attack.algorithmic_wps and which(backend):
+@@ -47,0 +52 @@
++                deadline=deadline,
+@@ -50,0 +56,3 @@
++        remaining = max(0, int(deadline - time.monotonic()))
++        if remaining <= 0:
++            return None, None
+@@ -53 +61,2 @@
+-                cfg, ap, timeout, pixie=False, on_line=on_line, should_stop=should_stop,
++                cfg, ap, remaining, pixie=False, deadline=deadline,
++                on_line=on_line, should_stop=should_stop,
+@@ -56 +65,2 @@
+-            cfg, ap, timeout, pixie=False, on_line=on_line, should_stop=should_stop,
++            cfg, ap, remaining, pixie=False, deadline=deadline,
++            on_line=on_line, should_stop=should_stop,
+@@ -66,0 +77 @@
++        deadline: float | None = None,
+@@ -74,0 +86,2 @@
++        if deadline is None:
++            deadline = time.monotonic() + max(0, timeout)
+@@ -76 +89,7 @@
+-        iface = recover_interface(cfg.scan.interface, ap.channel, band=ap.radio_band)
++        iface = recover_interface(
++            cfg.scan.interface,
++            ap.channel,
++            band=ap.radio_band,
++            kill_conflicts=cfg.kill_conflicting,
++        )
++        cfg.scan.interface = iface
+@@ -79,0 +99,3 @@
++            remaining = max(0, int(deadline - time.monotonic()))
++            if remaining <= 0:
++                break
+@@ -82,6 +104,15 @@
+-            cmd = [
+-                "reaver", "-i", iface, "-b", ap.bssid, "-c", str(ap.channel),
+-                "-p", pin, "-f", "-vv",
+-            ]
+-            if cfg.attack.wps_ignore_locks:
+-                cmd.append("-L")
++            if cfg.attack.use_bully:
++                cmd = [
++                    "bully", "-b", ap.bssid, "-c", str(ap.channel),
++                    "-v", "3", "-p", pin,
++                ]
++                if cfg.attack.wps_ignore_locks:
++                    cmd.append("-L")
++                cmd.append(iface)
++            else:
++                cmd = [
++                    "reaver", "-i", iface, "-b", ap.bssid, "-c", str(ap.channel),
++                    "-p", pin, "-f", "-vv",
++                ]
++                if cfg.attack.wps_ignore_locks:
++                    cmd.append("-L")
+@@ -89 +120 @@
+-                cmd, per_pin, on_line, should_stop,
++                cmd, min(per_pin, max(1, remaining)), on_line, should_stop,
+@@ -112,0 +144 @@
++        deadline: float | None = None,
+@@ -120,0 +153 @@
++            kill_conflicts=cfg.kill_conflicting,
+@@ -121,0 +155,5 @@
++        cfg.scan.interface = iface
++        if deadline is not None:
++            timeout = max(0, int(deadline - time.monotonic()))
++            if timeout <= 0:
++                return None, None
+@@ -139,0 +178 @@
++        deadline: float | None = None,
+@@ -147,0 +187 @@
++            kill_conflicts=cfg.kill_conflicting,
+@@ -148,0 +189,5 @@
++        cfg.scan.interface = iface
++        if deadline is not None:
++            timeout = max(0, int(deadline - time.monotonic()))
++            if timeout <= 0:
++                return None, None
+@@ -153 +198 @@
+-            cmd.append("-F")
++            cmd.append("-L")
+@@ -171,0 +217,3 @@
++        tool = os.path.basename(cmd[0]) if cmd else "external tool"
++        output_tail: deque[str] = deque(maxlen=12)
++        stop_requested = False
+@@ -181 +229 @@
+-            deadline = time.time() + timeout
++            deadline = time.monotonic() + max(0, timeout)
+@@ -185 +233 @@
+-            while proc.poll() is None and time.time() < deadline:
++            while proc.poll() is None and time.monotonic() < deadline:
+@@ -186,0 +235 @@
++                    stop_requested = True
+@@ -195,0 +245,6 @@
++                        try:
++                            proc.wait(timeout=0.2)
++                        except subprocess.TimeoutExpired:
++                            # A still-running helper closed stdout; stopping it
++                            # is our action and must not trip the crash breaker.
++                            stop_requested = True
+@@ -197,0 +253 @@
++                    output_tail.append(line)
+@@ -199 +255 @@
+-                        on_line(line)
++                        on_line(safe_markup(line))
+@@ -206,0 +263 @@
++                            stop_requested = True
+@@ -213,0 +271 @@
++                        stop_requested = True
+@@ -216,0 +275 @@
++                        stop_requested = True
+@@ -222 +281 @@
+-                elif on_line and time.time() - last_heartbeat >= 2.0:
++                elif on_line and time.monotonic() - last_heartbeat >= 2.0:
+@@ -224 +283 @@
+-                    remaining = max(0, int(deadline - time.time()))
++                    remaining = max(0, int(deadline - time.monotonic()))
+@@ -226,3 +285,8 @@
+-                    last_heartbeat = time.time()
+-        except Exception:
+-            pass
++                    last_heartbeat = time.monotonic()
++            if proc.poll() is None and time.monotonic() >= deadline:
++                stop_requested = True
++        except OSError as exc:
++            crash = ExternalToolCrash(tool, None, str(exc))
++            if on_line:
++                on_line(safe_markup(str(crash)))
++            raise crash from exc
+@@ -230,0 +295 @@
++                stop_requested = True
+@@ -242 +307,26 @@
+-        return pin, key
+\ No newline at end of file
++                    try:
++                        proc.wait(timeout=3)
++                    except subprocess.TimeoutExpired:
++                        pass
++        if proc is not None:
++            returncode = proc.returncode
++            if returncode is None:
++                returncode = proc.poll()
++            if not stop_requested and returncode is not None and returncode < 0:
++                crash = ExternalToolCrash(
++                    tool,
++                    returncode,
++                    " | ".join(output_tail),
++                )
++                if on_line:
++                    on_line(safe_markup(str(crash)))
++                raise crash
++            if (
++                not stop_requested
++                and returncode not in (None, 0)
++                and on_line
++            ):
++                on_line(
++                    f"[yellow]{safe_markup(tool)} exited with code {returncode}[/]",
++                )
++        return pin, key
+--- a/wiflux/tools/wash.py
++++ b/wiflux/tools/wash.py
+@@ -11 +11 @@
+-from ..process import run, which
++from ..process import RUN_TIMEOUT, ExternalToolCrash, run, which
+@@ -16,0 +17,10 @@
++    _disabled_reason: str | None = None
++
++    @classmethod
++    def reset_crash_state(cls) -> None:
++        cls._disabled_reason = None
++
++    @classmethod
++    def disabled_reason(cls) -> str | None:
++        return cls._disabled_reason
++
+@@ -19 +29 @@
+-        return which("wash")
++        return Wash._disabled_reason is None and which("wash")
+@@ -31 +41 @@
+-        if not Wash.available():
++        if Wash._disabled_reason or not Wash.available():
+@@ -50 +60 @@
+-        if not Wash.available():
++        if Wash._disabled_reason or not Wash.available():
+@@ -66 +76,5 @@
+-            stdout, stderr, code = run(cmd, timeout=timeout)
++            stdout, stderr, code = run(
++                cmd,
++                timeout=timeout,
++                timeout_code=RUN_TIMEOUT,
++            )
+@@ -70,2 +84,4 @@
+-        except OSError:
+-            return ""
++        except OSError as exc:
++            crash = ExternalToolCrash("wash", None, str(exc))
++            Wash._disabled_reason = str(crash)
++            raise crash from exc
+@@ -72,0 +89,10 @@
++            if code != RUN_TIMEOUT and (code < 0 or code >= 128):
++                crash = ExternalToolCrash(
++                    "wash",
++                    code,
++                    Wash._decode_output(stderr) or Wash._decode_output(stdout),
++                )
++                Wash._disabled_reason = str(crash)
++                raise crash
++            if code == RUN_TIMEOUT:
++                return Wash._decode_output(stdout) or Wash._decode_output(stderr)
+@@ -145 +171 @@
+-        return text in {"1", "true", "yes", "locked"}
+\ No newline at end of file
++        return text in {"1", "true", "yes", "locked"}
+--- /dev/null
++++ b/tests/test_interface_recovery.py
+@@ -0,0 +1,233 @@
++"""Regression tests for wireless-interface recovery after driver reprobes.
++
++These tests deliberately mock every process and radio-facing API.  They must be
++safe to run on machines with no wireless interface and must never change the
++state of a real adapter.
++"""
++
++from __future__ import annotations
++
++import unittest
++from unittest.mock import patch
++
++from wiflux.tools.airmon import Airmon
++from wiflux.tools.interface import (
++    InterfaceRecoveryError,
++    recover_interface,
++    set_channel,
++)
++
++
++PCI_DEVICE = "/sys/devices/pci0000:00/0000:09:00.0"
++
++
++class InterfaceRecoveryTestCase(unittest.TestCase):
++    def setUp(self) -> None:
++        self._base_interface = Airmon.base_interface
++        self._base_device_path = Airmon.base_device_path
++
++    def tearDown(self) -> None:
++        Airmon.base_interface = self._base_interface
++        Airmon.base_device_path = self._base_device_path
++
++    @staticmethod
++    def _device_path(name: str) -> str | None:
++        if name in {"wlp9s0", "wlp9s0mon"}:
++            return PCI_DEVICE
++        if name == "wlan1":
++            return "/sys/devices/pci0000:00/0000:0a:00.0"
++        return None
++
++    def test_iw_dev_parser_assigns_phy_header_to_each_interface(self) -> None:
++        iw_output = """\
++phy#2
++\tInterface wlp9s0
++\t\tifindex 7
++\t\twdev 0x200000001
++\t\ttype managed
++phy#7
++\tInterface wlan1mon
++\t\tifindex 12
++\t\twdev 0x700000001
++\t\ttype monitor
++"""
++
++        with patch(
++            "wiflux.tools.airmon.run",
++            return_value=(iw_output, "", 0),
++        ) as run_mock:
++            interfaces = Airmon.list_interfaces()
++
++        self.assertEqual(
++            interfaces,
++            [
++                {"name": "wlp9s0", "type": "managed", "phy": "2"},
++                {"name": "wlan1mon", "type": "monitor", "phy": "7"},
++            ],
++        )
++        run_mock.assert_called_once_with(["iw", "dev"])
++
++    def test_reprobe_selects_managed_interface_on_same_device(self) -> None:
++        """A phy/name reset must not make recovery jump to another radio."""
++        Airmon.base_interface = "wlp9s0"
++        Airmon.base_device_path = PCI_DEVICE
++        interfaces = [
++            {"name": "wlan1", "type": "monitor", "phy": "7"},
++            {"name": "wlp9s0", "type": "managed", "phy": "2"},
++        ]
++        monitor_started = False
++
++        def is_monitor(name: str) -> bool:
++            return monitor_started and name == "wlp9s0mon"
++
++        def start(name: str, *, kill_conflicts: bool = False) -> str:
++            nonlocal monitor_started
++            self.assertEqual(name, "wlp9s0")
++            self.assertFalse(kill_conflicts)
++            monitor_started = True
++            return "wlp9s0mon"
++
++        with (
++            patch("wiflux.tools.interface.ProcessPool") as pool,
++            patch("wiflux.tools.interface.run", return_value=("", "", 0)),
++            patch("wiflux.tools.interface.time.sleep"),
++            patch.object(Airmon, "list_interfaces", return_value=interfaces),
++            patch.object(Airmon, "device_path", side_effect=self._device_path),
++            patch.object(Airmon, "is_monitor", side_effect=is_monitor),
++            patch.object(Airmon, "start", side_effect=start) as start_mock,
++        ):
++            recovered = recover_interface(
++                "wlp9s0mon",
++                channel=1,
++                band="2",
++                wait_timeout=0,
++            )
++
++        self.assertEqual(recovered, "wlp9s0mon")
++        start_mock.assert_called_once_with("wlp9s0", kill_conflicts=False)
++        pool.return_value.cleanup_all.assert_called_once_with()
++
++    def test_reprobe_falls_back_to_exact_monitor_name_stem(self) -> None:
++        """Predictable ``foo``/``foomon`` renames work without cached sysfs data."""
++        Airmon.base_interface = None
++        Airmon.base_device_path = None
++        interfaces = [{"name": "wlp9s0", "type": "managed", "phy": "2"}]
++        monitor_started = False
++
++        def is_monitor(name: str) -> bool:
++            return monitor_started and name == "wlp9s0mon"
++
++        def start(name: str, *, kill_conflicts: bool = False) -> str:
++            nonlocal monitor_started
++            monitor_started = True
++            return f"{name}mon"
++
++        with (
++            patch("wiflux.tools.interface.ProcessPool"),
++            patch("wiflux.tools.interface.run", return_value=("", "", 0)),
++            patch("wiflux.tools.interface.time.sleep"),
++            patch.object(Airmon, "list_interfaces", return_value=interfaces),
++            patch.object(Airmon, "device_path", return_value=None),
++            patch.object(Airmon, "is_monitor", side_effect=is_monitor),
++            patch.object(Airmon, "start", side_effect=start) as start_mock,
++        ):
++            recovered = recover_interface("wlp9s0mon", wait_timeout=0)
++
++        self.assertEqual(recovered, "wlp9s0mon")
++        start_mock.assert_called_once_with("wlp9s0", kill_conflicts=False)
++
++    def test_ambiguous_radios_raise_instead_of_selecting_first(self) -> None:
++        Airmon.base_interface = None
++        Airmon.base_device_path = None
++        interfaces = [
++            {"name": "wlan0", "type": "managed", "phy": "0"},
++            {"name": "wlan1", "type": "monitor", "phy": "1"},
++        ]
++
++        with (
++            patch("wiflux.tools.interface.ProcessPool"),
++            patch("wiflux.tools.interface.run", return_value=("", "", 0)),
++            patch("wiflux.tools.interface.time.sleep"),
++            patch.object(Airmon, "list_interfaces", return_value=interfaces),
++            patch.object(Airmon, "device_path", return_value=None),
++            patch.object(Airmon, "is_monitor", return_value=False),
++            patch.object(Airmon, "start") as start_mock,
++        ):
++            with self.assertRaisesRegex(
++                InterfaceRecoveryError,
++                "(?i)ambiguous|multiple|reprobe|available",
++            ):
++                recover_interface("missing0mon", wait_timeout=0)
++
++        start_mock.assert_not_called()
++
++    def test_known_device_does_not_fall_back_to_unrelated_single_radio(self) -> None:
++        Airmon.base_interface = "wlp9s0"
++        Airmon.base_device_path = PCI_DEVICE
++        interfaces = [{"name": "wlan1", "type": "monitor", "phy": "7"}]
++
++        with (
++            patch("wiflux.tools.interface.ProcessPool"),
++            patch("wiflux.tools.interface.run", return_value=("", "", 0)),
++            patch("wiflux.tools.interface.time.sleep"),
++            patch.object(Airmon, "list_interfaces", return_value=interfaces),
++            patch.object(Airmon, "device_path", side_effect=self._device_path),
++            patch.object(Airmon, "is_monitor", return_value=False),
++            patch.object(Airmon, "start") as start_mock,
++        ):
++            with self.assertRaises(InterfaceRecoveryError):
++                recover_interface("wlp9s0mon", wait_timeout=0)
++
++        start_mock.assert_not_called()
++
++    def test_strict_channel_failure_raises(self) -> None:
++        commands = [["iw", "dev", "wlan0mon", "set", "channel", "6"]]
++        with (
++            patch("wiflux.tools.radio.set_channel_cmd", return_value=commands),
++            patch("wiflux.tools.interface.run", return_value=("", "device busy", 1)) as run_mock,
++        ):
++            with self.assertRaisesRegex(InterfaceRecoveryError, "(?i)channel|tune"):
++                set_channel("wlan0mon", 6, band="2", strict=True)
++
++        run_mock.assert_called_once_with(commands[0], timeout=5)
++
++    def test_kill_conflicts_is_forwarded_when_monitor_mode_is_recreated(self) -> None:
++        Airmon.base_interface = "wlp9s0"
++        Airmon.base_device_path = PCI_DEVICE
++        interfaces = [{"name": "wlp9s0", "type": "managed", "phy": "2"}]
++        monitor_started = False
++
++        def is_monitor(name: str) -> bool:
++            return monitor_started and name == "wlp9s0mon"
++
++        def start(name: str, *, kill_conflicts: bool = False) -> str:
++            nonlocal monitor_started
++            monitor_started = True
++            return "wlp9s0mon"
++
++        def failed_direct_mode_switch(cmd, *, timeout=60, shell=False):
++            if cmd[:2] == ["iw", "dev"]:
++                return "", "device busy", 1
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.interface.ProcessPool"),
++            patch("wiflux.tools.interface.run", side_effect=failed_direct_mode_switch),
++            patch("wiflux.tools.interface.time.sleep"),
++            patch.object(Airmon, "list_interfaces", return_value=interfaces),
++            patch.object(Airmon, "device_path", side_effect=self._device_path),
++            patch.object(Airmon, "is_monitor", side_effect=is_monitor),
++            patch.object(Airmon, "start", side_effect=start) as start_mock,
++        ):
++            recovered = recover_interface(
++                "wlp9s0mon",
++                kill_conflicts=True,
++                wait_timeout=0,
++            )
++
++        self.assertEqual(recovered, "wlp9s0mon")
++        start_mock.assert_called_once_with("wlp9s0", kill_conflicts=True)
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/tests/test_process_recovery_diagnostics.py
+@@ -0,0 +1,223 @@
++#!/usr/bin/env python3
++"""Regression tests for process diagnostics and airodump recovery."""
++
++from __future__ import annotations
++
++import os
++import signal
++import sys
++import threading
++import unittest
++from pathlib import Path
++from unittest.mock import Mock, patch
++
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++
++from wiflux.config import WifluxConfig
++from wiflux.attacks.handshake import HandshakeAttack
++from wiflux.models import AccessPoint, EncryptionType
++from wiflux.process import ExternalToolCrash, ManagedProcess, sanitize_output
++from wiflux.tools.airodump import Airodump
++from wiflux.tools.interface import InterfaceRecoveryError
++
++
++class TestManagedProcessDiagnostics(unittest.TestCase):
++    def test_combined_output_tail_is_bounded_and_reports_exit(self):
++        marker = "WIFLUX-END-MARKER"
++        script = (
++            "import sys; "
++            "sys.stderr.write('x' * 1048576); "
++            f"sys.stdout.write('\\x1b[0m{marker}\\n'); "
++            "sys.stderr.flush(); sys.stdout.flush(); raise SystemExit(7)"
++        )
++        proc = ManagedProcess(
++            [sys.executable, "-c", script],
++            capture_output_tail=True,
++            output_tail_bytes=4096,
++        )
++        self.addCleanup(proc.kill)
++
++        self.assertEqual(proc.wait(timeout=5), 7)
++        tail = proc.output_tail()
++        self.assertLessEqual(len(tail.encode("utf-8")), 4096)
++        self.assertIn(marker, tail)
++
++        summary = proc.failure_summary()
++        self.assertIn("exit 7", summary)
++        self.assertIn(marker, summary)
++        self.assertNotIn("\x1b", summary)
++
++    @unittest.skipUnless(os.name == "posix", "POSIX signal return codes required")
++    def test_signal_exit_is_named_in_failure_summary(self):
++        script = "import os, signal; os.kill(os.getpid(), signal.SIGTERM)"
++        proc = ManagedProcess(
++            [sys.executable, "-c", script],
++            capture_output_tail=True,
++        )
++        self.addCleanup(proc.kill)
++
++        self.assertEqual(proc.wait(timeout=5), -signal.SIGTERM)
++        self.assertEqual(proc.failure_summary(), "signal 15 (SIGTERM)")
++
++    def test_sigsegv_summary_waits_for_natural_eof_tail(self):
++        proc = ManagedProcess.__new__(ManagedProcess)
++        proc.proc = Mock()
++        proc.proc.poll.return_value = -signal.SIGSEGV
++        proc._output_tail = bytearray(b"before-crash")
++        proc._output_lock = threading.Lock()
++        proc._output_thread = Mock()
++
++        def finish_eof(*, timeout):
++            self.assertEqual(timeout, 0.2)
++            with proc._output_lock:
++                proc._output_tail.extend(b"\nfinal-line-at-eof")
++
++        proc._output_thread.join.side_effect = finish_eof
++
++        summary = proc.failure_summary()
++
++        self.assertIn("signal 11 (SIGSEGV)", summary)
++        self.assertIn("final-line-at-eof", summary)
++        proc._output_thread.join.assert_called_once_with(timeout=0.2)
++
++
++class TestExternalOutputSanitization(unittest.TestCase):
++    def test_sanitize_output_removes_osc_csi_and_disallowed_controls(self):
++        disallowed_c0 = "".join(
++            chr(code) for code in [*range(0x00, 0x09), *range(0x0B, 0x20), 0x7F]
++        )
++        payload = (
++            "\x1b]8;;https://attacker.invalid\x07link\x1b]8;;\x07"
++            "\x1b]0;hostile title\x1b\\"
++            f"{disallowed_c0}"
++            "\x1b[31mvisible\x1b[0m\n\tkept"
++        )
++
++        clean = sanitize_output(payload)
++
++        self.assertEqual(clean, "linkvisible\n\tkept")
++        self.assertNotIn("attacker.invalid", clean)
++        self.assertNotIn("hostile title", clean)
++        self.assertNotIn("\x1b", clean)
++        for char in disallowed_c0:
++            with self.subTest(codepoint=ord(char)):
++                self.assertNotIn(char, clean)
++
++    def test_external_tool_crash_sanitizes_untrusted_output(self):
++        crash = ExternalToolCrash(
++            "reaver",
++            -signal.SIGSEGV,
++            "\x1b]8;;https://attacker.invalid\x07click\x1b]8;;\x07"
++            "\x00\x08\x1f\x7f\x1b[31mfatal output\x1b[0m",
++        )
++
++        message = str(crash)
++        self.assertIn("reaver crashed with SIGSEGV (signal 11)", message)
++        self.assertIn("clickfatal output", message)
++        self.assertNotIn("attacker.invalid", message)
++        self.assertNotIn("\x1b", message)
++        self.assertFalse(any(ord(char) < 0x20 for char in message))
++
++
++class TestAirodumpRecoveryDiagnostics(unittest.TestCase):
++    def setUp(self):
++        self.cfg = WifluxConfig()
++        self.cfg.scan.interface = "wlp9s0mon"
++        self.dump = Airodump(self.cfg, channel=1, prefix="diag")
++        self.addCleanup(self.dump.__exit__, None, None, None)
++
++    @patch("wiflux.tools.airodump.ManagedProcess")
++    def test_restart_uses_recovered_interface_from_current_config(self, managed):
++        self.cfg.scan.interface = "wlp9s0"
++
++        self.dump.restart()
++
++        cmd = managed.call_args.args[0]
++        self.assertEqual(self.dump.interface, "wlp9s0")
++        self.assertEqual(cmd[0:2], ["airodump-ng", "wlp9s0"])
++        self.assertTrue(managed.call_args.kwargs["capture_output_tail"])
++
++    def test_failure_summary_delegates_to_managed_process(self):
++        proc = Mock()
++        proc.failure_summary.return_value = (
++            "exit 1: Failed initializing wireless card(s): wlp9s0mon"
++        )
++        self.dump.proc = proc
++
++        self.assertEqual(
++            self.dump.failure_summary(),
++            "exit 1: Failed initializing wireless card(s): wlp9s0mon",
++        )
++        proc.failure_summary.assert_called_once_with()
++
++    def test_get_cap_file_selects_newest_capture_not_largest(self):
++        temp_dir = Path(self.dump.temp_dir)
++        older = temp_dir / "diag-01.cap"
++        newer = temp_dir / "diag-02.cap"
++        older.write_bytes(b"x" * 4096)
++        newer.write_bytes(b"new")
++        os.utime(older, ns=(1_000_000_000, 1_000_000_000))
++        os.utime(newer, ns=(2_000_000_000, 2_000_000_000))
++
++        self.assertEqual(self.dump.get_cap_file(), str(newer))
++
++
++class TestHandshakeCaptureRecovery(unittest.TestCase):
++    def setUp(self):
++        self.cfg = WifluxConfig()
++        self.cfg.scan.interface = "wlp9s0mon"
++        self.ap = AccessPoint(
++            bssid="AA:BB:CC:DD:EE:FF",
++            channel=1,
++            encryption=EncryptionType.WPA2,
++            auth="PSK",
++            power=80,
++            essid="AuthorizedLab",
++        )
++        self.attack = HandshakeAttack(self.cfg, self.ap, tracker=Mock())
++
++    @patch("wiflux.attacks.handshake.time.sleep")
++    @patch("wiflux.attacks.handshake.recover_interface", return_value="wlp9s0")
++    def test_restart_capture_updates_config_and_restarts_on_recovered_interface(
++        self,
++        recover,
++        sleep,
++    ):
++        dump = Mock(spec=Airodump)
++        dump.alive.return_value = True
++
++        self.attack._restart_capture(dump)
++
++        recover.assert_called_once_with(
++            "wlp9s0mon",
++            1,
++            band="2",
++            kill_conflicts=False,
++        )
++        self.assertEqual(self.cfg.scan.interface, "wlp9s0")
++        dump.restart.assert_called_once_with(interface="wlp9s0")
++        sleep.assert_called_once_with(0.5)
++        dump.alive.assert_called_once_with()
++
++    @patch("wiflux.attacks.handshake.time.sleep")
++    @patch("wiflux.attacks.handshake.recover_interface")
++    def test_restart_capture_does_not_restart_when_recovery_fails(
++        self,
++        recover,
++        sleep,
++    ):
++        recover.side_effect = InterfaceRecoveryError("radio did not return")
++        dump = Mock(spec=Airodump)
++
++        with self.assertRaisesRegex(InterfaceRecoveryError, "radio did not return"):
++            self.attack._restart_capture(dump)
++
++        self.assertEqual(self.cfg.scan.interface, "wlp9s0mon")
++        dump.restart.assert_not_called()
++        sleep.assert_not_called()
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+--- /dev/null
++++ b/tests/test_wps_crash_breaker.py
+@@ -0,0 +1,313 @@
++#!/usr/bin/env python3
++"""Regression tests for fatal WPS helper failures.
++
++These tests never invoke a wireless tool or touch a network interface.  All
++external process and interface operations are mocked.
++"""
++
++from __future__ import annotations
++
++import io
++import signal
++import tempfile
++import unittest
++from unittest.mock import MagicMock, patch
++
++from rich.console import Console
++
++from wiflux.attacks.base import AttackResult
++from wiflux.attacks.handshake import HandshakeAttack
++from wiflux.attacks.wps import WPSPinAttack, WPSPixieAttack
++from wiflux.config import WifluxConfig
++from wiflux.models import AccessPoint, EncryptionType, WPSState
++from wiflux.orchestrator import Orchestrator
++from wiflux.process import RUN_TIMEOUT, ExternalToolCrash
++from wiflux.progress import ProgressTracker
++from wiflux.results import ResultStore
++from wiflux.tools.reaver import WPSAttack
++from wiflux.tools.wash import Wash
++
++
++def _wps_ap() -> AccessPoint:
++    ap = AccessPoint(
++        bssid="A4:2A:95:2F:95:09",
++        channel=1,
++        encryption=EncryptionType.WPA2,
++        auth="PSK",
++        power=70,
++        essid="Authorized-Lab",
++        essid_known=True,
++    )
++    ap.wps = WPSState.UNLOCKED
++    return ap
++
++
++class TestReaverCrashHandling(unittest.TestCase):
++    def test_stream_cmd_raises_and_logs_sigsegv(self):
++        """A naturally signalled child must not look like an ordinary miss."""
++        proc = MagicMock()
++        proc.poll.return_value = -signal.SIGSEGV
++        proc.wait.return_value = -signal.SIGSEGV
++        proc.returncode = -signal.SIGSEGV
++        proc.stdout = MagicMock()
++        lines: list[str] = []
++
++        with patch("wiflux.tools.reaver.subprocess.Popen", return_value=proc):
++            with self.assertRaises(ExternalToolCrash) as caught:
++                WPSAttack._stream_cmd(
++                    ["reaver", "-i", "wlan0mon"],
++                    timeout=30,
++                    on_line=lines.append,
++                    should_stop=None,
++                    pixie=True,
++                )
++
++        self.assertEqual(caught.exception.tool, "reaver")
++        self.assertEqual(caught.exception.returncode, -signal.SIGSEGV)
++        self.assertIn("SIGSEGV", str(caught.exception))
++        self.assertTrue(any("SIGSEGV" in line for line in lines))
++
++    def test_algorithmic_pin_loop_stops_after_first_backend_crash(self):
++        cfg = WifluxConfig()
++        cfg.scan.interface = "wlan0mon"
++        pins = ["12345670", "00000000", "11111111"]
++        crash = ExternalToolCrash("reaver", -signal.SIGSEGV)
++
++        with (
++            patch(
++                "wiflux.tools.reaver.algorithmic_wps_pins",
++                return_value=pins,
++            ),
++            patch(
++                "wiflux.tools.reaver.recover_interface",
++                return_value="wlan0mon",
++            ),
++            patch.object(WPSAttack, "_stream_cmd", side_effect=crash) as stream,
++        ):
++            with self.assertRaises(ExternalToolCrash):
++                WPSAttack._try_algorithmic_pins(
++                    cfg,
++                    _wps_ap(),
++                    timeout=90,
++                )
++
++        self.assertEqual(stream.call_count, 1)
++        first_cmd = stream.call_args.args[0]
++        self.assertEqual(first_cmd[first_cmd.index("-p") + 1], pins[0])
++
++    def test_pin_deadline_is_recalculated_after_interface_recovery(self):
++        cfg = WifluxConfig()
++        cfg.scan.interface = "wlan0mon"
++        cfg.attack.algorithmic_wps = False
++
++        # t=100 establishes the deadline, t=101 computes the pre-recovery
++        # budget, and t=106 represents five seconds spent recovering the radio.
++        with (
++            patch(
++                "wiflux.tools.reaver.time.monotonic",
++                side_effect=[100.0, 101.0, 106.0],
++            ),
++            patch("wiflux.tools.reaver.which", return_value=True),
++            patch(
++                "wiflux.tools.reaver.recover_interface",
++                return_value="wlan0mon",
++            ),
++            patch.object(
++                WPSAttack,
++                "_stream_cmd",
++                return_value=(None, None),
++            ) as stream,
++        ):
++            WPSAttack.run_pin(cfg, _wps_ap(), timeout=10)
++
++        stream.assert_called_once()
++        self.assertEqual(stream.call_args.args[1], 4)
++
++
++class TestWpsSessionCircuitBreaker(unittest.TestCase):
++    def test_crash_skips_remaining_wps_for_session_but_continues_handshake(self):
++        cfg = WifluxConfig()
++        cfg.scan.interface = "wlan0mon"
++        cfg.attack.pmkid = False
++        cfg.attack.handshake = True
++        tracker = ProgressTracker()
++        crash = ExternalToolCrash("reaver", -signal.SIGSEGV)
++
++        with tempfile.TemporaryDirectory() as data_dir:
++            orchestrator = Orchestrator(cfg, ResultStore(data_dir), tracker)
++            with (
++                patch.object(WPSPixieAttack, "run", side_effect=crash) as pixie,
++                patch.object(WPSPinAttack, "run") as pin,
++                patch.object(
++                    HandshakeAttack,
++                    "run",
++                    return_value=AttackResult(False, message="capture not found"),
++                ) as handshake,
++            ):
++                self.assertFalse(orchestrator._attack_one(_wps_ap()))
++                self.assertFalse(orchestrator._attack_one(_wps_ap()))
++
++        # The first fatal signal opens a session-level WPS circuit breaker.
++        pixie.assert_called_once()
++        pin.assert_not_called()
++        self.assertEqual(handshake.call_count, 2)
++        rendered_logs = "\n".join(tracker.logs)
++        self.assertIn("SIGSEGV", rendered_logs)
++        self.assertIn("wps", rendered_logs.lower())
++
++    def test_rich_markup_in_psk_is_rendered_safely_but_saved_raw(self):
++        cfg = WifluxConfig()
++        cfg.attack.offline_pixie = False
++        cfg.attack.pmkid = False
++        cfg.attack.handshake = False
++        tracker = ProgressTracker()
++        ap = _wps_ap()
++        raw_key = "lab[red]password"
++
++        with tempfile.TemporaryDirectory() as data_dir:
++            store = ResultStore(data_dir)
++            orchestrator = Orchestrator(cfg, store, tracker)
++            tracker.begin_attack(1, 1, ap)
++            with (
++                patch.object(
++                    WPSAttack,
++                    "run_pixie",
++                    return_value=(None, raw_key),
++                ),
++                patch.object(tracker, "clear_attack"),
++                patch("wiflux.orchestrator.print_crack"),
++            ):
++                self.assertTrue(orchestrator._attack_one(ap))
++
++            saved = store.list_cracks()
++            self.assertEqual(len(saved), 1)
++            self.assertEqual(saved[0].key, raw_key)
++
++            # Force Rich to parse every retained status/log entry.  A raw
++            # ``[red]`` tag here used to corrupt rendering before save_crack.
++            output = io.StringIO()
++            console = Console(
++                file=output,
++                force_terminal=False,
++                color_system=None,
++                width=120,
++            )
++            console.print(tracker.render())
++            self.assertIn(raw_key, output.getvalue())
++
++
++class TestBullyPinRouting(unittest.TestCase):
++    def test_algorithmic_pin_uses_bully_and_correct_lock_flag(self):
++        cfg = WifluxConfig()
++        cfg.scan.interface = "wlan0mon"
++        cfg.attack.use_bully = True
++        cfg.attack.algorithmic_wps = True
++        cfg.attack.wps_ignore_locks = True
++        pin = "12345670"
++
++        with (
++            patch("wiflux.tools.reaver.which", return_value=True),
++            patch(
++                "wiflux.tools.reaver.algorithmic_wps_pins",
++                return_value=[pin],
++            ),
++            patch(
++                "wiflux.tools.reaver.recover_interface",
++                return_value="wlan0mon",
++            ),
++            patch.object(
++                WPSAttack,
++                "_stream_cmd",
++                return_value=(pin, "authorized-test-key"),
++            ) as stream,
++        ):
++            found_pin, key = WPSAttack.run_pin(cfg, _wps_ap(), timeout=60)
++
++        self.assertEqual((found_pin, key), (pin, "authorized-test-key"))
++        stream.assert_called_once()
++        cmd = stream.call_args.args[0]
++        self.assertEqual(cmd[0], "bully")
++        self.assertEqual(cmd[cmd.index("-p") + 1], pin)
++        self.assertIn("-L", cmd)
++        self.assertNotIn("-F", cmd)
++        self.assertEqual(cmd[-1], "wlan0mon")
++
++
++class TestWashCrashCircuitBreaker(unittest.TestCase):
++    def setUp(self):
++        Wash.reset_crash_state()
++
++    def tearDown(self):
++        Wash.reset_crash_state()
++
++    def test_sigsegv_disables_wash_without_spawning_it_again(self):
++        with (
++            patch.object(Wash, "available", return_value=True),
++            patch(
++                "wiflux.tools.wash.run",
++                return_value=("", "", -signal.SIGSEGV),
++            ) as run,
++        ):
++            with self.assertRaises(ExternalToolCrash) as caught:
++                Wash.scan_live("wlan0mon", timeout=10)
++
++            # The caller may continue scanning, but the crashed helper must stay
++            # disabled for this session instead of entering a crash loop.
++            self.assertEqual(Wash.scan_live("wlan0mon", timeout=10), {})
++
++        self.assertEqual(caught.exception.tool, "wash")
++        self.assertEqual(caught.exception.returncode, -signal.SIGSEGV)
++        run.assert_called_once()
++
++    def test_launch_oserror_opens_wash_circuit_breaker(self):
++        with (
++            patch.object(Wash, "available", return_value=True),
++            patch(
++                "wiflux.tools.wash.run",
++                side_effect=OSError("exec format error"),
++            ) as run,
++        ):
++            with self.assertRaises(ExternalToolCrash) as caught:
++                Wash.scan_live("wlan0mon", timeout=10)
++            self.assertEqual(Wash.scan_live("wlan0mon", timeout=10), {})
++
++        self.assertIsNone(caught.exception.returncode)
++        self.assertIn("could not be started", str(caught.exception))
++        self.assertIsNotNone(Wash.disabled_reason())
++        run.assert_called_once()
++
++    def test_minus_one_is_sighup_but_timeout_sentinel_is_not_a_crash(self):
++        with (
++            patch.object(Wash, "available", return_value=True),
++            patch(
++                "wiflux.tools.wash.run",
++                return_value=("", "", -signal.SIGHUP),
++            ) as run,
++        ):
++            with self.assertRaises(ExternalToolCrash) as caught:
++                Wash.scan_live("wlan0mon", timeout=10)
++
++        self.assertEqual(caught.exception.returncode, -signal.SIGHUP)
++        self.assertIn("SIGHUP", str(caught.exception))
++        run.assert_called_once_with(
++            ["wash", "-i", "wlan0mon", "-j", "-a", "-2", "-5"],
++            timeout=10,
++            timeout_code=RUN_TIMEOUT,
++        )
++
++        Wash.reset_crash_state()
++        with (
++            patch.object(Wash, "available", return_value=True),
++            patch(
++                "wiflux.tools.wash.run",
++                return_value=("partial output", "", RUN_TIMEOUT),
++            ) as run,
++        ):
++            self.assertEqual(Wash.scan_live("wlan0mon", timeout=10), {})
++
++        self.assertIsNone(Wash.disabled_reason())
++        run.assert_called_once()
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/tests/test_infinite_session_state.py
+@@ -0,0 +1,96 @@
++"""Regression coverage for state shared by infinite-mode scan cycles."""
++
++from __future__ import annotations
++
++import unittest
++from types import SimpleNamespace
++from unittest.mock import MagicMock, call, patch
++
++from wiflux import cli
++
++
++class InfiniteSessionStateTestCase(unittest.TestCase):
++    def test_main_reuses_one_orchestrator_across_two_scan_cycles(self) -> None:
++        cfg = SimpleNamespace(
++            infinite=True,
++            restore_managed=False,
++            output=SimpleNamespace(
++                quiet=True,
++                json_output=False,
++                data_dir="/mock/wiflux-data",
++            ),
++        )
++        tracker = object()
++        store = MagicMock(name="store")
++        store.start_session.return_value = 41
++
++        first_target = object()
++        second_target = object()
++        first_selected = [first_target]
++        second_selected = [second_target]
++
++        first_scanner = MagicMock(name="first_scanner")
++        first_scanner.scan.return_value = [first_target]
++        first_scanner.select_targets.return_value = first_selected
++
++        second_scanner = MagicMock(name="second_scanner")
++        second_scanner.scan.return_value = [second_target]
++        second_scanner.select_targets.return_value = second_selected
++
++        orchestrator = MagicMock(name="orchestrator")
++        orchestrator.attack_all.side_effect = [0, 1]
++
++        def config_from_args(args):
++            self.assertTrue(args.infinite)
++            self.assertTrue(args.quiet)
++            return cfg
++
++        # Raising on construction of the third Scanner stops the infinite loop
++        # only after both preceding scan/attack cycles completed successfully.
++        scanner_instances = [first_scanner, second_scanner, KeyboardInterrupt]
++
++        with (
++            patch("wiflux.cli.args_to_config", side_effect=config_from_args),
++            patch("wiflux.cli.run_commands", return_value=False),
++            patch("wiflux.cli.check_requirements"),
++            patch("wiflux.cli.reset_tracker", return_value=tracker),
++            patch("wiflux.cli.ResultStore", return_value=store) as store_cls,
++            patch("wiflux.cli.setup_interface", return_value="wlp9s0mon") as setup,
++            patch("wiflux.cli.Scanner", side_effect=scanner_instances) as scanner_cls,
++            patch("wiflux.cli.Orchestrator", return_value=orchestrator) as orch_cls,
++            patch("wiflux.cli.ProcessPool") as process_pool,
++            patch("wiflux.cli.print_info"),
++            patch("wiflux.cli.print_error"),
++            patch("wiflux.cli.Airmon.stop") as airmon_stop,
++        ):
++            result = cli.main(["--infinite", "--quiet"])
++
++        self.assertEqual(result, 0)
++        store_cls.assert_called_once_with("/mock/wiflux-data")
++        setup.assert_called_once_with(cfg)
++        store.start_session.assert_called_once_with("wlp9s0mon")
++
++        # The constructor must be outside the rescan loop. Runtime health and
++        # circuit-breaker state live on this single instance.
++        orch_cls.assert_called_once_with(cfg, store, tracker)
++        self.assertEqual(
++            orchestrator.attack_all.call_args_list,
++            [call(first_selected), call(second_selected)],
++        )
++
++        self.assertEqual(scanner_cls.call_count, 3)
++        for scanner_call in scanner_cls.call_args_list:
++            self.assertIs(scanner_call.args[0], cfg)
++            self.assertIs(scanner_call.args[1], store)
++            self.assertIs(scanner_call.args[2], tracker)
++
++        first_scanner.scan.assert_called_once_with()
++        second_scanner.scan.assert_called_once_with()
++        first_scanner.select_targets.assert_called_once_with([first_target])
++        second_scanner.select_targets.assert_called_once_with([second_target])
++        process_pool.return_value.cleanup_all.assert_called_once_with()
++        airmon_stop.assert_not_called()
++
++
++if __name__ == "__main__":
++    unittest.main()
