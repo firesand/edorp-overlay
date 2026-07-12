@@ -52,8 +52,37 @@ local machine configuration do not belong in the overlay.
   packaging.
 - `app-emulation/hbmame`: HBMAME 0.288.2 ebuild imported from local LinuxMAMEUI
   packaging.
+- `app-emulation/mameuix`: modern Rust/egui frontend for MAME
+  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.6`
+  fetches GitHub tag `v0.1.6` plus crates via `CRATES`; live ebuild `9999`
+  uses `cargo_live_src_unpack`. Requires `app-emulation/mame` from this
+  overlay. Portable **AppImage** builds live in the MAMEUIx repo
+  (`./build-appimage.sh`); GitHub Releases may attach `MAMEUIx-*-x86_64.AppImage`
+  (MAME not bundled — same RDEPEND model as the ebuild).
 - `app-benchmarks/unigine-superposition`: UNIGINE Superposition benchmark.
   Hardware-agnostic; no systemd requirement.
+- `net-wireless/wiflux`: terminal-based wireless security auditor
+  ([source](https://github.com/Leadrogue/Wiflux)). The versioned ebuild builds
+  the official source distribution through PEP 517; it does not use `pip` or
+  the upstream Debian-oriented installer.
+
+### Wiflux
+
+The current Gentoo `aircrack-ng` defaults enable two unrelated Python tools
+whose ebuild supports Python 3.11/3.12, but not 3.13/3.14. On a system whose
+enabled Python targets are only 3.13/3.14, disable those tools before installing
+Wiflux:
+
+```bash
+echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+doas emerge -av net-wireless/wiflux
+```
+
+Wiflux requires root for monitor mode and packet injection. Use it only on
+networks you own or have explicit permission to audit. It will not unpack a
+compressed dictionary into `/usr`; decompress it to a writable location and
+select it with `--dict FILE`.
 
 ### ASUS laptop (systemd only)
 
@@ -89,6 +118,9 @@ PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-portage/equery-gui/equery-gui-0.1.
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mame/mame-0.288.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mameuix/mameuix-0.1.6.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mameuix/mameuix-9999.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/wiflux/wiflux-1.0.5.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean

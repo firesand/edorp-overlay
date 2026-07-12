@@ -99,6 +99,7 @@ app-portage
 dev-python
 games-emulation
 net-misc
+net-wireless
 sys-power
 ```
 
@@ -163,10 +164,12 @@ Actual imported package placement:
 - `app-emulation/linuxmameui`
 - `app-emulation/mame`
 - `app-emulation/hbmame`
+- `app-emulation/mameuix`
 - `app-portage/equery-gui`
 - `sys-power/asusctl` (ASUS ROG laptop, systemd only)
 - `sys-power/supergfxctl` (ASUS hybrid-GPU laptop, systemd only)
 - `app-benchmarks/unigine-superposition` (general benchmark, not ASUS-specific)
+- `net-wireless/wiflux` (wireless security auditor; versioned upstream release)
 
 ASUS laptop scope:
 
@@ -183,6 +186,117 @@ Known portability issue:
 - `app-emulation/linuxmameui` currently uses `SRC_URI="${P}.tar.gz"` with
   `RESTRICT=fetch`, so every machine needs the same local distfile unless the
   project gets a real release tarball or Git-based live ebuild.
+
+## MAMEUIx (Jul 2026)
+
+- Source repo: `/home/edo/MAMEUIx` → https://github.com/firesand/MAMEUIx
+- Overlay ebuilds: `app-emulation/mameuix/mameuix-0.1.6.ebuild` (GitHub tag
+  `v0.1.6`, with `CRATES` + `CARGO_CRATE_URIS`) and `mameuix-9999.ebuild`
+  (live: `git-r3` + `cargo_live_src_unpack`).
+- RDEPEND on `>=app-emulation/mame-0.200` from this overlay. Rust 1.88.0 is
+  the minimum because the application uses stabilized `let` chains; edition
+  2024 alone would misleadingly suggest Rust 1.85.
+- Tag `v0.1.6` exists on GitHub. Manifest for `0.1.6` has 594 DIST entries
+  (app tarball + crates). Regenerating Manifest is slow (~593 crate fetches);
+  use a writable `DISTDIR` if system `/var/cache/distfiles` is not writable:
+  `DISTDIR="$PWD/.distfiles" PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild ... manifest`
+- Prefer versioned `=app-emulation/mameuix-0.1.6` when keywords allow; live `9999` still
+  works for tracking `main`.
+
+Validation completed on 2026-07-12:
+
+- All 593 registry crates match `Cargo.lock`; size, BLAKE2B, and SHA512 match
+  every corresponding Manifest entry. The v0.1.6 source digest also matches.
+- Release compile and image install passed. The ebuild uses system xz and zstd
+  libraries where supported instead of the crates' bundled copies.
+- The ebuild test phase passed all 44 tests. A separate run with the official
+  Rust 1.88.0 toolchain also passed 44/44, confirming the declared minimum.
+- `desktop-file-validate` passed; all six PNG icon sizes and the scalable SVG
+  were installed.
+- `cargo.eclass` warns because the package lists 593 crates. A release-provided
+  crate tarball would be preferable in the future, but none currently exists.
+
+Install (versioned):
+
+```bash
+emerge --sync edorp
+echo "=app-emulation/mameuix-0.1.6 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
+doas emerge -av app-emulation/mameuix
+```
+
+Install (live):
+
+```bash
+echo "=app-emulation/mameuix-9999 **" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
+doas emerge -av =app-emulation/mameuix-9999
+```
+
+Portable AppImage (non-Gentoo / no emerge):
+
+- Built from `/home/edo/MAMEUIx` via **CI** `appimage.yml` (ubuntu-22.04, glibc 2.35) — **jangan** build release di Gentoo langsung
+- Lokal: `./build-appimage-docker.sh` (butuh docker/podman) atau
+  `gh workflow run appimage.yml -f build_tag=v0.1.6 -f upload_to_release=true`
+- Asset: `MAMEUIx-<ver>-x86_64.AppImage` di https://github.com/firesand/MAMEUIx/releases
+- Bundles MAMEUIx + GUI libs only; **MAME tetap eksternal** (sama model ebuild `RDEPEND`)
+- Debian/Ubuntu: MAME biasanya di `/usr/games/mame` — AppImage v0.1.6+
+  auto-detect (commit `f7ea45d`).
+
+## Wiflux (Jul 2026)
+
+- Upstream: https://github.com/Leadrogue/Wiflux
+- Overlay package: `net-wireless/wiflux/wiflux-1.0.5.ebuild`, keyword
+  `~amd64`, based on upstream release `v1.0.5` (2026-07-10).
+- Fetch the official sdist `wiflux-1.0.5.tar.gz`, not the wheel or Linux
+  installer. Upstream SHA256 is
+  `062dcd5ef1caf93890c7e7f055dee117432d6e7d58de2ca40ffdc59185091d7a`.
+- Build model: `distutils-r1` + PEP 517/setuptools. `dev-python/pip` is not an
+  ebuild dependency. Python runtime dependency is only `dev-python/rich`;
+  Python itself must provide `sqlite` and `ssl`.
+- Required external tools are `net-wireless/aircrack-ng`, `net-wireless/iw`,
+  and `sys-apps/iproute2`.
+- Available optional integrations are advertised after install:
+  `app-crypt/hashcat`, `net-wireless/reaver`, and
+  `net-analyzer/wireshark[tshark]`. Several upstream optional tools are not in
+  the current Gentoo/GURU trees, so they are not invalid hard dependencies.
+- Downstream patch `wiflux-1.0.5-no-apt-prompt-on-non-debian.patch` prevents
+  Wiflux from offering its Debian `apt-get` auto-installer on Gentoo. Keep this
+  patch until upstream provides distribution-neutral package handling.
+- Downstream patch `wiflux-1.0.5-no-runtime-write-to-usr.patch` prevents the
+  privileged process from auto-unpacking `rockyou.txt.gz` into package-manager-
+  owned `/usr`. Decompress a dictionary to a writable location and pass it via
+  `--dict FILE`.
+- Downstream test-only patch
+  `wiflux-1.0.5-fix-environment-dependent-tests.patch` skips inaccessible
+  developer captures under `/root` and mocks the external `airodump-ng`
+  process. It does not alter installed runtime behavior.
+- Wiflux is a privileged wireless auditing tool. Use it only on owned or
+  explicitly authorized networks.
+- Current Gentoo `net-wireless/aircrack-ng` defaults enable `airdrop-ng` and
+  `airgraph-ng`, whose ebuild supports Python 3.11/3.12 but not 3.13/3.14. On
+  systems with only Python 3.13/3.14 targets, set
+  `net-wireless/aircrack-ng -airdrop-ng -airgraph-ng` in package.use.
+
+Install:
+
+```bash
+echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+doas emerge -av net-wireless/wiflux
+```
+
+Validation completed on 2026-07-12:
+
+- Manifest generation and upstream SHA256 comparison passed.
+- PEP 517 compile and image install passed for Python 3.13 and 3.14.
+- All 116 upstream tests ran on both Python versions; 103 passed and 13 were
+  skipped per version because they require local captures or a rockyou
+  installation.
+- The staged image's `wiflux --help` returned status 0 on both Python versions.
+- Dependency resolution passed with the documented `aircrack-ng` USE flags.
+- Direct unprivileged `ebuild` runs on this machine need
+  `PORTAGE_USERNAME=edo PORTAGE_GRPNAME=edo` because user `edo` is not in the
+  `portage` group. The `/etc/gitconfig` permission warning comes from the local
+  Portage environment and does not fail the ebuild.
 
 ## Future Session Checklist
 
@@ -202,10 +316,13 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-portage/equery-gui/equery
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mame/mame-0.288.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-0.1.6.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-9999.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
 ```
 
-All four basic parse checks passed after enabling thin manifests and using a
+All listed basic parse checks passed after enabling thin manifests and using a
 local `PORTAGE_TMPDIR`.
