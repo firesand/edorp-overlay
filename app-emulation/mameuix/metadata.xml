@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription>
+		MAMEUIx is a modern Rust/egui frontend for MAME with fast game scanning,
+		ROM verification, dockable panels, hardware filters, and Steam-inspired
+		settings dialogs.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">firesand/MAMEUIx</remote-id>
+	</upstream>
+</pkgmetadata>

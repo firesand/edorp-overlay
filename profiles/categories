@@ -5,4 +5,5 @@ app-portage
 dev-python
 games-emulation
 net-misc
+net-wireless
 sys-power

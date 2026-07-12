@@ -1,0 +1,30 @@
+--- a/wiflux/dependencies.py
++++ b/wiflux/dependencies.py
+@@ -109,7 +109,8 @@ def ensure_rockyou(
+     on_progress: Optional[Callable[[str, float], None]] = None,
+ ) -> tuple[bool, str]:
+     """
+-    Ensure rockyou.txt exists. If only the .gz is present, unpack it.
++    Ensure rockyou.txt exists. If only the .gz is present, unpack it unless
++    that would modify the package-manager-owned /usr hierarchy.
+ 
+     Returns (ok, message).
+     """
+@@ -125,6 +126,17 @@ def ensure_rockyou(
+ 
+     gz_path = Path(ROCKYOU_GZ)
+     txt_path = Path(ROCKYOU_TXT)
++    try:
++        txt_path.resolve().relative_to("/usr")
++    except ValueError:
++        pass
++    else:
++        return False, (
++            f"Refusing to unpack into package-manager-owned {txt_path}. "
++            f"Decompress {gz_path} to a writable location and pass it with "
++            "--dict FILE."
++        )
++
+     try:
+         txt_path.parent.mkdir(parents=True, exist_ok=True)
+     except OSError as exc:

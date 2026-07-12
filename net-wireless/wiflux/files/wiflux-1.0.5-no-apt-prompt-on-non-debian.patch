@@ -1,0 +1,80 @@
+--- a/wiflux/dependencies.py
++++ b/wiflux/dependencies.py
+@@ -118,10 +118,7 @@ def ensure_rockyou(
+         return True, detail
+ 
+     if state != "gz":
+-        return False, (
+-            f"rockyou not found. Install with: "
+-            f"apt install wordlists && gunzip {ROCKYOU_GZ}"
+-        )
++        return False, "rockyou not found. Provide a dictionary with --dict FILE."
+ 
+     gz_path = Path(ROCKYOU_GZ)
+     txt_path = Path(ROCKYOU_TXT)
+@@ -470,7 +467,7 @@ def run_startup_dependency_check() -> None:
+                 else:
+                     row.status = "fail" if dep.required else "warn"
+                     tag = "required" if dep.required else "optional"
+-                    row.detail = f"missing ({tag}) — apt: {dep.apt_package}"
++                    row.detail = f"missing ({tag})"
+                 refresh(live)
+ 
+             # --- rockyou ---
+@@ -509,10 +506,7 @@ def run_startup_dependency_check() -> None:
+                 refresh(live)
+             else:
+                 rockyou_row.status = "warn"
+-                rockyou_row.detail = (
+-                    f"{detail} — install: apt install wordlists "
+-                    f"&& gunzip {ROCKYOU_GZ}"
+-                )
++                rockyou_row.detail = detail
+                 refresh(live)
+ 
+             # --- summary (final Live frame, then freeze outside) ---
+@@ -527,7 +521,7 @@ def run_startup_dependency_check() -> None:
+                     + (f", {len(opt_missing)} optional" if opt_missing else "")
+                 )
+                 state.footer = (
+-                    "[red]Required tools are missing — install will be offered next.[/]"
++                    "[red]Required tools are missing — install them before continuing.[/]"
+                 )
+             elif opt_missing or not ry_ok:
+                 bits = []
+@@ -552,27 +546,15 @@ def run_startup_dependency_check() -> None:
+     except KeyboardInterrupt:
+         _exit_clean()
+ 
+-    # After the static panel: offer apt install if anything is missing.
++    # Package installation is intentionally left to the system package manager.
+     missing = missing_dependencies()
+-    if missing:
+-        try:
+-            install = prompt_install_missing(missing)
+-        except KeyboardInterrupt:
+-            _exit_clean()
+-        if install:
+-            pkgs = packages_for(missing)
+-            if install_packages(pkgs):
+-                # Re-check rockyou after packages (wordlists package may ship .gz).
+-                ensure_rockyou()
+-                restart_program()
+-            print_error("Package install failed — fix manually and re-run.")
+-            sys.exit(1)
+-        req = missing_required()
+-        if req:
+-            print_error(
+-                f"Missing required tools: {', '.join(d.binary for d in req)}"
+-            )
+-            sys.exit(1)
++    req = missing_required()
++    if req:
++        print_error(
++            f"Missing required tools: {', '.join(d.binary for d in req)}"
++        )
++        sys.exit(1)
++    if missing:
+         print_info("[yellow]Continuing without optional tools.[/]")
+ 
+     # Soft warn only — other wordlists / --dict still work.

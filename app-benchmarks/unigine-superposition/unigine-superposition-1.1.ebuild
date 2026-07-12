@@ -109,7 +109,7 @@ src_install() {
 	insinto /opt/${PN}
 	doins -r .
 
-	fowners -R root:root /
+	fowners -R root:root /opt/${PN}
 	fperms +x /opt/${PN}/Superposition
 	fperms +x /opt/${PN}/bin/launcher
 	fperms +x /opt/${PN}/bin/superposition
