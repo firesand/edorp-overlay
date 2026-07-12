@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>firesand@gmail.com</email>
+		<name>firesand</name>
+	</maintainer>
+	<longdescription lang="en">
+		Wiflux is a console-based wireless security auditor that orchestrates
+		scanning, handshake capture, WPS attacks, PMKID capture, and password
+		recovery through established command-line tools. It is intended only for
+		networks the operator owns or has explicit permission to audit.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">Leadrogue/Wiflux</remote-id>
+		<bugs-to>https://github.com/Leadrogue/Wiflux/issues</bugs-to>
+	</upstream>
+</pkgmetadata>
