@@ -1,0 +1,1018 @@
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -8,0 +9,36 @@
++## [1.0.5.post2+edorp] — 2026-07-13
++
++### Fixes
++
++- Snapshot active network services before `airmon-ng check kill` and restart
++  only those services when `--restore` is requested.
++- Refuse `--kill --restore` when the active-service snapshot fails, handle
++  SIGTERM/SIGHUP through orderly cleanup, and continue after individual service
++  restart errors.
++- Restore services even when monitor-mode setup fails, and avoid repeated
++  conflict-kill calls during interface recovery.
++- Use the current recovered interface name when returning the radio to managed
++  mode after a driver reprobe; verify the result and fall back to direct
++  `iw` conversion when `airmon-ng stop` fails.
++- Reject missing, empty, directory, or unreadable explicit `--dict` paths
++  before dependency checks or privileged radio setup.
++
++## [1.0.5.post1+edorp] — 2026-07-13
++
++Downstream reliability build for the EDORP installer bundle.
++
++### Fixes
++
++- Recover the same wireless adapter after a driver reprobe, update renamed
++  monitor interfaces, and fail explicitly instead of reusing a stale name.
++- Capture and display bounded `airodump-ng` output when capture startup fails;
++  use the newest CAP file after a restart.
++- Detect Reaver/Bully fatal signals and disable further WPS attacks for the
++  session (including `--infinite` rescans) while allowing PMKID and handshake
++  capture to continue.
++- Disable Wash after its first fatal crash instead of spawning it repeatedly.
++- Route algorithmic PIN attempts through the selected WPS backend, correct
++  Bully's ignore-lock flag to `-L`, and enforce one overall WPS timeout.
++- Sanitize terminal control sequences and Rich markup in external-tool output
++  and recovered keys without modifying the raw key saved to the results store.
++
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7 +7 @@
+-version = "1.0.5.post1+edorp"
++version = "1.0.5.post2+edorp"
+--- a/wiflux/__init__.py
++++ b/wiflux/__init__.py
+@@ -3 +3 @@
+-__version__ = "1.0.5.post1+edorp"
++__version__ = "1.0.5.post2+edorp"
+--- a/wiflux/tools/airmon.py
++++ b/wiflux/tools/airmon.py
+@@ -14,0 +15,131 @@
++    _service_snapshot: list[tuple[str, str]] = []
++    _conflicts_killed: bool = False
++
++    _SYSTEMD_SERVICES = frozenset({
++        "NetworkManager.service",
++        "network-manager.service",
++        "wpa_supplicant.service",
++        "iwd.service",
++        "connman.service",
++        "dhcpcd.service",
++        "systemd-networkd.service",
++        "ifplugd.service",
++        "avahi-daemon.service",
++        "wicd.service",
++    })
++    _SYSTEMD_PREFIXES = (
++        "wpa_supplicant@",
++        "dhcpcd@",
++        "ifplugd@",
++    )
++    _OPENRC_SERVICES = (
++        "wpa_supplicant",
++        "iwd",
++        "NetworkManager",
++        "network-manager",
++        "connman",
++        "dhcpcd",
++        "ifplugd",
++        "avahi-daemon",
++        "wicd",
++    )
++
++    @classmethod
++    def begin_session(cls) -> None:
++        """Reset per-process radio and service bookkeeping for a new CLI run."""
++        cls.base_interface = None
++        cls.base_device_path = None
++        cls._service_snapshot = []
++        cls._conflicts_killed = False
++
++    @classmethod
++    def _snapshot_active_services(cls) -> tuple[list[tuple[str, str]], bool]:
++        """Return active network services and whether the snapshot succeeded."""
++        if which("systemctl") and os.path.isdir("/run/systemd/system"):
++            try:
++                stdout, _, code = run(
++                    [
++                        "systemctl", "list-units", "--type=service",
++                        "--state=active", "--no-legend", "--plain",
++                    ],
++                    timeout=10,
++                )
++            except OSError:
++                return [], False
++            if code == 0:
++                units = []
++                for line in stdout.splitlines():
++                    fields = line.split()
++                    if not fields:
++                        continue
++                    unit = fields[0]
++                    if (
++                        unit in cls._SYSTEMD_SERVICES
++                        or unit.startswith(cls._SYSTEMD_PREFIXES)
++                    ):
++                        units.append(("systemd", unit))
++                return units, True
++            # Do not silently treat a service-manager failure as an empty
++            # snapshot: that would make --kill --restore destructive.
++            return [], False
++
++        if which("rc-service"):
++            active = []
++            for service in cls._OPENRC_SERVICES:
++                try:
++                    _, _, code = run(
++                        ["rc-service", service, "status"], timeout=10,
++                    )
++                except OSError:
++                    return [], False
++                if code == 0:
++                    active.append(("openrc", service))
++            return active, True
++        return [], True
++
++    @staticmethod
++    def _restore_priority(service: tuple[str, str]) -> tuple[int, str]:
++        name = service[1].lower()
++        if name.startswith(("wpa_supplicant", "iwd")):
++            return 0, name
++        if name.startswith("avahi"):
++            return 2, name
++        return 1, name
++
++    @classmethod
++    def kill_conflicts(cls, *, require_snapshot: bool = False) -> None:
++        """Run airmon-ng conflict cleanup once while preserving service state."""
++        if cls._conflicts_killed or not which("airmon-ng"):
++            return
++        services, snapshot_ok = cls._snapshot_active_services()
++        if require_snapshot and not snapshot_ok:
++            raise RuntimeError(
++                "Could not snapshot active network services; refusing "
++                "airmon-ng check kill because --restore was requested"
++            )
++        cls._service_snapshot = services
++        cls._conflicts_killed = True
++        run(["airmon-ng", "check", "kill"], timeout=15)
++
++    @classmethod
++    def restore_services(cls) -> tuple[list[str], list[str]]:
++        """Restart only services that were active before conflict cleanup."""
++        services = sorted(cls._service_snapshot, key=cls._restore_priority)
++        cls._service_snapshot = []
++        cls._conflicts_killed = False
++        restored: list[str] = []
++        failed: list[str] = []
++        for backend, service in services:
++            try:
++                if backend == "systemd":
++                    _, _, code = run(
++                        ["systemctl", "start", service], timeout=30,
++                    )
++                else:
++                    _, _, code = run(
++                        ["rc-service", service, "start"], timeout=30,
++                    )
++            except OSError:
++                code = -1
++            (restored if code == 0 else failed).append(service)
++        return restored, failed
+@@ -122,0 +254,2 @@
++        if kill_conflicts:
++            cls.kill_conflicts()
+@@ -137,3 +269,0 @@
+-        if kill_conflicts and which("airmon-ng"):
+-            run(["airmon-ng", "check", "kill"])
+-
+@@ -164 +294,6 @@
+-        if which("airmon-ng"):
++        if mon_interface:
++            cls.remember_interface(mon_interface)
++
++        if mon_interface and cls.is_monitor(mon_interface) and which("airmon-ng"):
++            # airmon-ng can return non-zero or leave the radio in monitor mode;
++            # the state check below decides whether a direct fallback is needed.
+@@ -166,2 +301,62 @@
+-        if cls.base_interface:
+-            run(["ip", "link", "set", cls.base_interface, "up"])
++
++        candidates = cls._restore_candidates(mon_interface)
++        managed = [info for info in candidates if info["type"] == "managed"]
++        if not managed:
++            monitors = [info for info in candidates if info["type"] == "monitor"]
++            if monitors:
++                preferred = next(
++                    (info for info in monitors if info["name"] == mon_interface),
++                    monitors[0],
++                )
++                cls._convert_to_managed(preferred["name"])
++                candidates = cls._restore_candidates(mon_interface)
++                managed = [
++                    info for info in candidates if info["type"] == "managed"
++                ]
++
++        if not managed:
++            raise RuntimeError(
++                f"Failed to restore managed mode for {mon_interface or 'wireless radio'}"
++            )
++
++        managed_name = managed[0]["name"]
++        _, stderr, code = run(
++            ["ip", "link", "set", "dev", managed_name, "up"],
++        )
++        if code != 0:
++            detail = stderr.strip() or f"exit status {code}"
++            raise RuntimeError(f"Failed to bring up {managed_name}: {detail}")
++        cls.base_interface = managed_name
++
++    @classmethod
++    def _restore_candidates(cls, fallback: str | None) -> list[dict]:
++        """Find interfaces belonging to the radio being returned to managed."""
++        interfaces = cls.list_interfaces()
++        if cls.base_device_path:
++            same_device = [
++                info for info in interfaces
++                if cls.device_path(info["name"]) == cls.base_device_path
++            ]
++            if same_device:
++                return same_device
++        names = {name for name in (fallback, cls.base_interface) if name}
++        return [info for info in interfaces if info["name"] in names]
++
++    @staticmethod
++    def _convert_to_managed(interface: str) -> None:
++        """Convert one surviving monitor interface directly and bring it up."""
++        failures = []
++        commands = (
++            ["ip", "link", "set", "dev", interface, "down"],
++            ["iw", "dev", interface, "set", "type", "managed"],
++            ["ip", "link", "set", "dev", interface, "up"],
++        )
++        for command in commands:
++            _, stderr, code = run(command)
++            if code != 0:
++                failures.append(stderr.strip() or f"{' '.join(command)}: {code}")
++        if failures:
++            raise RuntimeError(
++                f"Direct managed-mode restore failed for {interface}: "
++                + "; ".join(failures)
++            )
+--- a/wiflux/tools/interface.py
++++ b/wiflux/tools/interface.py
+@@ -179,2 +179,2 @@
+-    if kill_conflicts and which("airmon-ng"):
+-        run(["airmon-ng", "check", "kill"], timeout=15)
++    if kill_conflicts:
++        Airmon.kill_conflicts()
+--- a/wiflux/cli.py
++++ b/wiflux/cli.py
+@@ -6,0 +7 @@
++import signal
+@@ -31,0 +33,43 @@
++def _install_termination_handlers() -> dict[int, object]:
++    """Turn service-manager termination signals into orderly CLI unwinds."""
++    previous: dict[int, object] = {}
++
++    def request_shutdown(signum, _frame) -> None:
++        raise SystemExit(128 + signum)
++
++    for name in ("SIGTERM", "SIGHUP"):
++        signum = getattr(signal, name, None)
++        if signum is None:
++            continue
++        previous[signum] = signal.getsignal(signum)
++        signal.signal(signum, request_shutdown)
++    return previous
++
++
++def _restore_termination_handlers(previous: dict[int, object]) -> None:
++    """Restore process signal handling after the radio cleanup is complete."""
++    for signum, handler in previous.items():
++        signal.signal(signum, handler)
++
++
++def _wordlist_arg(value: str) -> str:
++    """Validate an explicit --dict path before any privileged setup begins."""
++    if not value or not value.strip():
++        raise argparse.ArgumentTypeError("wordlist path cannot be empty")
++    path = Path(value).expanduser()
++    try:
++        if not path.is_file():
++            raise argparse.ArgumentTypeError(f"wordlist is not a file: {value}")
++        if path.stat().st_size <= 0:
++            raise argparse.ArgumentTypeError(f"wordlist is empty: {value}")
++        with path.open("rb") as handle:
++            handle.read(1)
++    except argparse.ArgumentTypeError:
++        raise
++    except OSError as exc:
++        raise argparse.ArgumentTypeError(
++            f"wordlist is not readable: {value} ({exc})",
++        ) from exc
++    return str(path.resolve())
++
++
+@@ -205 +249 @@
+-                   help="Restore managed mode on exit")
++                   help="Restore managed mode and services stopped by --kill")
+@@ -313 +357 @@
+-    g.add_argument("--dict", dest="wordlist", metavar="FILE",
++    g.add_argument("--dict", dest="wordlist", metavar="FILE", type=_wordlist_arg,
+@@ -462,2 +506,2 @@
+-    if args.wordlist:
+-        cfg.attack.wordlist = find_wordlist(args.wordlist)
++    if args.wordlist is not None:
++        cfg.attack.wordlist = args.wordlist
+@@ -633,0 +678,2 @@
++    Airmon.begin_session()
++    termination_handlers: dict[int, object] = {}
+@@ -635,0 +682,5 @@
++        termination_handlers = _install_termination_handlers()
++        if getattr(cfg, "kill_conflicting", False):
++            Airmon.kill_conflicts(
++                require_snapshot=bool(cfg.restore_managed),
++            )
+@@ -674,4 +725,29 @@
+-        ProcessPool().cleanup_all()
+-        if cfg.restore_managed and mon_iface:
+-            print_info("Restoring managed mode...")
+-            Airmon.stop(mon_iface)
++        try:
++            try:
++                ProcessPool().cleanup_all()
++            except Exception as exc:
++                print_error(f"Could not stop all child processes: {exc}")
++            if cfg.restore_managed:
++                restored: list[str] = []
++                failed: list[str] = []
++                try:
++                    current_iface = cfg.scan.interface or mon_iface
++                    if current_iface:
++                        print_info("Restoring managed mode...")
++                        Airmon.stop(current_iface)
++                finally:
++                    restored, failed = Airmon.restore_services()
++                if restored:
++                    labels = ", ".join(
++                        name.removesuffix(".service") for name in restored
++                    )
++                    print_info(
++                        f"Restarted network services: [cyan]{labels}[/]"
++                    )
++                if failed:
++                    labels = ", ".join(
++                        name.removesuffix(".service") for name in failed
++                    )
++                    print_error(f"Could not restart network services: {labels}")
++        finally:
++            _restore_termination_handlers(termination_handlers)
+--- a/tests/test_service_restore.py
++++ b/tests/test_service_restore.py
+@@ -0,0 +1,532 @@
++"""Regression tests for restoring services stopped by airmon-ng.
++
++Every service-manager, radio, and CLI interaction in this module is mocked.
++"""
++
++from __future__ import annotations
++
++import signal
++import unittest
++from types import SimpleNamespace
++from unittest.mock import MagicMock, patch
++
++from wiflux import cli
++from wiflux.tools.airmon import Airmon
++
++
++SYSTEMD_UNITS = """\
++wpa_supplicant.service loaded active running WPA supplicant
++wpa_supplicant@wlp9s0.service loaded active running WPA supplicant per interface
++NetworkManager.service loaded active running Network Manager
++ssh.service loaded active running OpenSSH daemon
++"""
++
++
++class ServiceSessionTestCase(unittest.TestCase):
++    def setUp(self) -> None:
++        Airmon.begin_session()
++
++    def tearDown(self) -> None:
++        Airmon.begin_session()
++
++    def test_systemd_snapshots_supported_active_units_and_templates(self) -> None:
++        commands: list[tuple[str, ...]] = []
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[:2] == ["systemctl", "list-units"]:
++                return SYSTEMD_UNITS, "", 0
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.kill_conflicts()
++            restored, failed = Airmon.restore_services()
++
++        self.assertEqual(failed, [])
++        self.assertEqual(
++            restored,
++            [
++                "wpa_supplicant.service",
++                "wpa_supplicant@wlp9s0.service",
++                "NetworkManager.service",
++            ],
++        )
++        self.assertNotIn("ssh.service", restored)
++        self.assertIn(
++            (
++                "systemctl", "list-units", "--type=service",
++                "--state=active", "--no-legend", "--plain",
++            ),
++            commands,
++        )
++
++    def test_restore_starts_wpa_before_networkmanager(self) -> None:
++        commands: list[tuple[str, ...]] = []
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[:2] == ["systemctl", "list-units"]:
++                # Deliberately report NetworkManager first. Restore must still
++                # bring up the D-Bus supplicant backend before its consumer.
++                return (
++                    "NetworkManager.service loaded active running NM\n"
++                    "wpa_supplicant.service loaded active running WPA\n",
++                    "",
++                    0,
++                )
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.kill_conflicts()
++            restored, failed = Airmon.restore_services()
++
++        self.assertEqual(
++            [command for command in commands if command[:2] == ("systemctl", "start")],
++            [
++                ("systemctl", "start", "wpa_supplicant.service"),
++                ("systemctl", "start", "NetworkManager.service"),
++            ],
++        )
++        self.assertEqual(restored, ["wpa_supplicant.service", "NetworkManager.service"])
++        self.assertEqual(failed, [])
++
++    def test_kill_is_idempotent_even_when_airmon_returns_nonzero(self) -> None:
++        commands: list[tuple[str, ...]] = []
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[:2] == ["systemctl", "list-units"]:
++                return "NetworkManager.service loaded active running NM\n", "", 0
++            if command == ["airmon-ng", "check", "kill"]:
++                return "partially stopped processes", "failure", 1
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.kill_conflicts()
++            Airmon.kill_conflicts()
++            restored, failed = Airmon.restore_services()
++
++        self.assertEqual(commands.count(("airmon-ng", "check", "kill")), 1)
++        self.assertEqual(
++            commands.count(
++                (
++                    "systemctl", "list-units", "--type=service",
++                    "--state=active", "--no-legend", "--plain",
++                ),
++            ),
++            1,
++        )
++        self.assertEqual(restored, ["NetworkManager.service"])
++        self.assertEqual(failed, [])
++
++    def test_restore_failure_does_not_block_remaining_services(self) -> None:
++        commands: list[tuple[str, ...]] = []
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[:2] == ["systemctl", "list-units"]:
++                return (
++                    "wpa_supplicant.service loaded active running WPA\n"
++                    "NetworkManager.service loaded active running NM\n",
++                    "",
++                    0,
++                )
++            if command == ["systemctl", "start", "wpa_supplicant.service"]:
++                return "", "unit failed", 1
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.kill_conflicts()
++            restored, failed = Airmon.restore_services()
++
++        self.assertEqual(restored, ["NetworkManager.service"])
++        self.assertEqual(failed, ["wpa_supplicant.service"])
++        self.assertIn(
++            ("systemctl", "start", "NetworkManager.service"),
++            commands,
++        )
++
++    def test_openrc_fallback_snapshots_active_services_only(self) -> None:
++        commands: list[tuple[str, ...]] = []
++        active = {"wpa_supplicant", "NetworkManager"}
++
++        def fake_which(name: str) -> bool:
++            return name in {"airmon-ng", "rc-service"}
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[0] == "rc-service" and command[2] == "status":
++                return "", "", 0 if command[1] in active else 3
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", side_effect=fake_which),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=False),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.kill_conflicts()
++            restored, failed = Airmon.restore_services()
++
++        self.assertEqual(restored, ["wpa_supplicant", "NetworkManager"])
++        self.assertEqual(failed, [])
++        self.assertEqual(
++            [command for command in commands if command[-1] == "start"],
++            [
++                ("rc-service", "wpa_supplicant", "start"),
++                ("rc-service", "NetworkManager", "start"),
++            ],
++        )
++
++    def test_restore_is_idempotent(self) -> None:
++        commands: list[tuple[str, ...]] = []
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[:2] == ["systemctl", "list-units"]:
++                return "NetworkManager.service loaded active running NM\n", "", 0
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.kill_conflicts()
++            first = Airmon.restore_services()
++            second = Airmon.restore_services()
++
++        self.assertEqual(first, (["NetworkManager.service"], []))
++        self.assertEqual(second, ([], []))
++        self.assertEqual(
++            commands.count(("systemctl", "start", "NetworkManager.service")),
++            1,
++        )
++
++    def test_start_already_monitor_still_runs_guarded_conflict_kill(self) -> None:
++        with (
++            patch.object(Airmon, "remember_interface"),
++            patch.object(Airmon, "is_monitor", return_value=True),
++            patch.object(Airmon, "kill_conflicts") as kill,
++            patch("wiflux.tools.airmon.run") as run_mock,
++        ):
++            result = Airmon.start("wlp9s0mon", kill_conflicts=True)
++
++        self.assertEqual(result, "wlp9s0mon")
++        kill.assert_called_once_with()
++        run_mock.assert_not_called()
++
++    def test_required_snapshot_failure_refuses_destructive_kill(self) -> None:
++        commands: list[tuple[str, ...]] = []
++
++        def fake_which(name: str) -> bool:
++            return name in {"airmon-ng", "systemctl"}
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command[:2] == ["systemctl", "list-units"]:
++                return "", "systemd unavailable", 1
++            return "", "", 0
++
++        with (
++            patch("wiflux.tools.airmon.which", side_effect=fake_which),
++            patch("wiflux.tools.airmon.os.path.isdir", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            with self.assertRaisesRegex(RuntimeError, "(?i)snapshot"):
++                Airmon.kill_conflicts(require_snapshot=True)
++
++        self.assertNotIn(("airmon-ng", "check", "kill"), commands)
++
++    def test_restore_oserror_for_one_service_continues_with_next(self) -> None:
++        Airmon._service_snapshot = [
++            ("systemd", "wpa_supplicant.service"),
++            ("systemd", "NetworkManager.service"),
++        ]
++        Airmon._conflicts_killed = True
++        commands: list[tuple[str, ...]] = []
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command == ["systemctl", "start", "wpa_supplicant.service"]:
++                raise OSError("systemctl disappeared")
++            return "", "", 0
++
++        with patch("wiflux.tools.airmon.run", side_effect=fake_run):
++            restored, failed = Airmon.restore_services()
++
++        self.assertEqual(restored, ["NetworkManager.service"])
++        self.assertEqual(failed, ["wpa_supplicant.service"])
++        self.assertIn(
++            ("systemctl", "start", "NetworkManager.service"),
++            commands,
++        )
++
++    def test_stop_falls_back_to_direct_managed_mode(self) -> None:
++        Airmon.base_interface = "wlp9s0"
++        commands: list[tuple[str, ...]] = []
++        monitor = [{"name": "wlp9s0mon", "type": "monitor", "phy": "0"}]
++        managed = [{"name": "wlp9s0mon", "type": "managed", "phy": "0"}]
++
++        def fake_run(command, **_kwargs):
++            commands.append(tuple(command))
++            if command == ["airmon-ng", "stop", "wlp9s0mon"]:
++                return "", "airmon failed", 1
++            return "", "", 0
++
++        with (
++            patch.object(Airmon, "remember_interface"),
++            patch.object(Airmon, "is_monitor", return_value=True),
++            patch.object(Airmon, "list_interfaces", side_effect=[monitor, managed]),
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.run", side_effect=fake_run),
++        ):
++            Airmon.stop("wlp9s0mon")
++
++        self.assertIn(
++            ("iw", "dev", "wlp9s0mon", "set", "type", "managed"),
++            commands,
++        )
++        self.assertIn(
++            ("ip", "link", "set", "dev", "wlp9s0mon", "up"),
++            commands,
++        )
++
++    def test_stop_raises_when_interface_remains_monitor(self) -> None:
++        Airmon.base_interface = "wlp9s0"
++        monitor = [{"name": "wlp9s0mon", "type": "monitor", "phy": "0"}]
++
++        with (
++            patch.object(Airmon, "remember_interface"),
++            patch.object(Airmon, "is_monitor", return_value=True),
++            patch.object(Airmon, "list_interfaces", side_effect=[monitor, monitor]),
++            patch("wiflux.tools.airmon.which", return_value=True),
++            patch("wiflux.tools.airmon.run", return_value=("", "", 0)),
++        ):
++            with self.assertRaisesRegex(RuntimeError, "(?i)managed mode"):
++                Airmon.stop("wlp9s0mon")
++
++
++class CliServiceRestoreTestCase(unittest.TestCase):
++    @staticmethod
++    def _config(*, restore_managed: bool = True):
++        return SimpleNamespace(
++            infinite=False,
++            kill_conflicting=True,
++            restore_managed=restore_managed,
++            scan=SimpleNamespace(interface="wlp9s0mon"),
++            output=SimpleNamespace(
++                quiet=True,
++                json_output=False,
++                data_dir="/mock/wiflux-data",
++            ),
++        )
++
++    def test_setup_failure_still_restores_services_with_restore(self) -> None:
++        cfg = self._config()
++
++        with (
++            patch("wiflux.cli.args_to_config", return_value=cfg),
++            patch("wiflux.cli.run_commands", return_value=False),
++            patch("wiflux.cli.check_requirements"),
++            patch("wiflux.cli.reset_tracker", return_value=object()),
++            patch("wiflux.cli.ResultStore"),
++            patch("wiflux.cli.Airmon.begin_session") as begin,
++            patch("wiflux.cli.Airmon.kill_conflicts") as kill,
++            patch("wiflux.cli.setup_interface", side_effect=RuntimeError("radio failed")),
++            patch("wiflux.cli.Airmon.restore_services", return_value=(
++                ["NetworkManager.service"], [],
++            )) as restore,
++            patch("wiflux.cli.Airmon.stop"),
++            patch("wiflux.cli.ProcessPool") as process_pool,
++            patch("wiflux.cli.print_info"),
++            patch("wiflux.cli.print_error"),
++        ):
++            with self.assertRaisesRegex(RuntimeError, "radio failed"):
++                cli.main(["--quiet", "--kill", "--restore"])
++
++        begin.assert_called_once_with()
++        kill.assert_called_once_with(require_snapshot=True)
++        process_pool.return_value.cleanup_all.assert_called_once_with()
++        restore.assert_called_once_with()
++
++    def test_final_restore_uses_current_interface_after_reprobe(self) -> None:
++        cfg = self._config()
++        store = MagicMock(name="store")
++        store.start_session.return_value = 12
++        scanner = MagicMock(name="scanner")
++
++        def finish_scan():
++            cfg.scan.interface = "wlp9s0"
++            return []
++
++        scanner.scan.side_effect = finish_scan
++
++        with (
++            patch("wiflux.cli.args_to_config", return_value=cfg),
++            patch("wiflux.cli.run_commands", return_value=False),
++            patch("wiflux.cli.check_requirements"),
++            patch("wiflux.cli.reset_tracker", return_value=object()),
++            patch("wiflux.cli.ResultStore", return_value=store),
++            patch("wiflux.cli.Airmon.begin_session"),
++            patch("wiflux.cli.Airmon.kill_conflicts"),
++            patch("wiflux.cli.setup_interface", return_value="wlp9s0mon"),
++            patch("wiflux.cli.Scanner", return_value=scanner),
++            patch("wiflux.cli.Orchestrator"),
++            patch("wiflux.cli.Airmon.restore_services", return_value=([], [])),
++            patch("wiflux.cli.Airmon.stop") as stop,
++            patch("wiflux.cli.ProcessPool"),
++            patch("wiflux.cli.print_info"),
++            patch("wiflux.cli.print_error"),
++        ):
++            result = cli.main(["--quiet", "--kill", "--restore"])
++
++        self.assertEqual(result, 0)
++        stop.assert_called_once_with("wlp9s0")
++
++    def test_stop_failure_does_not_suppress_service_restore(self) -> None:
++        cfg = self._config()
++        store = MagicMock(name="store")
++        store.start_session.return_value = 12
++        scanner = MagicMock(name="scanner")
++        scanner.scan.return_value = []
++
++        with (
++            patch("wiflux.cli.args_to_config", return_value=cfg),
++            patch("wiflux.cli.run_commands", return_value=False),
++            patch("wiflux.cli.check_requirements"),
++            patch("wiflux.cli.reset_tracker", return_value=object()),
++            patch("wiflux.cli.ResultStore", return_value=store),
++            patch("wiflux.cli.Airmon.begin_session"),
++            patch("wiflux.cli.Airmon.kill_conflicts"),
++            patch("wiflux.cli.setup_interface", return_value="wlp9s0mon"),
++            patch("wiflux.cli.Scanner", return_value=scanner),
++            patch("wiflux.cli.Orchestrator"),
++            patch(
++                "wiflux.cli.Airmon.restore_services",
++                return_value=(["NetworkManager.service"], []),
++            ) as restore,
++            patch(
++                "wiflux.cli.Airmon.stop",
++                side_effect=RuntimeError("managed restore failed"),
++            ),
++            patch("wiflux.cli.ProcessPool"),
++            patch("wiflux.cli.print_info"),
++            patch("wiflux.cli.print_error"),
++        ):
++            with self.assertRaisesRegex(RuntimeError, "managed restore failed"):
++                cli.main(["--quiet", "--kill", "--restore"])
++
++        restore.assert_called_once_with()
++
++    def test_without_restore_flag_does_not_restart_services(self) -> None:
++        cfg = self._config(restore_managed=False)
++        store = MagicMock(name="store")
++        store.start_session.return_value = 12
++        scanner = MagicMock(name="scanner")
++        scanner.scan.return_value = []
++
++        with (
++            patch("wiflux.cli.args_to_config", return_value=cfg),
++            patch("wiflux.cli.run_commands", return_value=False),
++            patch("wiflux.cli.check_requirements"),
++            patch("wiflux.cli.reset_tracker", return_value=object()),
++            patch("wiflux.cli.ResultStore", return_value=store),
++            patch("wiflux.cli.Airmon.begin_session"),
++            patch("wiflux.cli.Airmon.kill_conflicts"),
++            patch("wiflux.cli.setup_interface", return_value="wlp9s0mon"),
++            patch("wiflux.cli.Scanner", return_value=scanner),
++            patch("wiflux.cli.Orchestrator"),
++            patch("wiflux.cli.Airmon.restore_services") as restore,
++            patch("wiflux.cli.Airmon.stop") as stop,
++            patch("wiflux.cli.ProcessPool"),
++            patch("wiflux.cli.print_info"),
++            patch("wiflux.cli.print_error"),
++        ):
++            result = cli.main(["--quiet", "--kill"])
++
++        self.assertEqual(result, 0)
++        stop.assert_not_called()
++        restore.assert_not_called()
++
++    def test_termination_signals_cleanup_and_restore_previous_handlers(self) -> None:
++        for signum in (signal.SIGTERM, signal.SIGHUP):
++            with self.subTest(signal=signal.Signals(signum).name):
++                cfg = self._config()
++                store = MagicMock(name="store")
++                store.start_session.return_value = 12
++                installed: dict[int, object] = {}
++                signal_calls: list[tuple[int, object]] = []
++                previous = {
++                    signal.SIGTERM: object(),
++                    signal.SIGHUP: object(),
++                }
++
++                def fake_getsignal(sig: int):
++                    return previous[sig]
++
++                def fake_signal(sig: int, handler):
++                    signal_calls.append((sig, handler))
++                    if callable(handler):
++                        installed.setdefault(sig, handler)
++                    return previous[sig]
++
++                scanner = MagicMock(name="scanner")
++
++                def terminate_scan():
++                    handler = installed[signum]
++                    handler(signum, None)
++                    self.fail("termination handler returned instead of exiting")
++
++                scanner.scan.side_effect = terminate_scan
++
++                with (
++                    patch("wiflux.cli.args_to_config", return_value=cfg),
++                    patch("wiflux.cli.run_commands", return_value=False),
++                    patch("wiflux.cli.check_requirements"),
++                    patch("wiflux.cli.reset_tracker", return_value=object()),
++                    patch("wiflux.cli.ResultStore", return_value=store),
++                    patch("wiflux.cli.Airmon.begin_session"),
++                    patch("wiflux.cli.Airmon.kill_conflicts"),
++                    patch("wiflux.cli.setup_interface", return_value="wlp9s0mon"),
++                    patch("wiflux.cli.Scanner", return_value=scanner),
++                    patch("wiflux.cli.Orchestrator"),
++                    patch(
++                        "wiflux.cli.Airmon.restore_services",
++                        return_value=(["NetworkManager.service"], []),
++                    ) as restore_services,
++                    patch("wiflux.cli.Airmon.stop") as stop,
++                    patch("wiflux.cli.ProcessPool") as process_pool,
++                    patch("wiflux.cli.print_info"),
++                    patch("wiflux.cli.print_error"),
++                    patch("wiflux.cli.signal.getsignal", side_effect=fake_getsignal),
++                    patch("wiflux.cli.signal.signal", side_effect=fake_signal),
++                ):
++                    with self.assertRaises(SystemExit) as raised:
++                        cli.main(["--quiet", "--kill", "--restore"])
++
++                self.assertEqual(raised.exception.code, 128 + signum)
++                process_pool.return_value.cleanup_all.assert_called_once_with()
++                stop.assert_called_once_with("wlp9s0mon")
++                restore_services.assert_called_once_with()
++                self.assertIn((signal.SIGTERM, previous[signal.SIGTERM]), signal_calls)
++                self.assertIn((signal.SIGHUP, previous[signal.SIGHUP]), signal_calls)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+--- a/tests/test_wordlist_cli_validation.py
++++ b/tests/test_wordlist_cli_validation.py
+@@ -0,0 +1,108 @@
++"""Regression tests for explicit ``--dict`` validation semantics."""
++
++from __future__ import annotations
++
++import io
++import json
++import os
++import tempfile
++import unittest
++from contextlib import redirect_stderr
++from pathlib import Path
++from unittest.mock import patch
++
++from wiflux.cli import args_to_config, build_parser
++
++
++class TestWordlistCLIValidation(unittest.TestCase):
++    def assert_dict_parse_error(self, value: str, expected: str) -> None:
++        stderr = io.StringIO()
++        with redirect_stderr(stderr):
++            with self.assertRaises(SystemExit) as raised:
++                build_parser().parse_args(["--dict", value])
++        self.assertEqual(raised.exception.code, 2)
++        self.assertIn("argument --dict", stderr.getvalue())
++        self.assertIn(expected, stderr.getvalue())
++
++    def test_missing_explicit_dict_fails_even_when_default_exists(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            default = Path(tmp, "default.txt")
++            default.write_text("password123\n", encoding="utf-8")
++            missing = str(Path(tmp, "missing.txt"))
++
++            with patch("wiflux.config.DEFAULT_WORDLISTS", [str(default)]):
++                self.assert_dict_parse_error(missing, "wordlist is not a file")
++
++    def test_empty_explicit_dict_fails(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            empty = Path(tmp, "empty.txt")
++            empty.touch()
++            self.assert_dict_parse_error(str(empty), "wordlist is empty")
++
++    def test_directory_explicit_dict_fails(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            self.assert_dict_parse_error(tmp, "wordlist is not a file")
++
++    def test_unreadable_explicit_dict_reports_argparse_error(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            wordlist = Path(tmp, "wordlist.txt")
++            wordlist.write_text("password123\n", encoding="utf-8")
++
++            error = PermissionError(13, "Permission denied", str(wordlist))
++            with patch.object(Path, "open", side_effect=error):
++                self.assert_dict_parse_error(str(wordlist), "wordlist is not readable")
++
++    def test_valid_relative_dict_is_resolved(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            wordlist = Path(tmp, "relative.txt")
++            wordlist.write_text("password123\n", encoding="utf-8")
++            previous_cwd = os.getcwd()
++            try:
++                os.chdir(tmp)
++                args = build_parser().parse_args(["--dict", "relative.txt"])
++            finally:
++                os.chdir(previous_cwd)
++
++            self.assertEqual(args.wordlist, str(wordlist.resolve()))
++
++    def test_explicit_valid_dict_overrides_config(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            configured = root / "configured.txt"
++            explicit = root / "explicit.txt"
++            configured.write_text("configured-password\n", encoding="utf-8")
++            explicit.write_text("explicit-password\n", encoding="utf-8")
++            config_file = root / "config.json"
++            config_file.write_text(
++                json.dumps(
++                    {
++                        "attack": {"wordlist": str(configured)},
++                        "output": {
++                            "data_dir": str(root / "data"),
++                            "handshake_dir": str(root / "handshakes"),
++                        },
++                    }
++                ),
++                encoding="utf-8",
++            )
++
++            args = build_parser().parse_args(
++                ["--config", str(config_file), "--dict", str(explicit)]
++            )
++            cfg = args_to_config(args)
++
++            self.assertEqual(cfg.attack.wordlist, str(explicit.resolve()))
++
++    def test_omitted_dict_preserves_default_fallback(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            default = Path(tmp, "default.txt")
++            default.write_text("password123\n", encoding="utf-8")
++
++            with patch("wiflux.config.DEFAULT_WORDLISTS", [str(default)]):
++                cfg = args_to_config(build_parser().parse_args([]))
++
++            self.assertEqual(cfg.attack.wordlist, str(default))
++
++
++if __name__ == "__main__":
++    unittest.main()
