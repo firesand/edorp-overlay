@@ -251,7 +251,7 @@ Portable AppImage (non-Gentoo / no emerge):
 ## Wiflux (Jul 2026)
 
 - Upstream: https://github.com/Leadrogue/Wiflux
-- Overlay package: `net-wireless/wiflux/wiflux-1.0.5-r2.ebuild`, keyword
+- Overlay package: `net-wireless/wiflux/wiflux-1.0.5-r3.ebuild`, keyword
   `~amd64`, based on upstream release `v1.0.5` (2026-07-10).
 - Fetch the official sdist `wiflux-1.0.5.tar.gz`, not the wheel or Linux
   installer. Upstream SHA256 is
@@ -293,6 +293,15 @@ Portable AppImage (non-Gentoo / no emerge):
   pip `RECORD`. Never run the upstream `install.sh`, `pip --ignore-installed`,
   or create a fake RECORD against `/usr`; update it with `emerge`. The patched
   standalone installer now detects package-manager ownership and exits safely.
+- Revision `-r3` adds `wiflux-1.0.5-restore-network-services.patch`; the
+  runtime reports `1.0.5.post2+edorp`. Before `airmon-ng check kill`, Wiflux
+  snapshots only active systemd/OpenRC network services, runs conflict cleanup
+  once, and restarts that exact set after interface cleanup when `--restore` is
+  requested. It refuses destructive cleanup when a required snapshot fails,
+  restores on SIGTERM/SIGHUP and setup failures, and uses the current
+  post-reprobe interface name. Managed-mode restoration is verified with a
+  direct `iw` fallback. Explicit `--dict` paths now fail fast when missing,
+  empty, directories, or unreadable instead of silently falling back.
 - Wiflux is a privileged wireless auditing tool. Use it only on owned or
   explicitly authorized networks.
 - Current Gentoo `net-wireless/aircrack-ng` defaults enable `airdrop-ng` and
@@ -304,7 +313,7 @@ Install:
 
 ```bash
 echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5-r2 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5-r3 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
 echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
 doas emerge -av net-wireless/wiflux
 ```
@@ -337,6 +346,27 @@ Revision `-r2` validation completed on 2026-07-13:
   were not installed in the active environment for this validation run.
 - The failed wheel attempt did not modify the installed package: Portage still
   owned and verified all 396 files of `net-wireless/wiflux-1.0.5`.
+
+Revision `-r3` validation completed on 2026-07-13:
+
+- Unit tests mock all systemd, OpenRC, NetworkManager, `airmon-ng`, and radio
+  mutations. The host service state is never changed by the test suite.
+- A clean Portage test passed under both Python 3.13 and 3.14: 166 tests per
+  implementation, with 153 passing and 13 intentionally skipped.
+- The staged Portage image imports successfully and displays CLI help under
+  Python 3.13 and 3.14. Package code and installed metadata both report
+  `1.0.5.post2+edorp`.
+- The standalone post2 wheel passed ZIP/RECORD, isolated import, entry-point,
+  CLI-help, and compile checks. SHA256 is
+  `578baedd44bc00fec0f07f37c74316eee91c5e05e20a7f9d53d2fb1be90e0d89`.
+  The matching installer archive SHA256 is
+  `be428e5e8c9061b9b9a5a6d709d2ff9b3493c43ab22dbd7cd1eabdd6756ebb3d`;
+  its preflight refuses to overwrite the Portage-owned installation and points
+  to `>=net-wireless/wiflux-1.0.5-r3`.
+- Active-service snapshot on the affected host identifies both
+  `wpa_supplicant.service` and `NetworkManager.service`, in that restore order.
+- Thin Manifest regeneration and the final staged diff check passed;
+  `pkgcheck`/`repoman` were not installed in the active environment.
 
 ## Wiflux support packages (Jul 2026)
 
@@ -427,6 +457,7 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/bully/bully-2.0_
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-analyzer/bettercap/bettercap-2.41.7.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r2.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r3.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
