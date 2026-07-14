@@ -1,0 +1,25 @@
+From: EDORP maintainers <edohikmahtiar@me.com>
+Subject: [PATCH] Make pypdfium2 optional for extraction-only builds
+
+MarkItDown uses pdfplumber's text, word, and table extraction APIs, none of
+which need PDFium.  Keep rendering unavailable with an explicit diagnostic
+instead of imposing a bundled PDFium binary on extraction-only installations.
+
+--- a/pdfplumber/display.py
++++ b/pdfplumber/display.py
+@@ -7 +7,4 @@
+-import pypdfium2  # type: ignore
++try:
++    import pypdfium2  # type: ignore
++except ImportError:
++    pypdfium2 = None  # type: ignore
+@@ -43,0 +47,5 @@
++    if pypdfium2 is None:
++        raise ModuleNotFoundError(
++            "PDF rendering is unavailable in this extraction-only build; "
++            "install pypdfium2 to use Page.to_image()"
++        )
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -3 +2,0 @@
+-pypdfium2>=5.9.0

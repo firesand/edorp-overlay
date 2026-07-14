@@ -7,8 +7,14 @@ Personal Gentoo overlay for packages maintained or tested by Edo.
 Register the overlay by copying the repo config:
 
 ```bash
+doas eselect repository enable guru
+doas emerge --sync guru
 doas cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
 ```
+
+GURU is a declared master because MarkItDown has mandatory dependencies there.
+Existing EDORP installations should copy the updated `metadata/edorp.conf`
+again so the active Portage configuration does not override this master list.
 
 The config is:
 
@@ -18,7 +24,7 @@ location = /var/db/repos/edorp
 sync-type = git
 sync-uri = https://github.com/firesand/edorp-overlay.git
 auto-sync = yes
-masters = gentoo
+masters = gentoo guru
 priority = 70
 ```
 
@@ -44,6 +50,15 @@ local machine configuration do not belong in the overlay.
 - `dev-python/upnpclient`: Fluxcast dependency.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
+- `app-text/markitdown`: Microsoft MarkItDown command-line tool and Python
+  library for converting supported documents to Markdown. The base package
+  includes HTML, plain text, CSV, JSON, XML/RSS, EPUB, Jupyter notebook, and
+  recursive ZIP handling; PDF, DOCX, PPTX, Outlook, and Excel support are
+  optional USE flags.
+- `dev-python/magika`: AI-based content-type detector required by MarkItDown.
+- `dev-python/cobble`, `dev-python/mammoth`, `dev-python/pdfplumber`, and
+  `dev-python/python-pptx`: optional MarkItDown dependencies for DOCX, PDF,
+  and PPTX conversion.
 - `app-emulation/linuxmameui`: imported from the local LinuxMAMEUI Gentoo
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a
@@ -106,6 +121,58 @@ networks you own or have explicit permission to audit. It will not unpack a
 compressed dictionary into `/usr`; decompress it to a writable location and
 select it with `--dict FILE`.
 
+### MarkItDown
+
+The versioned `app-text/markitdown-0.1.6` ebuild builds the GitHub release with
+Hatchling. It supports Python 3.12 through 3.14. Python 3.14 was smoke-tested
+with the CLI, Magika detection, HTML, CSV, and the targeted upstream core tests.
+
+This is deliberately not equivalent to `pip install markitdown[all]`. The
+`docx`, `outlook`, `pdf`, `pptx`, `xls`, and `xlsx` USE flags are available.
+Audio transcription, YouTube transcription, and Azure converters are not
+packaged. They remain excluded to avoid network-backed transcription services
+and additional dependency stacks that are outside this overlay's current
+scope.
+
+HTML, plain text, CSV, JSON, XML, and ZIP conversion are built into the base
+package and need no USE flags. RSS and Atom XML feeds are converted into
+structured Markdown; JSON and other XML documents are preserved as plain text.
+CSV is converted into a Markdown table, although the upstream converter does
+not escape pipes or multiline cells. ZIP entries are converted recursively and
+unsupported entries are skipped. Because the upstream ZIP converter reads each
+entry fully into memory and has no archive-size or nesting limit, do not process
+untrusted or potentially malicious archives.
+
+The overlay's `pdfplumber` package supports the text, word, form, and table
+extraction paths used by MarkItDown. Page rasterization through
+`Page.to_image()` is deliberately disabled because it requires pypdfium2 and
+a bundled PDFium binary; MarkItDown does not use that rendering path.
+
+The mandatory Magika dependency uses ONNX Runtime. `dev-python/markdownify` and
+`sci-libs/onnxruntime` currently come from GURU, which is therefore declared as
+an EDORP repository master. Enable it before installing or syncing EDORP:
+
+```bash
+doas eselect repository enable guru
+doas emerge --sync guru
+echo "sci-libs/onnxruntime python" | doas tee /etc/portage/package.use/edorp-markitdown
+echo "sci-ml/onnx disableStaticReg" | doas tee -a /etc/portage/package.use/edorp-markitdown
+doas emerge -av app-text/markitdown
+```
+
+Enable optional document formats only when needed:
+
+```bash
+echo "app-text/markitdown docx outlook pdf pptx xls xlsx" | doas tee -a /etc/portage/package.use/edorp-markitdown
+doas emerge -av app-text/markitdown
+```
+
+On a stable-keyword system, review and accept the `~amd64` keywords Portage
+requests for MarkItDown, Magika, ONNX Runtime, and its GURU dependencies. The
+ONNX Runtime source stack is substantial; a dependency preview currently
+reports roughly 453 MiB of source downloads for the base package, or 517 MiB
+with `docx pdf pptx` enabled, on amd64.
+
 ### ASUS laptop (systemd only)
 
 Imported from the local `asus-gentoo-overlay` bundle. These packages target
@@ -137,6 +204,8 @@ Basic ebuild parse checks can be run without using system `/var/tmp/portage`:
 mkdir -p .portage-tmp
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-misc/fluxcast/fluxcast-9999.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-portage/equery-gui/equery-gui-0.1.0.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-text/markitdown/markitdown-0.1.6.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild dev-python/magika/magika-0.6.3.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mame/mame-0.288.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean

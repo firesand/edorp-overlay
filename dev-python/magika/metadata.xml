@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Magika identifies file content types using a compact deep-learning model.
+		It provides both a Python API and command-line clients.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">google/magika</remote-id>
+		<remote-id type="pypi">magika</remote-id>
+		<bugs-to>https://github.com/google/magika/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

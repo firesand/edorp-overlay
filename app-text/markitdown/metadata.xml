@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<use>
+		<flag name="docx">Enable conversion of Office Open XML word-processing documents</flag>
+		<flag name="outlook">Enable conversion of Microsoft Outlook MSG files</flag>
+		<flag name="pdf">Enable conversion of PDF documents, including table extraction</flag>
+		<flag name="pptx">Enable conversion of Office Open XML presentations</flag>
+		<flag name="xls">Enable conversion of legacy Microsoft Excel spreadsheets</flag>
+		<flag name="xlsx">Enable conversion of Office Open XML spreadsheets</flag>
+	</use>
+	<upstream>
+		<bugs-to>https://github.com/microsoft/markitdown/issues</bugs-to>
+		<remote-id type="github">microsoft/markitdown</remote-id>
+		<remote-id type="pypi">markitdown</remote-id>
+	</upstream>
+</pkgmetadata>

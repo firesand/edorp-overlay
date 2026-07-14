@@ -2,6 +2,7 @@ app-benchmarks
 app-emulation
 app-misc
 app-portage
+app-text
 dev-python
 games-emulation
 net-analyzer
