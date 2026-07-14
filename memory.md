@@ -77,14 +77,14 @@ edorp-overlay/
 Minimal metadata:
 
 ```text
-metadata/layout.conf: masters = gentoo
+metadata/layout.conf: masters = gentoo guru
 profiles/repo_name: edorp
 ```
 
 Actual `metadata/layout.conf` now uses:
 
 ```text
-masters = gentoo
+masters = gentoo guru
 thin-manifests = true
 sign-manifests = false
 ```
@@ -96,6 +96,7 @@ app-benchmarks
 app-emulation
 app-misc
 app-portage
+app-text
 dev-python
 games-emulation
 net-analyzer
@@ -115,7 +116,7 @@ location = /var/db/repos/edorp
 sync-type = git
 sync-uri = https://github.com/firesand/edorp-overlay.git
 auto-sync = yes
-masters = gentoo
+masters = gentoo guru
 priority = 70
 ```
 
@@ -132,6 +133,8 @@ The repo is public, so use HTTPS for Portage sync. Do not use SSH for
 requires root:
 
 ```bash
+doas eselect repository enable guru
+doas emerge --sync guru
 doas cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
 ```
 
@@ -167,6 +170,8 @@ Actual imported package placement:
 - `app-emulation/hbmame`
 - `app-emulation/mameuix`
 - `app-portage/equery-gui`
+- `app-text/markitdown` (document-to-Markdown CLI and Python library)
+- `dev-python/magika` (mandatory MarkItDown content-type detector)
 - `sys-power/asusctl` (ASUS ROG laptop, systemd only)
 - `sys-power/supergfxctl` (ASUS hybrid-GPU laptop, systemd only)
 - `app-benchmarks/unigine-superposition` (general benchmark, not ASUS-specific)
@@ -177,6 +182,46 @@ Actual imported package placement:
 - `net-wireless/mdk4` (additional IEEE 802.11/deauthentication backend)
 - `net-wireless/bully` (alternative WPS backend)
 - `net-analyzer/bettercap` (modular network and wireless auditing framework)
+
+## MarkItDown (Jul 2026)
+
+- Source repo: `/home/edo/markitdown` → https://github.com/microsoft/markitdown
+- Overlay packages: `app-text/markitdown-0.1.6`, its mandatory
+  `dev-python/magika-0.6.3` dependency, and the optional-format dependencies
+  `dev-python/cobble-0.1.4`, `dev-python/mammoth-1.11.0`,
+  `dev-python/pdfplumber-0.11.10`, and `dev-python/python-pptx-1.0.2`.
+- MarkItDown builds from GitHub tag `v0.1.6`; Magika builds from its PyPI sdist.
+  Both use Hatchling through `distutils-r1` and support Python 3.12–3.14.
+- MarkItDown is licensed under MIT plus Apache-2.0 for bundled dwml-derived
+  DOCX math code. `ThirdPartyNotices.md` is installed with the documentation.
+- Supported optional USE flags are `docx`, `outlook`, `pdf`, `pptx`, `xls`,
+  and `xlsx`. Do not claim parity with upstream's `[all]` extra: audio,
+  YouTube, and Azure support is intentionally not packaged.
+- PDF support uses an extraction-only `dev-python/pdfplumber-0.11.10` package.
+  Text, words, forms, and tables work, but `Page.to_image()` rasterization is
+  disabled because pypdfium2 depends on a bundled PDFium stack that MarkItDown
+  does not use.
+- DOCX support uses `dev-python/mammoth-1.11.0` and
+  `dev-python/cobble-0.1.4`; PPTX support uses
+  `dev-python/python-pptx-1.0.2`.
+- GURU must be enabled because `dev-python/markdownify` and
+  `sci-libs/onnxruntime` come from GURU. EDORP therefore declares
+  `masters = gentoo guru`; `metadata/edorp.conf` must not override that with
+  Gentoo alone.
+- ONNX Runtime must use `python`, and its current dependency requires
+  `sci-ml/onnx[disableStaticReg]`. The base package dependency stack is about
+  453 MiB of source downloads on the current amd64 system; enabling
+  `docx pdf pptx` raises the preview to about 517 MiB.
+- Ebuild compile/install passed for Python 3.13 and 3.14. End-to-end MarkItDown
+  conversion passed for DOCX, PPTX, ordinary PDF text, and PDF tables on both
+  interpreters. Sixteen targeted MarkItDown tests passed per interpreter,
+  including HTML, CSV, JSON, and RSS/XML fixtures. Plain text, generic XML,
+  nested ZIP, and a mixed ZIP containing HTML, CSV, JSON, XML, DOCX, PPTX, and
+  PDF were also smoke-tested on both interpreters. ZIP entries are read into
+  memory without an upstream size or recursion limit, so untrusted archives
+  remain a resource-exhaustion risk;
+  pdfplumber passed 33 tests per interpreter, and python-pptx passed its full
+  2,700-test suite per interpreter.
 
 ASUS laptop scope:
 

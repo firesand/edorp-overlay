@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		pdfplumber provides detailed PDF text, word, layout, and table
+		extraction on top of pdfminer.six. This overlay package deliberately
+		disables page rasterization, avoiding the bundled PDFium binary needed
+		by pypdfium2 while retaining the APIs used by MarkItDown.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/jsvine/pdfplumber/issues</bugs-to>
+		<remote-id type="github">jsvine/pdfplumber</remote-id>
+		<remote-id type="pypi">pdfplumber</remote-id>
+	</upstream>
+</pkgmetadata>

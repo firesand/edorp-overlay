@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Cobble provides decorators and field helpers for defining immutable data
+		objects, including generated equality, hashing, copying, and visitors.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">mwilliamson/python-cobble</remote-id>
+		<remote-id type="pypi">cobble</remote-id>
+		<bugs-to>https://github.com/mwilliamson/python-cobble/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

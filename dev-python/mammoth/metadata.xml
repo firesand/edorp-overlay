@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Mammoth converts Microsoft Word DOCX files to semantic HTML while
+		preserving document structure such as headings, lists, links, tables,
+		footnotes, comments, and images.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">mwilliamson/python-mammoth</remote-id>
+		<remote-id type="pypi">mammoth</remote-id>
+		<bugs-to>https://github.com/mwilliamson/python-mammoth/issues</bugs-to>
+	</upstream>
+</pkgmetadata>
