@@ -50,6 +50,11 @@ local machine configuration do not belong in the overlay.
 - `dev-python/upnpclient`: Fluxcast dependency.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
+- `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
+  application launcher. The ebuild builds entirely from pinned Cargo sources
+  and replaces the obsolete Go-based package from GURU.
+- `gui-apps/elephant`: Elephant 2.21.0 backend for Walker, built with its Go
+  provider plugins in one package to preserve Go plugin ABI compatibility.
 - `app-text/markitdown`: Microsoft MarkItDown command-line tool and Python
   library for converting supported documents to Markdown. The base package
   includes HTML, plain text, CSV, JSON, XML/RSS, EPUB, Jupyter notebook, and
@@ -94,6 +99,61 @@ local machine configuration do not belong in the overlay.
   bounds checks, nl80211 support, and current compiler fixes.
 - `net-analyzer/bettercap`: modular network reconnaissance and auditing
   framework, built reproducibly from source with offline Go module distfiles.
+
+### Walker
+
+Walker 2 is a frontend for the separately released Elephant daemon and its
+provider modules. Walker 2.17.0 pins Elephant 2.21.0, so the Walker ebuild
+depends on that matching Elephant version from EDORP. Elephant always includes
+the five providers needed for Walker's normal default query and common
+prefixes: desktop applications, calculator, web search, provider list, and
+command runner. Standalone dmenu mode still works without a running Elephant
+daemon.
+
+Walker 2 is a Rust/GTK4 rewrite, not an in-place update of the Go-based
+0.13.26 release in GURU. Back up `~/.config/walker` before upgrading. If Walker
+reports configuration or theme errors after the upgrade, temporarily move that
+directory aside and rebuild the custom configuration from the installed
+defaults in `/etc/xdg/walker`.
+
+Install Walker with:
+
+```bash
+echo "gui-apps/walker ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-walker
+echo "gui-apps/elephant ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-walker
+doas emerge -av gui-apps/walker
+```
+
+Elephant must run with the graphical session's environment. On systemd, enable
+the installed user unit without root:
+
+```bash
+systemctl --user enable --now elephant.service
+```
+
+On a non-systemd desktop, add `/usr/bin/elephant` to the compositor or desktop
+session autostart instead. Do not run it as a system-wide service.
+
+Additional Elephant providers are selectable with USE flags. For example,
+enable file search, clipboard history, and bookmarks with:
+
+```bash
+echo "gui-apps/elephant files clipboard bookmarks" | doas tee /etc/portage/package.use/edorp-elephant
+doas emerge -av gui-apps/elephant
+```
+
+The `files` provider indexes the home directory when Elephant starts, while
+the `clipboard` provider runs a Wayland clipboard watcher. Other optional flags
+cover `1password`, `bitwarden`, `bluetooth`, `menus`, `niri`, `playerctl`,
+`snippets`, `symbols`, `todo`, `unicode`, `windows`, and `wireplumber`.
+
+Video previews are optional because they require GTK's GStreamer backend and
+additional plugins:
+
+```bash
+echo "gui-apps/walker gstreamer" | doas tee /etc/portage/package.use/edorp-walker
+doas emerge -av gui-apps/walker
+```
 
 ### Wiflux
 
@@ -204,6 +264,8 @@ Basic ebuild parse checks can be run without using system `/var/tmp/portage`:
 mkdir -p .portage-tmp
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-misc/fluxcast/fluxcast-9999.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-portage/equery-gui/equery-gui-0.1.0.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild gui-apps/elephant/elephant-2.21.0.ebuild clean
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild gui-apps/walker/walker-2.17.0.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-text/markitdown/markitdown-0.1.6.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild dev-python/magika/magika-0.6.3.ebuild clean
 PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean

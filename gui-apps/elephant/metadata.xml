@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Elephant is a plugin-based data provider and action service for
+		application launchers such as Walker. The daemon and selected Go
+		providers are built together to preserve Go plugin ABI compatibility.
+		The default installation includes Walker's default-query providers plus
+		the provider-list and command-runner providers.
+	</longdescription>
+	<use>
+		<flag name="1password">
+			Build the 1Password provider using <pkg>app-admin/op-cli-bin</pkg>
+			or <pkg>app-misc/1password-cli</pkg>
+		</flag>
+		<flag name="bitwarden">
+			Build the Bitwarden provider using <pkg>app-admin/rbw</pkg>
+		</flag>
+		<flag name="bookmarks">
+			Build the bookmarks provider with browser bookmark import support
+		</flag>
+		<flag name="clipboard">
+			Build the Wayland clipboard history provider
+		</flag>
+		<flag name="files">
+			Build the file index provider; this indexes the user's home
+			directory when Elephant starts
+		</flag>
+		<flag name="menus">
+			Build the user-defined TOML and Lua menus provider
+		</flag>
+		<flag name="niri">
+			Build the Niri actions and session providers
+		</flag>
+		<flag name="playerctl">
+			Build the media player control provider
+		</flag>
+		<flag name="snippets">
+			Build the text snippets provider
+		</flag>
+		<flag name="symbols">
+			Build the locale-aware emoji and symbols provider
+		</flag>
+		<flag name="todo">
+			Build the task list and notification provider
+		</flag>
+		<flag name="windows">
+			Build the foreign-toplevel window switching provider
+		</flag>
+		<flag name="wireplumber">
+			Build the PipeWire and WirePlumber audio device provider
+		</flag>
+	</use>
+	<upstream>
+		<bugs-to>https://github.com/abenz1267/elephant/issues</bugs-to>
+		<changelog>https://github.com/abenz1267/elephant/releases</changelog>
+		<remote-id type="github">abenz1267/elephant</remote-id>
+	</upstream>
+</pkgmetadata>
