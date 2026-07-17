@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription>
+		Walker is a fast, highly customizable GTK4 application launcher for
+		Wayland. Version 2 is implemented in Rust and uses the separate Elephant
+		daemon and provider modules for its normal launcher functionality.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/abenz1267/walker/issues</bugs-to>
+		<changelog>https://github.com/abenz1267/walker/releases</changelog>
+		<remote-id type="github">abenz1267/walker</remote-id>
+	</upstream>
+</pkgmetadata>
