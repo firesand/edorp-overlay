@@ -88,7 +88,6 @@ jobs:
 
           config_dir="${RUNNER_TEMP}/portage"
           cache_dir="${RUNNER_TEMP}/pkgcheck-cache"
-          failures="${RUNNER_TEMP}/pkgcheck-failures.json"
           gentoo_repo="${HOME}/.cache/pkgcore/repos/gentoo"
           mkdir -p "${config_dir}/repos.conf" "${cache_dir}/repos"
           profile_path="$({
@@ -113,10 +112,5 @@ jobs:
             scan_args+=(--net --timeout 30)
           fi
 
-          status=0
-          pkgcheck --color y ci --failures "${failures}" \
-            --config "${config_dir}" "${scan_args[@]}" || status=$?
-          if [[ -s "${failures}" ]]; then
-            pkgcheck replay --color y "${failures}"
-          fi
-          exit "${status}"
+          pkgcheck --config "${config_dir}" --color y scan \
+            "${scan_args[@]}"
