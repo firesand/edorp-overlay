@@ -242,19 +242,21 @@ Known portability issue:
 ## MAMEUIx (Jul 2026)
 
 - Source repo: `/home/edo/MAMEUIx` → https://github.com/firesand/MAMEUIx
-- Overlay ebuilds: `app-emulation/mameuix/mameuix-0.1.6.ebuild` (GitHub tag
-  `v0.1.6`, with `CRATES` + `CARGO_CRATE_URIS`) and `mameuix-9999.ebuild`
+- Overlay ebuilds: `app-emulation/mameuix/mameuix-0.1.7.ebuild` (GitHub tag
+  `v0.1.7`, with `CRATES` + `CARGO_CRATE_URIS`) and `mameuix-9999.ebuild`
   (live: `git-r3` + `cargo_live_src_unpack`).
 - RDEPEND on `>=app-emulation/mame-0.200` from this overlay. Rust 1.88.0 is
   the minimum because the application uses stabilized `let` chains; edition
   2024 alone would misleadingly suggest Rust 1.85.
-- Tag `v0.1.6` exists on GitHub. Manifest for `0.1.6` has 594 DIST entries
-  (app tarball + crates). Regenerating Manifest is slow (~593 crate fetches);
+- Tag `v0.1.7` exists on GitHub. Manifest for `0.1.7` adds the new app
+  tarball while reusing the same crate set as `0.1.6`. Regenerating Manifest is
+  slow (~593 crate fetches);
   use a writable `DISTDIR` if system `/var/cache/distfiles` is not writable:
   `DISTDIR="$PWD/.distfiles" PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild ... manifest`
-- Prefer versioned `=app-emulation/mameuix-0.1.6` for the immutable v0.1.6
-  release when keywords allow. For the post-release Classic-menu hotfix, use
-  live `9999` until a versioned v0.1.7 release exists.
+- Prefer versioned `=app-emulation/mameuix-0.1.7` for the Classic-menu fix
+  release when keywords allow. The previous `0.1.6` ebuild was removed from the
+  overlay update because `pkgcheck` reported it as a redundant same-slot,
+  same-keyword version once `0.1.7` existed.
 
 Validation completed on 2026-07-12:
 
@@ -271,35 +273,33 @@ Validation completed on 2026-07-12:
 
 Classic-menu hotfix and overlay audit completed on 2026-07-17:
 
-- MAMEUIx `main` commit `08378e1419f0196d4ae4c939cdda362c721f735a`
-  fixes the duplicate legacy toolbar that made File, Game, Options, Tools, and
-  Help menus unresponsive in Classic mode. The application smoke test passed
-  with an old Classic config, Dock ↔ Classic switching, and restart without
-  deleting the config.
+- MAMEUIx release `v0.1.7` fixes the duplicate legacy toolbar that made File,
+  Game, Options, Tools, and Help menus unresponsive in Classic mode. The
+  application smoke test passed with an old Classic config, Dock ↔ Classic
+  switching, AppImage artifact smoke, and restart without deleting the config.
 - `mameuix-9999.ebuild` has no branch or commit pin and uses `git-r3` plus
   `cargo_live_src_unpack`, so it already follows the fixed upstream `main`.
-- `mameuix-0.1.6.ebuild` must remain bound to the immutable `v0.1.6` archive.
-  Never repoint version 0.1.6 to `main`; that would misrepresent package
-  provenance and invalidate the distfile/Manifest relationship.
-- GitHub's latest MAMEUIx release is still v0.1.6; no v0.1.7 tag or release
-  exists. Do not create a `mameuix-0.1.7.ebuild` before that source tag exists.
-- The upstream watcher correctly uses the latest GitHub release with review
-  policy and retains `0.1.6` as its baseline. A commit on upstream `main` alone
-  intentionally does not trigger a versioned overlay bump.
-- EDORP local and remote `main` both resolve to `5c88785`; the worktree was
-  clean before this memory update. `pkgcheck scan app-emulation/mameuix` and
-  all four upstream-watcher unit tests passed.
-- After upstream v0.1.7 is published: copy/review the versioned ebuild,
-  regenerate `CRATES` and `Manifest`, update README and
-  `.github/upstream-old.json`, then run package QA and a full clean build before
-  committing the overlay bump. `metadata.xml` and the `9999` ebuild should not
-  need changes.
+- Never repoint a versioned MAMEUIx ebuild to `main`; that would misrepresent
+  package provenance and invalidate the distfile/Manifest relationship.
+- GitHub Release `v0.1.7` is published at
+  https://github.com/firesand/MAMEUIx/releases/tag/v0.1.7 with
+  `MAMEUIx-0.1.7-x86_64.AppImage` and checksum assets.
+- The upstream watcher baseline is now `0.1.7`, so the dashboard should not keep
+  reporting the already-packaged Classic-menu hotfix as pending.
+- `metadata.xml` and the `9999` ebuild did not need changes for this bump.
+- Overlay validation for `0.1.7` completed on 2026-07-17: `pkgdev manifest -d
+  /home/edo/EDORP/.distfiles app-emulation/mameuix`, `pkgcheck scan
+  app-emulation/mameuix`, `python -m unittest discover .github/tests`, and
+  `DISTDIR=/home/edo/EDORP/.distfiles
+  PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp PORTAGE_USERNAME=edo
+  PORTAGE_GRPNAME=edo ebuild app-emulation/mameuix/mameuix-0.1.7.ebuild clean
+  test install` all passed. The ebuild test phase ran 45 tests.
 
 Install (versioned):
 
 ```bash
 emerge --sync edorp
-echo "=app-emulation/mameuix-0.1.6 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
+echo "=app-emulation/mameuix-0.1.7 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
 doas emerge -av app-emulation/mameuix
 ```
 
@@ -314,7 +314,7 @@ Portable AppImage (non-Gentoo / no emerge):
 
 - Built from `/home/edo/MAMEUIx` via **CI** `appimage.yml` (ubuntu-22.04, glibc 2.35) — **jangan** build release di Gentoo langsung
 - Lokal: `./build-appimage-docker.sh` (butuh docker/podman) atau
-  `gh workflow run appimage.yml -f build_tag=v0.1.6 -f upload_to_release=true`
+  `gh workflow run appimage.yml -f build_tag=v0.1.7 -f upload_to_release=true`
 - Asset: `MAMEUIx-<ver>-x86_64.AppImage` di https://github.com/firesand/MAMEUIx/releases
 - Bundles MAMEUIx + GUI libs only; **MAME tetap eksternal** (sama model ebuild `RDEPEND`)
 - Debian/Ubuntu: MAME biasanya di `/usr/games/mame` — AppImage v0.1.6+
@@ -519,7 +519,7 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-portage/equery-gui/equery
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mame/mame-0.288.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
-PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-0.1.6.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-0.1.7.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-emulation/mameuix/mameuix-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/hcxtools/hcxtools-7.1.2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/hcxdumptool/hcxdumptool-7.1.2.ebuild clean

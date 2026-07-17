@@ -3,7 +3,7 @@
   "app-emulation/hbmame": "0.288.2",
   "app-emulation/linuxmameui": "0.1.0",
   "app-emulation/mame": "0.288",
-  "app-emulation/mameuix": "0.1.6",
+  "app-emulation/mameuix": "0.1.7",
   "app-portage/equery-gui": "0.1.0",
   "app-text/markitdown": "0.1.6",
   "ci/pkgcheck-image": "0.10.40",
