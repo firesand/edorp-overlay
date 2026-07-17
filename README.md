@@ -164,8 +164,8 @@ Wiflux:
 
 ```bash
 echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5-r1 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
-echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
+echo "net-wireless/wiflux ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "net-wireless/hcxtools ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
 doas emerge -av net-wireless/wiflux
 ```
 
@@ -258,30 +258,72 @@ echo "sys-power/asusctl gui" | doas tee /etc/portage/package.use/edorp-asus
 
 ## Validation
 
-Basic ebuild parse checks can be run without using system `/var/tmp/portage`:
+Install `pkgcheck` and `pkgdev` for local maintenance. Scan the whole overlay
+before starting work:
+
+```bash
+pkgcheck scan --color false
+```
+
+Regenerate only manifests affected by uncommitted ebuild changes. Review the
+result before staging it; fetch-restricted packages still require their source
+archive to exist in `DISTDIR`:
+
+```bash
+pkgdev manifest --if-modified
+```
+
+Then stage the complete package change and run the commit-level checks. Include
+`.github/upstream-old.json` only when the packaged upstream version changed:
+
+```bash
+git diff --check
+git add path/to/changed/package
+git add .github/upstream-old.json  # only for an accepted upstream bump
+pkgcheck scan --staged --color false
+pkgdev commit --dry-run
+```
+
+For a changed ebuild, parsing is only the minimum check. Run the phases the
+package supports, using a local temporary directory when desired:
 
 ```bash
 mkdir -p .portage-tmp
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-misc/fluxcast/fluxcast-9999.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-portage/equery-gui/equery-gui-0.1.0.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild gui-apps/elephant/elephant-2.21.0.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild gui-apps/walker/walker-2.17.0.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-text/markitdown/markitdown-0.1.6.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild dev-python/magika/magika-0.6.3.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/linuxmameui/linuxmameui-0.1.0.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mame/mame-0.288.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/hbmame/hbmame-0.288.2.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mameuix/mameuix-0.1.6.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-emulation/mameuix/mameuix-9999.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/hcxtools/hcxtools-7.1.2.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/hcxdumptool/hcxdumptool-7.1.2.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/pixiewps/pixiewps-1.4.2.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/mdk4/mdk4-4.2_p20260529.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/bully/bully-2.0_p20260622.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-analyzer/bettercap/bettercap-2.41.7.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild sys-power/asusctl/asusctl-9999.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
-PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
-rm -rf .portage-tmp
+PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild category/package/package-version.ebuild clean test install
 ```
+
+## Maintenance automation
+
+The practical target is detection within 24 hours, a reviewed simple bump
+within 72 hours, and a complex bump within seven days. Security fixes and
+missing or checksum-changing distfiles are handled immediately.
+
+- Every pull request and push to `main` runs the non-network `pkgcheck`
+  Gentoo CI gate against Gentoo and GURU masters.
+- Every day at 03:17 WIB, `nvchecker` updates one issue named
+  `Overlay update dashboard`. It never changes ebuilds or merges releases.
+- Every Sunday at 03:37 WIB, the QA workflow also enables network-backed
+  checks. These checks are scheduled rather than required on pull requests
+  because upstream availability is not deterministic.
+- Dependabot checks the pinned GitHub Actions and the hashed Python watcher
+  environment every Monday. The daily dashboard also reports a newer
+  `pkgcheck` release so the pinned container digest can be refreshed manually.
+
+After the first successful run on GitHub, protect `main` with a repository
+ruleset that requires pull requests plus the `Overlay QA / pkgcheck` and
+`Overlay QA / watcher-tests` status checks. Workflow files cannot make their
+own checks mandatory.
+
+This CI validates repository metadata; it does not compile every package.
+Smoke-build the `9999` ebuilds on a trusted Gentoo host weekly, and
+build every changed versioned ebuild before merging it.
+GitHub may disable scheduled workflows in an inactive public repository after
+60 days, so check the Actions page if the dashboard stops changing.
+
+Treat detections as review work, not mechanical version substitutions.
+Walker and Elephant belong in one pull request, as do paired hcxdumptool and
+hcxtools releases. Snapshot packages, downstream patches, Cargo/Go dependency
+lists, licenses, and Python compatibility require manual inspection. Once a
+bump has passed its build tests and QA, update `.github/upstream-old.json` in
+the same pull request so the dashboard closes only after the packaged version
+really catches up.

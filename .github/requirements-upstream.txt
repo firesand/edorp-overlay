@@ -1,0 +1,14 @@
+# Locked for CPython 3.14 on the Linux x86-64 GitHub-hosted runner.
+# Regenerate every hash when changing a version.
+nvchecker[pypi]==2.20 \
+    --hash=sha256:e34c8475ec45793ce1db011b248ac82265f9e0a8fef20b806154dd14b1972739
+packaging==26.2 \
+    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+platformdirs==4.10.0 \
+    --hash=sha256:fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a
+pycurl==7.47.0 \
+    --hash=sha256:36f3ca3e81468ed359f98c5e93af616c9c781f47cf0859563f2a8ec5b51d8795
+structlog==26.1.0 \
+    --hash=sha256:e081a26d6c373e6d201eca24eede26d8ffab07f88f477822e679183428d3d91e
+tornado==6.5.7 \
+    --hash=sha256:8d759e71906ee783f8867b93bf26a265743da4c1e2f4a018464c1ba019862972

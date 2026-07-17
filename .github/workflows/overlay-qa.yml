@@ -1,0 +1,116 @@
+name: Overlay QA
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "37 3 * * 0"
+      timezone: "Asia/Jakarta"
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Enable network-backed pkgcheck checks"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: overlay-qa-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watcher-tests:
+    name: watcher-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out EDORP
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+
+      - name: Verify the hashed watcher environment
+        run: >-
+          python -m pip install --disable-pip-version-check
+          --require-hashes -r .github/requirements-upstream.txt
+
+      - name: Test watcher configuration and rendering
+        run: python -m unittest discover -s .github/tests -v
+
+  pkgcheck:
+    name: pkgcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/pkgcore/pkgcheck@sha256:1da5f9c4b494776574b224f203fcb0652355adebb199d5176d370bac76d06316
+
+    steps:
+      - name: Remove image-wide Git trust
+        shell: bash
+        run: git config --global --unset-all safe.directory || true
+
+      - name: Check out EDORP
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out GURU master
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: gentoo/guru
+          ref: master
+          path: .ci/guru
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Sync Gentoo and run pkgcheck
+        shell: bash
+        env:
+          NETWORK_SCAN: ${{ github.event_name == 'schedule' || inputs.network }}
+        run: |
+          set -euo pipefail
+
+          pmaint sync gentoo
+
+          config_dir="${RUNNER_TEMP}/portage"
+          cache_dir="${RUNNER_TEMP}/pkgcheck-cache"
+          gentoo_repo="${HOME}/.cache/pkgcore/repos/gentoo"
+          mkdir -p "${config_dir}/repos.conf" "${cache_dir}/repos"
+          profile_path="$({
+            awk '$1 == "amd64" && $2 ~ /^default\/linux\/amd64\/[0-9.]+$/ && $3 == "stable" { print $2 }' \
+              "${gentoo_repo}/profiles/profiles.desc"
+          } | sort -V | tail -n 1)"
+          if [[ -z "${profile_path}" ]]; then
+            echo "No stable base amd64 profile found in Gentoo profiles.desc" >&2
+            exit 1
+          fi
+          ln -s "${gentoo_repo}/profiles/${profile_path}" \
+            "${config_dir}/make.profile"
+          printf '[DEFAULT]\nmain-repo = gentoo\n\n[gentoo]\nlocation = %s\n\n[guru]\nlocation = %s/.ci/guru\nmasters = gentoo\n\n[edorp]\nlocation = %s\nmasters = gentoo guru\n' \
+            "${gentoo_repo}" "${GITHUB_WORKSPACE}" "${GITHUB_WORKSPACE}" \
+            > "${config_dir}/repos.conf/ci.conf"
+
+          pmaint --config "${config_dir}" regen \
+            --dir "${cache_dir}/repos" edorp
+
+          scan_args=(--cache-dir "${cache_dir}" --exit GentooCI)
+          if [[ "${NETWORK_SCAN}" == "true" ]]; then
+            scan_args+=(--net --timeout 30)
+          fi
+
+          pkgcheck --config "${config_dir}" --color y scan \
+            "${scan_args[@]}"
