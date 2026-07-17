@@ -23,7 +23,7 @@ The overlay is intended for personal packages and experiments, starting with:
   LinuxMAMEUI.
 - Future applications can be added later.
 
-Status as of 2026-07-04:
+Status as of 2026-07-17:
 
 - `/home/edo/EDORP` has been initialized as the EDORP overlay root.
 - Git has been initialized locally on branch `main`.
@@ -31,7 +31,7 @@ Status as of 2026-07-04:
 - Initial commit exists: `51f128b Initial EDORP Gentoo overlay`.
 - Remote `origin` is configured as `git@github.com:firesand/edorp-overlay.git`.
 - Push to GitHub is complete. `main` tracks `origin/main`, and GitHub remote
-  head is `2d8abb54f657fa6497d5d90cd0b86f6ea239e730`.
+  head is `5c88785aaba1fa2a6cd0078900754348233dfa54`.
 - `/home/edo/mame` does not exist. Existing related paths found:
   `/home/edo/MAME` is a symlink to `/home/edo/ArcadeDev/LinuxMAMEUI`, and
   `/home/edo/ArcadeDev/MAME` is empty.
@@ -252,8 +252,9 @@ Known portability issue:
   (app tarball + crates). Regenerating Manifest is slow (~593 crate fetches);
   use a writable `DISTDIR` if system `/var/cache/distfiles` is not writable:
   `DISTDIR="$PWD/.distfiles" PORTAGE_TMPDIR="$PWD/.portage-tmp" ebuild ... manifest`
-- Prefer versioned `=app-emulation/mameuix-0.1.6` when keywords allow; live `9999` still
-  works for tracking `main`.
+- Prefer versioned `=app-emulation/mameuix-0.1.6` for the immutable v0.1.6
+  release when keywords allow. For the post-release Classic-menu hotfix, use
+  live `9999` until a versioned v0.1.7 release exists.
 
 Validation completed on 2026-07-12:
 
@@ -267,6 +268,32 @@ Validation completed on 2026-07-12:
   were installed.
 - `cargo.eclass` warns because the package lists 593 crates. A release-provided
   crate tarball would be preferable in the future, but none currently exists.
+
+Classic-menu hotfix and overlay audit completed on 2026-07-17:
+
+- MAMEUIx `main` commit `08378e1419f0196d4ae4c939cdda362c721f735a`
+  fixes the duplicate legacy toolbar that made File, Game, Options, Tools, and
+  Help menus unresponsive in Classic mode. The application smoke test passed
+  with an old Classic config, Dock ↔ Classic switching, and restart without
+  deleting the config.
+- `mameuix-9999.ebuild` has no branch or commit pin and uses `git-r3` plus
+  `cargo_live_src_unpack`, so it already follows the fixed upstream `main`.
+- `mameuix-0.1.6.ebuild` must remain bound to the immutable `v0.1.6` archive.
+  Never repoint version 0.1.6 to `main`; that would misrepresent package
+  provenance and invalidate the distfile/Manifest relationship.
+- GitHub's latest MAMEUIx release is still v0.1.6; no v0.1.7 tag or release
+  exists. Do not create a `mameuix-0.1.7.ebuild` before that source tag exists.
+- The upstream watcher correctly uses the latest GitHub release with review
+  policy and retains `0.1.6` as its baseline. A commit on upstream `main` alone
+  intentionally does not trigger a versioned overlay bump.
+- EDORP local and remote `main` both resolve to `5c88785`; the worktree was
+  clean before this memory update. `pkgcheck scan app-emulation/mameuix` and
+  all four upstream-watcher unit tests passed.
+- After upstream v0.1.7 is published: copy/review the versioned ebuild,
+  regenerate `CRATES` and `Manifest`, update README and
+  `.github/upstream-old.json`, then run package QA and a full clean build before
+  committing the overlay bump. `metadata.xml` and the `9999` ebuild should not
+  need changes.
 
 Install (versioned):
 
