@@ -89,19 +89,20 @@ jobs:
           config_dir="${RUNNER_TEMP}/portage"
           cache_dir="${RUNNER_TEMP}/pkgcheck-cache"
           failures="${RUNNER_TEMP}/pkgcheck-failures.json"
+          gentoo_repo="${HOME}/.cache/pkgcore/repos/gentoo"
           mkdir -p "${config_dir}/repos.conf" "${cache_dir}/repos"
           profile_path="$({
             awk '$1 == "amd64" && $2 ~ /^default\/linux\/amd64\/[0-9.]+$/ && $3 == "stable" { print $2 }' \
-              /var/db/repos/gentoo/profiles/profiles.desc
+              "${gentoo_repo}/profiles/profiles.desc"
           } | sort -V | tail -n 1)"
           if [[ -z "${profile_path}" ]]; then
             echo "No stable base amd64 profile found in Gentoo profiles.desc" >&2
             exit 1
           fi
-          ln -s "/var/db/repos/gentoo/profiles/${profile_path}" \
+          ln -s "${gentoo_repo}/profiles/${profile_path}" \
             "${config_dir}/make.profile"
-          printf '[DEFAULT]\nmain-repo = gentoo\n\n[gentoo]\nlocation = /var/db/repos/gentoo\n\n[guru]\nlocation = %s/.ci/guru\nmasters = gentoo\n\n[edorp]\nlocation = %s\nmasters = gentoo guru\n' \
-            "${GITHUB_WORKSPACE}" "${GITHUB_WORKSPACE}" \
+          printf '[DEFAULT]\nmain-repo = gentoo\n\n[gentoo]\nlocation = %s\n\n[guru]\nlocation = %s/.ci/guru\nmasters = gentoo\n\n[edorp]\nlocation = %s\nmasters = gentoo guru\n' \
+            "${gentoo_repo}" "${GITHUB_WORKSPACE}" "${GITHUB_WORKSPACE}" \
             > "${config_dir}/repos.conf/ci.conf"
 
           pmaint --config "${config_dir}" regen \
