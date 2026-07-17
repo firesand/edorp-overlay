@@ -114,8 +114,8 @@ jobs:
           fi
 
           status=0
-          pkgcheck --config "${config_dir}" --color y ci \
-            --failures "${failures}" "${scan_args[@]}" || status=$?
+          pkgcheck --color y ci --failures "${failures}" \
+            --config "${config_dir}" "${scan_args[@]}" || status=$?
           if [[ -s "${failures}" ]]; then
             pkgcheck replay --color y "${failures}"
           fi
