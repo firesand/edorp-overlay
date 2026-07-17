@@ -1,0 +1,201 @@
+[__config__]
+oldver = "upstream-old.json"
+newver = "upstream-new.json"
+max_concurrency = 8
+http_timeout = 30
+
+# Proprietary binary without a machine-readable release feed.
+["app-benchmarks/unigine-superposition"]
+source = "manual"
+manual = "1.1"
+policy = "manual"
+note = "Check the vendor download page manually during the monthly audit."
+
+# GitHub tags are unrelated tagNNNNN snapshots. The official page exposes the
+# actual HBMAME release number.
+["app-emulation/hbmame"]
+source = "regex"
+url = "https://hbmame.1emulation.com/"
+regex = 'HBMAME ([0-9]+\.[0-9]+\.[0-9]+) \(64-bit, cmd-line\)'
+policy = "manual"
+note = "Verify the MAME compatibility level before bumping."
+
+# The upstream repository is unavailable and SRC_URI is a local archive.
+["app-emulation/linuxmameui"]
+source = "manual"
+manual = "0.1.0"
+policy = "manual"
+note = "A portable bump needs a public source archive or a restored repository."
+
+["app-emulation/mame"]
+source = "github"
+github = "mamedev/mame"
+use_latest_release = true
+from_pattern = '^mame0([0-9]+)$'
+to_pattern = '0.\1'
+policy = "review"
+
+["app-emulation/mameuix"]
+source = "github"
+github = "firesand/MAMEUIx"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Regenerate and review the large Cargo dependency list."
+
+["app-portage/equery-gui"]
+source = "github"
+github = "firesand/equery-gui"
+use_max_tag = true
+include_regex = '^v[0-9]+(?:\.[0-9]+)*$'
+prefix = "v"
+policy = "review"
+
+["app-text/markitdown"]
+source = "pypi"
+pypi = "markitdown"
+policy = "review"
+note = "Review every optional format dependency and supported Python target."
+
+# The workflow image is immutable by digest, so Dependabot cannot infer its
+# package version. This signal prompts a manual digest refresh.
+["ci/pkgcheck-image"]
+source = "pypi"
+pypi = "pkgcheck"
+policy = "manual"
+note = "Resolve and verify the new GHCR digest before changing the QA workflow image."
+
+["dev-python/cobble"]
+source = "pypi"
+pypi = "cobble"
+policy = "review"
+
+["dev-python/magika"]
+source = "pypi"
+pypi = "magika"
+policy = "review"
+note = "MarkItDown 0.1.6 requires Magika below 0.7; retain the old ebuild if needed."
+
+["dev-python/mammoth"]
+source = "pypi"
+pypi = "mammoth"
+policy = "review"
+note = "MarkItDown 0.1.6 requires Mammoth below 1.12; retain the old ebuild if needed."
+
+["dev-python/pdfplumber"]
+source = "pypi"
+pypi = "pdfplumber"
+policy = "review"
+
+["dev-python/pystray"]
+source = "pypi"
+pypi = "pystray"
+policy = "review"
+
+["dev-python/python-pptx"]
+source = "pypi"
+pypi = "python-pptx"
+policy = "review"
+
+["dev-python/upnpclient"]
+source = "pypi"
+pypi = "upnpclient"
+policy = "review"
+
+["gui-apps/elephant"]
+source = "github"
+github = "abenz1267/elephant"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+group = "walker-stack"
+note = "Update with Walker and use the Elephant revision pinned by Walker, not merely the newest tag."
+
+["gui-apps/walker"]
+source = "github"
+github = "abenz1267/walker"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+group = "walker-stack"
+note = "Update with Elephant; regenerate Cargo sources and recheck downstream patches."
+
+["net-analyzer/bettercap"]
+source = "github"
+github = "bettercap/bettercap"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Audit the Go module list, downstream patch, and pinned caplets revision."
+
+# Nested snapshot pinned independently by the Bettercap ebuild.
+["net-analyzer/bettercap::caplets"]
+source = "github"
+github = "bettercap/caplets"
+branch = "master"
+policy = "snapshot"
+note = "Review caplet changes before moving the pinned commit."
+
+["net-misc/fluxcast"]
+source = "pypi"
+pypi = "fluxcast"
+policy = "review"
+note = "Rebase the overlay patches and test UPnP discovery."
+
+# Snapshot packages deliberately use full UTC commit timestamps so multiple
+# commits on the same day cannot be hidden.
+["net-wireless/bully"]
+source = "github"
+github = "kimocoder/bully"
+branch = "master"
+policy = "snapshot"
+note = "Do not replace the pinned snapshot without reviewing post-release fixes."
+
+["net-wireless/hcxdumptool"]
+source = "github"
+github = "ZerBea/hcxdumptool"
+use_latest_release = true
+policy = "review"
+group = "hcx-suite"
+note = "Bump together with hcxtools when their release versions are paired."
+
+["net-wireless/hcxtools"]
+source = "github"
+github = "ZerBea/hcxtools"
+use_latest_release = true
+policy = "review"
+group = "hcx-suite"
+note = "Bump together with hcxdumptool when their release versions are paired."
+
+["net-wireless/mdk4"]
+source = "github"
+github = "aircrack-ng/mdk4"
+branch = "master"
+policy = "snapshot"
+note = "The snapshot is intentional; review compiler fixes before moving it."
+
+["net-wireless/pixiewps"]
+source = "github"
+github = "wiire-a/pixiewps"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+
+["net-wireless/wiflux"]
+source = "github"
+github = "Leadrogue/Wiflux"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Rebase and test every downstream patch before accepting a bump."
+
+# Live-only packages have no version bump; smoke-build their HEAD manually.
+["sys-power/asusctl"]
+source = "manual"
+manual = "9999"
+policy = "live"
+
+["sys-power/supergfxctl"]
+source = "manual"
+manual = "9999"
+policy = "live"

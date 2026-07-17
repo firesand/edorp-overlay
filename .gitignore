@@ -5,6 +5,10 @@ out/
 target/
 .portage-tmp/
 .distfiles/
+.github/upstream-new.json
+metadata/md5-cache/
+__pycache__/
+*.pyc
 *.o
 *.so
 *.a

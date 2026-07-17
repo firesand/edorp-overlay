@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:17"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: "pip"
+    directory: "/.github"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:17"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 3
+    groups:
+      nvchecker-stack:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"

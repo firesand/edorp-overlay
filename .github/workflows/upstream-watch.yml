@@ -1,0 +1,167 @@
+name: Upstream watch
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+      timezone: "Asia/Jakarta"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-dashboard
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check upstream releases
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out trusted main branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+
+      - name: Install locked watcher dependencies
+        run: >-
+          python -m pip install --disable-pip-version-check
+          --require-hashes -r .github/requirements-upstream.txt
+
+      - name: Test dashboard renderer
+        run: python -m unittest discover -s .github/tests -v
+
+      - name: Check upstream versions
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          keyfile="${RUNNER_TEMP}/nvchecker-keys.toml"
+          updates="${RUNNER_TEMP}/upstream-updates.json"
+          report="${RUNNER_TEMP}/upstream-dashboard.md"
+          printf '[keys]\n"github.com" = "%s"\n' "${GH_READ_TOKEN}" > "${keyfile}"
+          chmod 600 "${keyfile}"
+
+          nvchecker --failures --tries 3 \
+            --keyfile "${keyfile}" --file .github/upstream.toml
+          nvcmp --json --newer --file .github/upstream.toml > "${updates}"
+          python .github/scripts/render_upstream_dashboard.py \
+            --updates "${updates}" \
+            --config .github/upstream.toml \
+            --output "${report}"
+
+      - name: Upload sanitized dashboard
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: upstream-dashboard
+          path: ${{ runner.temp }}/upstream-dashboard.md
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  dashboard:
+    name: Update issue dashboard
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Download sanitized dashboard
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: upstream-dashboard
+          path: dashboard
+
+      - name: Create, update, reopen, or close the dashboard issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- edorp-upstream-dashboard -->';
+            const title = 'Overlay update dashboard';
+            const label = 'upstream-update';
+            const report = fs
+              .readFileSync('dashboard/upstream-dashboard.md', 'utf8')
+              .trimEnd();
+            const { owner, repo } = context.repo;
+
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              { owner, repo, state: 'all', per_page: 100 }
+            );
+            let issue = issues.find((candidate) =>
+              !candidate.pull_request &&
+              candidate.title === title &&
+              (candidate.body || '').includes(marker)
+            );
+
+            if (!report.trim()) {
+              if (issue && issue.state === 'open') {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+                core.info(`Closed dashboard issue #${issue.number}`);
+              } else {
+                core.info('No pending updates and no open dashboard issue');
+              }
+              return;
+            }
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: label,
+                color: '1d76db',
+                description: 'Upstream release detected by nvchecker'
+              });
+            }
+
+            if (!issue) {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body: report,
+                labels: [label]
+              });
+              core.info(`Created dashboard issue #${created.data.number}`);
+              return;
+            }
+
+            const patch = { owner, repo, issue_number: issue.number };
+            if ((issue.body || '').trimEnd() !== report) patch.body = report;
+            if (issue.state !== 'open') patch.state = 'open';
+            const labels = issue.labels.map((item) =>
+              typeof item === 'string' ? item : item.name
+            );
+            if (!labels.includes(label)) patch.labels = [...labels, label];
+
+            if (Object.keys(patch).length > 3) {
+              await github.rest.issues.update(patch);
+              core.info(`Updated dashboard issue #${issue.number}`);
+            } else {
+              core.info(`Dashboard issue #${issue.number} is unchanged`);
+            }
