@@ -99,6 +99,32 @@ local machine configuration do not belong in the overlay.
   bounds checks, nl80211 support, and current compiler fixes.
 - `net-analyzer/bettercap`: modular network reconnaissance and auditing
   framework, built reproducibly from source with offline Go module distfiles.
+- `app-emulation/winboat`: WinBoat 0.9.0 prebuilt Electron app that runs
+  Windows apps on Linux via Docker/Podman + FreeRDP
+  ([upstream](https://www.winboat.app/)).
+
+### WinBoat
+
+WinBoat packages the upstream `winboat-*-x64.tar.gz` release (not a from-source
+Electron build). Default USE `docker` pulls in Docker Engine, CLI, and Compose
+v2; enable `podman` for the Podman path instead (or in addition). FreeRDP 3.x
+with `client`, `X`, and `pulseaudio` is required for RemoteApp windows.
+
+```bash
+# If this machine uses the local checkout instead of /var/db/repos/edorp:
+doas cp metadata/edorp.local.conf /etc/portage/repos.conf/edorp.conf
+doas cp metadata/package.accept_keywords/edorp-winboat \
+  /etc/portage/package.accept_keywords/edorp-winboat
+doas cp metadata/package.use/edorp-winboat \
+  /etc/portage/package.use/edorp-winboat
+doas emerge -av app-emulation/winboat
+```
+
+After install, ensure Docker is running, add your user to the `docker` group,
+re-login, and confirm `docker compose version` works before launching
+`winboat`. KVM must be available (`/dev/kvm`). WinBoat does not provide a
+Windows license. This package conflicts with `app-emulation/winboat-bin` from
+gentoo-zh.
 
 ### Walker
 

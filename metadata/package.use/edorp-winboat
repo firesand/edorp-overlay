@@ -1,0 +1,2 @@
+net-misc/freerdp client X pulseaudio
+# Prefer PipeWire/Pulse sound for FreeRDP RemoteApp; alsa alone also satisfies the ebuild.

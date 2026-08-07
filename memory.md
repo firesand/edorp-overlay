@@ -45,6 +45,10 @@ Status as of 2026-07-17:
   local setup scripts from that directory were excluded.
 - `equery-gui` source lives at `https://github.com/firesand/equery-gui`. The
   overlay ebuild is `app-portage/equery-gui/equery-gui-0.1.0.ebuild`.
+- `app-emulation/winboat` packages the upstream WinBoat 0.9.0 amd64
+  prebuilt from https://github.com/winboat-org/winboat (site:
+  https://www.winboat.app/). Runtime needs FreeRDP 3.x with sound plus
+  Docker Compose v2 or Podman Compose; KVM required.
 
 ## Overlay Direction
 

@@ -1,0 +1,4 @@
+app-emulation/winboat ~amd64
+net-misc/freerdp ~amd64
+app-containers/docker-cli ~amd64
+app-containers/docker-compose ~amd64
