@@ -102,6 +102,13 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.0 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
+- `media-gfx/opencadstudio`: OpenCADStudio 0.9.4, a Rust/iced 2D/3D CAD
+  application with DWG/DXF support
+  ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
+  from the pinned git tag; Cargo dependencies (crates.io plus the iced/acadrust
+  git patches) are fetched and vendored in `src_unpack` because upstream pins
+  git revisions that the `CRATES` mechanism cannot express. Requires Rust
+  >= 1.92 and `~amd64` keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
 
 ### WinBoat
 

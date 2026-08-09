@@ -5,6 +5,7 @@ app-portage
 app-text
 dev-python
 games-emulation
+media-gfx
 net-analyzer
 net-misc
 net-wireless
