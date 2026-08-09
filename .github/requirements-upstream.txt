@@ -1,11 +1,14 @@
 # Locked for CPython 3.14 on the Linux x86-64 GitHub-hosted runner.
 # Regenerate every hash when changing a version.
-nvchecker[pypi]==2.20 \
-    --hash=sha256:e34c8475ec45793ce1db011b248ac82265f9e0a8fef20b806154dd14b1972739
-packaging==26.2 \
-    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
-platformdirs==4.10.0 \
-    --hash=sha256:fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a
+nvchecker[pypi]==2.21 \
+    --hash=sha256:65eb04a74f261e25f62f1678a4b9dbef905c9e3b82777c69d894a1643fbec557 \
+    --hash=sha256:efb632d4b37f8a8583bcd56401195629abf5052acb0ac728322f147738f08085
+packaging==26.3 \
+    --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+platformdirs==4.11.0 \
+    --hash=sha256:0555d18370482847566ffabcaa53ad7c6c1c29f195989ae1ed634a05f76ea1e0 \
+    --hash=sha256:360ccded2b7fce0af0ff80cc8f5942a1c5d99b0e856033acb030bfc634709e74
 pycurl==7.47.0 \
     --hash=sha256:36f3ca3e81468ed359f98c5e93af616c9c781f47cf0859563f2a8ec5b51d8795
 structlog==26.1.0 \
