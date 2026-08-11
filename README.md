@@ -109,6 +109,14 @@ local machine configuration do not belong in the overlay.
   git patches) are fetched and vendored in `src_unpack` because upstream pins
   git revisions that the `CRATES` mechanism cannot express. Requires Rust
   >= 1.92 and `~amd64` keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+- `app-misc/chatgpt-desktop`: OpenAI's ChatGPT desktop app for Linux,
+  repackaged from the upstream `.deb`
+  ([upstream](https://developers.openai.com/codex/app)). Bundles the Codex
+  agent, its own Node runtime, and ripgrep under
+  `/opt/chatgpt-desktop/resources`. Proprietary, so it needs `~amd64`
+  keywording plus an `all-rights-reserved` license entry
+  (`metadata/package.accept_keywords/edorp-chatgpt-desktop`,
+  `metadata/package.license/edorp-chatgpt-desktop`).
 
 ### WinBoat
 
@@ -132,6 +140,27 @@ re-login, and confirm `docker compose version` works before launching
 `winboat`. KVM must be available (`/dev/kvm`). WinBoat does not provide a
 Windows license. This package conflicts with `app-emulation/winboat-bin` from
 gentoo-zh.
+
+### ChatGPT Desktop
+
+Sourced from the versioned APT pool rather than the advertised
+`linux/deb/latest/chatgpt_amd64.deb`, which changes in place and so cannot be
+pinned by a Manifest. The APT repository and signing key that the upstream
+`.deb` installs for background self-updates are deliberately dropped; bump the
+ebuild to update instead.
+
+```bash
+doas cp metadata/package.accept_keywords/edorp-chatgpt-desktop \
+  /etc/portage/package.accept_keywords/edorp-chatgpt-desktop
+doas cp metadata/package.license/edorp-chatgpt-desktop \
+  /etc/portage/package.license/edorp-chatgpt-desktop
+doas emerge -av app-misc/chatgpt-desktop
+```
+
+This build ships no setuid `chrome-sandbox`, so the Chromium sandbox relies on
+unprivileged user namespaces (`CONFIG_USER_NS=y`). Enable USE `apparmor` to
+install the upstream profile that grants the matching `userns` rule. The
+bundled Codex agent is separate from `dev-util/codex`.
 
 ### Walker
 
