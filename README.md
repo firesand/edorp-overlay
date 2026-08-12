@@ -117,6 +117,12 @@ local machine configuration do not belong in the overlay.
   keywording plus an `all-rights-reserved` license entry
   (`metadata/package.accept_keywords/edorp-chatgpt-desktop`,
   `metadata/package.license/edorp-chatgpt-desktop`).
+- `app-misc/unsloth-desktop`: Unsloth Desktop (beta), a Tauri app for running
+  and training LLMs and diffusion models locally
+  ([upstream](https://unsloth.ai/docs/desktop)). Only the desktop shell is
+  packaged; the app bootstraps its own PyTorch environment into
+  `~/.unsloth/studio` on first launch. Needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-unsloth-desktop`).
 
 ### WinBoat
 
@@ -161,6 +167,25 @@ This build ships no setuid `chrome-sandbox`, so the Chromium sandbox relies on
 unprivileged user namespaces (`CONFIG_USER_NS=y`). Enable USE `apparmor` to
 install the upstream profile that grants the matching `userns` rule. The
 bundled Codex agent is separate from `dev-util/codex`.
+
+### Unsloth Desktop
+
+Built from the upstream `.deb` rather than the AppImage so the Tauri binary
+keeps its FHS layout: it resolves resources as `<exe dir>/../lib/Unsloth`, and
+that `lib` is literal, never `$(get_libdir)`.
+
+```bash
+echo "app-misc/unsloth-desktop ~amd64" | doas tee \
+  /etc/portage/package.accept_keywords/edorp-unsloth-desktop
+doas emerge -av app-misc/unsloth-desktop
+```
+
+This installs the GUI only. On first launch the app downloads a private Python
+environment (uv, PyTorch, the unsloth wheels — several GB) into
+`~/.unsloth/studio`, which portage neither tracks nor removes on unmerge. Its
+built-in system-dependency installer only drives `apt`, so on Gentoo it asks
+you to install anything missing yourself. Upstream publishes beta releases
+several times a day, so expect frequent bumps.
 
 ### Walker
 

@@ -51,6 +51,15 @@ regex = 'Version: ([0-9][0-9.]*)'
 policy = "review"
 note = "Confirm the arm64 index reports the same version, then refresh both distfiles."
 
+["app-misc/unsloth-desktop"]
+source = "github"
+github = "unslothai/unsloth"
+use_latest_release = true
+from_pattern = '^v([0-9.]+)-beta$'
+to_pattern = '\\1_beta'
+policy = "review"
+note = "Beta releases land several times a day, and the numbering appends digits (0.1.70 then 0.1.701); confirm the new tag really sorts newer before bumping."
+
 ["app-portage/equery-gui"]
 source = "github"
 github = "firesand/equery-gui"
