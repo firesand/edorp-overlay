@@ -123,6 +123,11 @@ local machine configuration do not belong in the overlay.
   packaged; the app bootstraps its own PyTorch environment into
   `~/.unsloth/studio` on first launch. Needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-unsloth-desktop`).
+- `app-text/md2hd`: point it at a markdown file or a folder of notes and it
+  draws them as a graph, frontmatter becoming nodes and wikilinks becoming
+  edges, served on loopback and read in a browser
+  ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
+  needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
 
 ### WinBoat
 
@@ -186,6 +191,25 @@ environment (uv, PyTorch, the unsloth wheels — several GB) into
 built-in system-dependency installer only drives `apt`, so on Gentoo it asks
 you to install anything missing yourself. Upstream publishes beta releases
 several times a day, so expect frequent bumps.
+
+### md2hd
+
+Installed from the npm tarball rather than a git snapshot: upstream publishes
+no tags or GitHub releases, and the visualizer under `dist/` is built in a
+separate unpublished repository, so the published bundle is the only form
+there is to ship.
+
+```bash
+echo "app-text/md2hd ~amd64" | doas tee \
+  /etc/portage/package.accept_keywords/edorp-md2hd
+doas emerge -av app-text/md2hd
+```
+
+`md2hd notes/` serves the map on 127.0.0.1:4173 and opens a browser with
+`xdg-open`; `--no-open` skips that and `--port N` moves it. Nothing is offered
+to the network. `bin/` and `dist/` install under `/usr/share/md2hd` with only a
+launcher symlink on PATH, and they have to stay siblings because the script
+resolves the app as `<script dir>/../dist`.
 
 ### Walker
 

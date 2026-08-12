@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		md2hd reads a markdown file or a folder of notes and draws them as a
+		graph: frontmatter blocks become nodes and wikilinks become edges.
+		The CLI serves a prebuilt visualizer on the loopback interface and
+		opens it in a browser, re-reading the files on every request, so
+		saving a note and refreshing the tab redraws the map. Nothing is sent
+		off the machine. The bundled app is shipped prebuilt because upstream
+		builds it in a separate, unpublished repository.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/evan-steinhilb/md2hd/issues</bugs-to>
+		<remote-id type="github">evan-steinhilb/md2hd</remote-id>
+	</upstream>
+</pkgmetadata>

@@ -74,6 +74,12 @@ pypi = "markitdown"
 policy = "review"
 note = "Review every optional format dependency and supported Python target."
 
+["app-text/md2hd"]
+source = "npm"
+npm = "md2hd"
+policy = "review"
+note = "Upstream cuts no git tags or GitHub releases, so npm is the only versioned feed."
+
 # The workflow image is immutable by digest, so Dependabot cannot infer its
 # package version. This signal prompts a manual digest refresh.
 ["ci/pkgcheck-image"]

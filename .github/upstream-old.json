@@ -8,6 +8,7 @@
   "app-misc/unsloth-desktop": "0.1.701_beta",
   "app-portage/equery-gui": "0.1.0",
   "app-text/markitdown": "0.1.6",
+  "app-text/md2hd": "0.3.0",
   "ci/pkgcheck-image": "0.10.40",
   "dev-python/cobble": "0.1.4",
   "dev-python/magika": "0.6.3",
