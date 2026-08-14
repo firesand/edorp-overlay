@@ -548,6 +548,41 @@ Validation completed on 2026-07-12:
   was attempted. Those checks require compatible hardware and an explicitly
   authorized test network.
 
+## Upstream audit and bumps (Aug 2026)
+
+Full upstream version audit on 2026-08-14 (working copy at
+`/home/edo/backup-omgently/EDORP`, branch `app-text/md2hd`):
+
+- Bumped: `app-emulation/mame` 0.289, `app-emulation/hbmame` 0.289.1
+  (`_COMMIT=9d31435a4182d0aa6d1cb0891dee5a8022ba2f74`, tag `tag289`; both
+  downstream patches still apply, cps2 patch with 1-line offset),
+  `app-misc/chatgpt-desktop` 26.810.41047, `app-text/markitdown` 0.1.7
+  (dep pins unchanged upstream), `dev-python/pystray` 0.19.4 (0.19.5 has no
+  PyPI sdist — stay on pypi eclass with 0.19.4),
+  `net-misc/fluxcast` 0.2.2 (portable-fixes patch fully rebased onto the new
+  `src/wfd/` package layout; old 0.1.2-r*/0.1.4/0.1.5 ebuilds dropped as
+  `RedundantVersion`; upstream forgot to bump its own pyproject version),
+  `media-gfx/opencadstudio` 0.9.5 (vendored unpack verified; no Manifest
+  needed under thin-manifests).
+- Deliberately NOT bumped: `dev-python/magika` (markitdown 0.1.7 still pins
+  `magika~=0.6.1`, i.e. `<0.7`; PyPI 1.0.3 is incompatible) and
+  `dev-python/mammoth` (markitdown 0.1.7 pins `mammoth~=1.11.0`; shipping
+  1.12.1 would make `markitdown[docx]` unsatisfiable — revisit when
+  markitdown relaxes the pin).
+- Held: `app-misc/unsloth-desktop` 0.1.702_beta (GitHub release published
+  2026-08-13 but has zero assets; .deb URL 404s — recheck later),
+  `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins `~gui-apps/elephant-2.21.0`
+  and a bump needs a new vendor tarball uploaded to the overlay's GitHub
+  releases; bump only together with a walker release that supports it).
+- `app-emulation/linuxmameui` upstream repo (github.com/linuxmameui) returns
+  404; the ebuild is `RESTRICT=fetch` from a local archive, so no public
+  version check is possible.
+- Everything else was up-to-date at audit time.
+- `media-gfx/opencadstudio` and `app-emulation/winboat` were missing from the
+  upstream watcher; both were added to `.github/upstream.toml` and
+  `upstream-old.json` during this audit (the winboat gap had been failing
+  `test_real_config_and_baseline_cover_the_same_entries`).
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

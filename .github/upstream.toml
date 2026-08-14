@@ -43,6 +43,14 @@ prefix = "v"
 policy = "review"
 note = "Regenerate and review the large Cargo dependency list."
 
+["app-emulation/winboat"]
+source = "github"
+github = "winboat-org/winboat"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Binary repack of the upstream x64 tarball; refresh both the tag and the release asset."
+
 # The vendor publishes no release feed, but its APT index is machine-readable.
 ["app-misc/chatgpt-desktop"]
 source = "regex"
@@ -142,6 +150,14 @@ prefix = "v"
 policy = "review"
 group = "walker-stack"
 note = "Update with Elephant; regenerate Cargo sources and recheck downstream patches."
+
+["media-gfx/opencadstudio"]
+source = "github"
+github = "HakanSeven12/OpenCADStudio"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Versioned ebuild pins EGIT_COMMIT to the tag; smoke-test cargo vendoring after bumps."
 
 ["net-analyzer/bettercap"]
 source = "github"
