@@ -10,7 +10,7 @@ inherit multiprocessing pax-utils python-any-r1 toolchain-funcs
 DESCRIPTION="HomeBrew MAME command-line emulator"
 HOMEPAGE="https://hbmame.1emulation.com/ https://github.com/Robbbert/hbmame"
 
-_COMMIT="e20204804c2808c101db85daa2cdcf5d97f1330b"
+_COMMIT="9d31435a4182d0aa6d1cb0891dee5a8022ba2f74"
 SRC_URI="https://github.com/Robbbert/hbmame/archive/${_COMMIT}.tar.gz -> ${P}.tar.gz"
 S="${WORKDIR}/${PN}-${_COMMIT}"
 
