@@ -6,7 +6,7 @@ PYTHON_COMPAT=( python3_{10..14} )
 inherit desktop distutils-r1 xdg
 
 PATCHES=(
-	"${FILESDIR}/fluxcast-0.1.2-portal-before-wfd.patch"
+	"${FILESDIR}/fluxcast-0.2.2-portable-fixes.patch"
 )
 
 DESCRIPTION="Stream your Linux desktop to a Smart TV via Miracast/WFD, DLNA, or Chromecast"
@@ -27,6 +27,7 @@ RDEPEND="
 	dev-python/pystray[${PYTHON_USEDEP}]
 	dev-python/python-dateutil[${PYTHON_USEDEP}]
 	dev-python/upnpclient[${PYTHON_USEDEP}]
+	gui-apps/wf-recorder
 	media-libs/gst-plugins-bad
 	media-libs/gst-plugins-base
 	media-libs/gst-plugins-good
