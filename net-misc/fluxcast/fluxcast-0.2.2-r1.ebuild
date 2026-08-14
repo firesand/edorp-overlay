@@ -3,20 +3,23 @@ EAPI=8
 DISTUTILS_USE_PEP517=hatchling
 PYTHON_COMPAT=( python3_{10..14} )
 
-inherit desktop distutils-r1 git-r3 xdg
+inherit desktop distutils-r1 xdg
 
 PATCHES=(
-	"${FILESDIR}/fluxcast-0.1.5-portable-fixes.patch"
+	"${FILESDIR}/fluxcast-0.2.2-portable-fixes.patch"
 )
 
 DESCRIPTION="Stream your Linux desktop to a Smart TV via Miracast/WFD, DLNA, or Chromecast"
-HOMEPAGE="https://github.com/IlyaP358/fluxcast"
-EGIT_REPO_URI="https://github.com/IlyaP358/fluxcast.git"
+HOMEPAGE="https://github.com/IlyaP358/fluxcast https://pypi.org/project/fluxcast/"
+SRC_URI="https://github.com/IlyaP358/fluxcast/archive/refs/tags/v${PV}.tar.gz -> ${P}.gh.tar.gz"
 
 LICENSE="GPL-3+"
 SLOT="0"
-KEYWORDS=""
+KEYWORDS="~amd64 ~x86"
 
+# 0.2.2 made the doctor's dnsmasq row a hard gate on the WFD path
+# (diagnostics.py: wfd_candidate = network_hw_ok and media_ok and dnsmasq_ok),
+# so without the binary in PATH every Miracast cast aborts before it starts.
 RDEPEND="
 	dev-libs/libayatana-appindicator
 	dev-libs/glib
