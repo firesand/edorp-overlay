@@ -5,7 +5,7 @@ EAPI=8
 
 inherit desktop optfeature unpacker xdg
 
-# Upstream tags v0.1.701-beta but names the assets with underscores.
+# Upstream spells the tag with dashes but the asset names with underscores.
 MY_PV="${PV/_/-}"
 MY_FV="${PV//./_}"
 
@@ -51,10 +51,6 @@ QA_PREBUILT="*"
 
 src_prepare() {
 	default
-
-	# The Windows installer is dead weight here, and nothing in the binary
-	# refers to it.
-	rm usr/lib/Unsloth/install.ps1 || die
 
 	# Upstream ships an empty Categories key, which leaves the entry out of
 	# every desktop menu and trips desktop-file-validate.
