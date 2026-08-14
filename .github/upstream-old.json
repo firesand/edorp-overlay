@@ -28,6 +28,7 @@
   "net-wireless/mdk4": "20260529.020820",
   "net-wireless/pixiewps": "1.4.2",
   "net-wireless/wiflux": "1.0.5",
+  "sys-firmware/ds5dongle": "0.7.2",
   "sys-power/asusctl": "9999",
   "sys-power/supergfxctl": "9999"
 }

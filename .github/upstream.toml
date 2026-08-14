@@ -212,6 +212,16 @@ prefix = "v"
 policy = "review"
 note = "Rebase and test every downstream patch before accepting a bump."
 
+["sys-firmware/ds5dongle"]
+source = "github"
+github = "awalol/DS5Dongle"
+use_latest_release = true
+prefix = "v"
+from_pattern = '^v([0-9]+\.[0-9]+\.[0-9]+)(?:-hotfix)?$'
+to_pattern = '\1'
+policy = "review"
+note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the published tag and refresh SRC_URI assets."
+
 # Live-only packages have no version bump; smoke-build their HEAD manually.
 ["sys-power/asusctl"]
 source = "manual"

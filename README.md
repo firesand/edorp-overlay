@@ -99,6 +99,11 @@ local machine configuration do not belong in the overlay.
   bounds checks, nl80211 support, and current compiler fixes.
 - `net-analyzer/bettercap`: modular network reconnaissance and auditing
   framework, built reproducibly from source with offline Go module distfiles.
+- `sys-firmware/ds5dongle`: DualSense wireless bridge firmware for the
+  Raspberry Pi Pico 2 W
+  ([source](https://github.com/awalol/DS5Dongle)). Installs the upstream
+  prebuilt UF2 plus the `ds5dongle-config` HID helper. Enable `other-boards`
+  for Pico W and Waveshare RP2350B-Plus-W builds.
 - `app-emulation/winboat`: WinBoat 0.9.0 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
@@ -151,6 +156,21 @@ re-login, and confirm `docker compose version` works before launching
 `winboat`. KVM must be available (`/dev/kvm`). WinBoat does not provide a
 Windows license. This package conflicts with `app-emulation/winboat-bin` from
 gentoo-zh.
+
+### DS5Dongle
+
+This package ships the upstream release firmware; it does not cross-compile
+with the Pico SDK. Flash the Pico 2 W by holding BOOTSEL, connecting USB, and
+copying `/usr/share/ds5dongle/ds5-bridge-pico2w.uf2` onto the mounted drive.
+
+```bash
+echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+doas emerge -av sys-firmware/ds5dongle
+```
+
+After the DualSense is connected through the dongle, adjust settings with
+`ds5dongle-config get` / `ds5dongle-config set ...`, or use the upstream web
+UI at https://ds5.awalol.eu.org.
 
 ### ChatGPT Desktop
 

@@ -23,7 +23,7 @@ The overlay is intended for personal packages and experiments, starting with:
   LinuxMAMEUI.
 - Future applications can be added later.
 
-Status as of 2026-07-17:
+Status as of 2026-07-19:
 
 - `/home/edo/EDORP` has been initialized as the EDORP overlay root.
 - Git has been initialized locally on branch `main`.
@@ -45,6 +45,9 @@ Status as of 2026-07-17:
   local setup scripts from that directory were excluded.
 - `equery-gui` source lives at `https://github.com/firesand/equery-gui`. The
   overlay ebuild is `app-portage/equery-gui/equery-gui-0.1.0.ebuild`.
+- `sys-firmware/ds5dongle` packages upstream DualSense Pico 2 W bridge
+  firmware from https://github.com/awalol/DS5Dongle (PV `0.7.2` → tag
+  `v0.7.2-hotfix`).
 - `app-emulation/winboat` packages the upstream WinBoat 0.9.0 amd64
   prebuilt from https://github.com/winboat-org/winboat (site:
   https://www.winboat.app/). Runtime needs FreeRDP 3.x with sound plus
@@ -103,9 +106,11 @@ app-portage
 app-text
 dev-python
 games-emulation
+gui-apps
 net-analyzer
 net-misc
 net-wireless
+sys-firmware
 sys-power
 ```
 
@@ -186,6 +191,44 @@ Actual imported package placement:
 - `net-wireless/mdk4` (additional IEEE 802.11/deauthentication backend)
 - `net-wireless/bully` (alternative WPS backend)
 - `net-analyzer/bettercap` (modular network and wireless auditing framework)
+- `sys-firmware/ds5dongle` (DualSense Pico 2 W bridge firmware + config helper)
+
+## DS5Dongle (Jul 2026)
+
+- Upstream: https://github.com/awalol/DS5Dongle
+- Overlay package: `sys-firmware/ds5dongle/ds5dongle-0.7.2.ebuild`, keyword
+  `~amd64`.
+- Gentoo PV `0.7.2` maps to upstream tag/release asset `v0.7.2-hotfix` via
+  `MY_PV`. When bumping, keep `MY_PV`, the UF2 filename, and any
+  `other-boards` zip name aligned with the published tag.
+- Packaging model: install the upstream prebuilt Pico 2 W UF2 under
+  `/usr/share/ds5dongle/`, optionally the Pico W and Waveshare UF2s from
+  `other.board.zip` when `USE=other-boards`, and install
+  `tools/config_tool.py` as `/usr/bin/ds5dongle-config` with
+  `dev-python/hidapi`. Do not attempt an in-tree Pico SDK / arm-none-eabi
+  cross build unless that toolchain story is deliberately added later.
+- Runtime configuration also exists as the upstream web UI at
+  https://ds5.awalol.eu.org; the ebuild only packages the local HID helper.
+- Watcher entry uses a regex that strips an optional `-hotfix` suffix so the
+  dashboard compares against Gentoo PV `0.7.2`.
+
+Install:
+
+```bash
+echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+doas emerge -av sys-firmware/ds5dongle
+```
+
+Validation completed on 2026-07-19:
+
+- Manifest generation fetched the `v0.7.2-hotfix` source archive, Pico 2 W UF2,
+  and `other.board.zip`.
+- `pkgcheck scan` reported only the informational `PythonCompatUpdate` for
+  `python3_15` (kept at 3.12–3.14 to match current overlay Python practice).
+- Image install passed with and without `USE=other-boards`. Default install
+  stages `/usr/share/ds5dongle/ds5-bridge-pico2w.uf2` and
+  `/usr/bin/ds5dongle-config`; `other-boards` also stages the Pico W and
+  Waveshare UF2s under `/usr/share/ds5dongle/other-boards/`.
 
 ## MarkItDown (Jul 2026)
 
@@ -534,6 +577,7 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-analyzer/bettercap/better
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r3.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-firmware/ds5dongle/ds5dongle-0.7.2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean
