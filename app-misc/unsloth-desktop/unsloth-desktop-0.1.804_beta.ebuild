@@ -5,16 +5,16 @@ EAPI=8
 
 inherit desktop optfeature unpacker xdg
 
-# Upstream spells the tag with dashes but the asset names with underscores.
+# Upstream spells the tag with dashes. The release assets carried the version
+# in their names up to 0.1.800_beta; since 0.1.804_beta they are unversioned.
 MY_PV="${PV/_/-}"
-MY_FV="${PV//./_}"
 
 DESCRIPTION="Local desktop app to run and train LLMs and diffusion models"
 HOMEPAGE="https://unsloth.ai/docs/desktop
 	https://github.com/unslothai/unsloth"
 
 SRC_URI="
-	https://github.com/unslothai/unsloth/releases/download/v${MY_PV}/Unsloth-Desktop-${MY_FV}-Ubuntu.deb
+	https://github.com/unslothai/unsloth/releases/download/v${MY_PV}/Unsloth-Desktop-Ubuntu.deb
 		-> ${P}.deb
 "
 S="${WORKDIR}"
