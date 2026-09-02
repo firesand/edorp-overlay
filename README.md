@@ -122,6 +122,12 @@ local machine configuration do not belong in the overlay.
   keywording plus an `all-rights-reserved` license entry
   (`metadata/package.accept_keywords/edorp-chatgpt-desktop`,
   `metadata/package.license/edorp-chatgpt-desktop`).
+- `app-misc/claude-desktop`: Claude Desktop, Anthropic's prebuilt Electron app
+  for Claude.ai (Chat, Cowork, and Claude Code)
+  ([upstream](https://code.claude.com/docs/en/desktop-linux)). Unpacks the
+  upstream `amd64`/`arm64` `.deb` into `/opt/claude-desktop`. Proprietary
+  (`LICENSE="Anthropic"`), needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-claude-desktop`).
 - `app-misc/unsloth-desktop`: Unsloth Desktop (beta), a Tauri app for running
   and training LLMs and diffusion models locally
   ([upstream](https://unsloth.ai/docs/desktop)). Only the desktop shell is
@@ -392,6 +398,29 @@ requests for MarkItDown, Magika, ONNX Runtime, and its GURU dependencies. The
 ONNX Runtime source stack is substantial; a dependency preview currently
 reports roughly 453 MiB of source downloads for the base package, or 517 MiB
 with `docx pdf pptx` enabled, on amd64.
+
+### Claude Desktop
+
+`app-misc/claude-desktop` repackages Anthropic's official Linux `.deb`
+(published in their apt repository) into `/opt/claude-desktop`, with a
+`/usr/bin/claude-desktop` launcher, the `com.anthropic.Claude.desktop` menu
+entry, and the hicolor icons. The Debian maintainer-script behaviour (writing
+an AppArmor profile and registering Anthropic's apt repo + unattended-upgrades
+snippet) is intentionally dropped — Portage manages updates. `chrome-sandbox`
+is installed setuid-root for the Chromium sandbox helper.
+
+```bash
+# Accept keywords and install:
+sudo cp metadata/package.accept_keywords/edorp-claude-desktop \
+  /etc/portage/package.accept_keywords/edorp-claude-desktop
+sudo emerge -av app-misc/claude-desktop
+```
+
+Linux support is upstream **beta** and only `amd64`/`arm64` are published.
+Optional: `virtual/secret-service` for keyring storage, and `app-emulation/qemu`
+plus KVM (`/dev/kvm`, hardware virtualization) for Cowork's sandboxed VM. Sign
+in with a Claude.ai subscription or organization SSO (no Console API key); the
+app shares `~/.claude` with Claude Code.
 
 ### ASUS laptop (systemd only)
 

@@ -585,41 +585,28 @@ Full upstream version audit on 2026-08-14 (working copy at
 
 ## Upstream audit and bumps (Sep 2026)
 
-Follow-up audit on 2026-09-02, branched from `app-text/md2hd`:
+Full audit and reconciliation on 2026-09-03 (working copy at
+`/home/edo/backup-omgently/EDORP`, branch `app-text/md2hd`):
 
-- Bumped: `dev-python/pystray` 0.19.5, `media-gfx/opencadstudio` 0.9.8,
-  `app-emulation/winboat` 0.9.2, `app-misc/chatgpt-desktop` 26.831.20005,
-  `app-misc/unsloth-desktop` 0.1.804_beta.
-- Pystray 0.19.5 still has no PyPI sdist. Instead of holding at 0.19.4, the
-  ebuild now drops the `pypi` eclass and fetches the GitHub tag archive, which
-  carries the same `setup.py` the old sdists were generated from.
-  `dev-python/python-xlib` was added to RDEPEND; upstream has declared it for
-  Linux since 0.19.3 but the ebuild never listed it. Installed cleanly for
-  python3.13 and python3.14.
-- OpenCADStudio 0.9.8 drops the `solid3d` feature and the `truck-*` crates,
-  moves `acadrust` to a `cadcodec` git revision, and adds `cadkernel` and
-  `meshopt`. Re-vendoring all 706 crates with `cargo vendor --locked` succeeded
-  and the workspace MSRV is still 1.92, so `RUST_MIN_VER` is unchanged. The
-  dependent crate license list gained `CDLA-Permissive-2.0` (webpki-roots) and
-  `UoI-NCSA` (libfuzzer-sys); `OFL-1.1` stays because cosmic-text bundles OFL
-  fonts.
-- WinBoat 0.9.2 keeps the same unpacked layout and bundled Node prebuilds, so
-  only the Manifest changed. `ebuild ... clean install` produced the expected
-  `/opt/winboat` tree with the `/usr/bin/winboat` symlink and desktop entry.
+- Merged `claude/update-all-packages-3fb25a` (which introduced `pystray` 0.19.5,
+  `opencadstudio` 0.9.8, `winboat` 0.9.2, and the `upnpclient` thin manifest).
+- Bumped: `app-misc/chatgpt-desktop` 26.901.20858 (official APT pool has both
+  amd64 and arm64 debs), `app-misc/unsloth-desktop` 0.1.806_beta (new GitHub
+  release with `Unsloth-Desktop-Ubuntu.deb`), `media-video/wolfcut`
+  0.2.0_alpha20 (GitHub release tag `v0.2.0-alpha.20` with deb and third-party
+  notices).
+- Added: `app-misc/claude-desktop` 1.40609.1 (Anthropic's official Linux Electron
+  deb repackaged to `/opt/claude-desktop`, with `Anthropic` license and
+  `edorp-claude-desktop` accept keywords). Duplicate `gui-apps/claude-desktop`
+  cleaned up.
 - Still not bumped for the same reasons as the August audit:
   `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.1 (markitdown 0.1.7
   pins), `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins 2.21.0).
-- Unsloth Desktop dropped the version from its release asset names in
-  0.1.804_beta (`Unsloth-Desktop-Ubuntu.deb`, previously
-  `Unsloth-Desktop-0_1_800_beta-Ubuntu.deb`), so `MY_FV` is gone from the
-  ebuild. The release also carries assets again, unlike 0.1.702_beta. ChatGPT
-  Desktop 26.831.20005 is published for both amd64 and arm64 in the versioned
-  APT pool. Both installed cleanly.
-- `net-misc/fluxcast` 0.2.3 is available but was left for a separate pass: the
-  portable-fixes patch needs another rebase and a UPnP runtime test.
-- `dev-python/upnpclient/Manifest` still carried `EBUILD`/`MISC` lines even
-  though the repo sets `thin-manifests = true`; regenerated to silence
-  pkgcheck's `UnnecessaryManifest`.
+- `net-misc/fluxcast` 0.2.4 is available on PyPI but left for a separate pass:
+  downstream `portable-fixes.patch` fails against 0.2.4 and requires rebase plus
+  a UPnP runtime test.
+- Upstream baselines in `.github/upstream.toml` and `.github/upstream-old.json`
+  synchronized; `.github/tests` passes 4/4.
 
 ## Future Session Checklist
 

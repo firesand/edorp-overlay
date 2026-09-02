@@ -59,6 +59,17 @@ regex = 'Version: ([0-9][0-9.]*)'
 policy = "review"
 note = "Confirm the arm64 index reports the same version, then refresh both distfiles."
 
+# Proprietary Electron .deb served from Anthropic's apt repository. The
+# per-arch Packages index lists every published version; the regex source
+# selects the newest. Shares the app-misc/claude-desktop name with gentoo-zh;
+# a bump must refresh both the amd64 and arm64 debs and regenerate the Manifest.
+["app-misc/claude-desktop"]
+source = "regex"
+url = "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages"
+regex = 'claude-desktop_([0-9][0-9.]+)_amd64\.deb'
+policy = "review"
+note = "Bump amd64 + arm64 debs together and regenerate the Manifest."
+
 ["app-misc/unsloth-desktop"]
 source = "github"
 github = "unslothai/unsloth"
