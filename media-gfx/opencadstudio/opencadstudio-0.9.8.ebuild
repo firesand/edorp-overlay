@@ -21,7 +21,8 @@ LICENSE="GPL-3+"
 # Dependent crate licenses
 LICENSE+="
 	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions Boost-1.0 BSD BSD-2
-	CC0-1.0 ISC MIT MPL-2.0 OFL-1.1 Unicode-3.0 Unlicense ZLIB
+	CC0-1.0 CDLA-Permissive-2.0 ISC MIT MPL-2.0 OFL-1.1 Unicode-3.0
+	Unlicense UoI-NCSA ZLIB
 "
 
 SLOT="0"

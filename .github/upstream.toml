@@ -122,6 +122,7 @@ policy = "review"
 source = "pypi"
 pypi = "pystray"
 policy = "review"
+note = "PyPI ships wheels only after 0.19.3, so the ebuild fetches the GitHub tag archive."
 
 ["dev-python/python-pptx"]
 source = "pypi"

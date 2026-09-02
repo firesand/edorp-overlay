@@ -48,7 +48,7 @@ Status as of 2026-07-19:
 - `sys-firmware/ds5dongle` packages upstream DualSense Pico 2 W bridge
   firmware from https://github.com/awalol/DS5Dongle (PV `0.7.2` → tag
   `v0.7.2-hotfix`).
-- `app-emulation/winboat` packages the upstream WinBoat 0.9.0 amd64
+- `app-emulation/winboat` packages the upstream WinBoat 0.9.2 amd64
   prebuilt from https://github.com/winboat-org/winboat (site:
   https://www.winboat.app/). Runtime needs FreeRDP 3.x with sound plus
   Docker Compose v2 or Podman Compose; KVM required.
@@ -582,6 +582,44 @@ Full upstream version audit on 2026-08-14 (working copy at
   upstream watcher; both were added to `.github/upstream.toml` and
   `upstream-old.json` during this audit (the winboat gap had been failing
   `test_real_config_and_baseline_cover_the_same_entries`).
+
+## Upstream audit and bumps (Sep 2026)
+
+Follow-up audit on 2026-09-02, branched from `app-text/md2hd`:
+
+- Bumped: `dev-python/pystray` 0.19.5, `media-gfx/opencadstudio` 0.9.8,
+  `app-emulation/winboat` 0.9.2, `app-misc/chatgpt-desktop` 26.831.20005,
+  `app-misc/unsloth-desktop` 0.1.804_beta.
+- Pystray 0.19.5 still has no PyPI sdist. Instead of holding at 0.19.4, the
+  ebuild now drops the `pypi` eclass and fetches the GitHub tag archive, which
+  carries the same `setup.py` the old sdists were generated from.
+  `dev-python/python-xlib` was added to RDEPEND; upstream has declared it for
+  Linux since 0.19.3 but the ebuild never listed it. Installed cleanly for
+  python3.13 and python3.14.
+- OpenCADStudio 0.9.8 drops the `solid3d` feature and the `truck-*` crates,
+  moves `acadrust` to a `cadcodec` git revision, and adds `cadkernel` and
+  `meshopt`. Re-vendoring all 706 crates with `cargo vendor --locked` succeeded
+  and the workspace MSRV is still 1.92, so `RUST_MIN_VER` is unchanged. The
+  dependent crate license list gained `CDLA-Permissive-2.0` (webpki-roots) and
+  `UoI-NCSA` (libfuzzer-sys); `OFL-1.1` stays because cosmic-text bundles OFL
+  fonts.
+- WinBoat 0.9.2 keeps the same unpacked layout and bundled Node prebuilds, so
+  only the Manifest changed. `ebuild ... clean install` produced the expected
+  `/opt/winboat` tree with the `/usr/bin/winboat` symlink and desktop entry.
+- Still not bumped for the same reasons as the August audit:
+  `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.1 (markitdown 0.1.7
+  pins), `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins 2.21.0).
+- Unsloth Desktop dropped the version from its release asset names in
+  0.1.804_beta (`Unsloth-Desktop-Ubuntu.deb`, previously
+  `Unsloth-Desktop-0_1_800_beta-Ubuntu.deb`), so `MY_FV` is gone from the
+  ebuild. The release also carries assets again, unlike 0.1.702_beta. ChatGPT
+  Desktop 26.831.20005 is published for both amd64 and arm64 in the versioned
+  APT pool. Both installed cleanly.
+- `net-misc/fluxcast` 0.2.3 is available but was left for a separate pass: the
+  portable-fixes patch needs another rebase and a UPnP runtime test.
+- `dev-python/upnpclient/Manifest` still carried `EBUILD`/`MISC` lines even
+  though the repo sets `thin-manifests = true`; regenerated to silence
+  pkgcheck's `UnnecessaryManifest`.
 
 ## Future Session Checklist
 
