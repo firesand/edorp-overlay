@@ -21,6 +21,7 @@
   "gui-apps/elephant": "2.21.0",
   "gui-apps/walker": "2.17.0",
   "media-gfx/opencadstudio": "0.9.5",
+  "media-video/wolfcut": "0.2.0_alpha17",
   "net-analyzer/bettercap": "2.41.7",
   "net-analyzer/bettercap::caplets": "20260707.141042",
   "net-misc/fluxcast": "0.2.2",

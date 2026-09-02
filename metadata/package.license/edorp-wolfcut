@@ -1,0 +1,4 @@
+# Only needed with USE=-system-ffmpeg: the bundled FFmpeg pair is a nonfree
+# build (DeckLink SDK, OpenSSL with GPL) that upstream cannot redistribute
+# under a free license. The default USE keeps it out of the install.
+media-video/wolfcut all-rights-reserved

@@ -133,6 +133,12 @@ local machine configuration do not belong in the overlay.
   edges, served on loopback and read in a browser
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
+- `media-video/wolfcut`: WolfCut (formerly Concat), a free CapCut-style
+  multi-track video editor built on Tauri
+  ([source](https://github.com/jub0t/Concat)). Repackaged from the upstream
+  release `.deb`; the default USE `system-ffmpeg` swaps the bundled nonfree
+  FFmpeg for the system one. Needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-wolfcut`).
 
 ### WinBoat
 
@@ -230,6 +236,29 @@ doas emerge -av app-text/md2hd
 to the network. `bin/` and `dist/` install under `/usr/share/md2hd` with only a
 launcher symlink on PATH, and they have to stay siblings because the script
 resolves the app as `<script dir>/../dist`.
+
+### WolfCut
+
+Repackaged from the upstream release `.deb`. Every release so far is an
+alpha; tag `v0.2.0-alpha.17` maps to version `0.2.0_alpha17`, and each alpha
+reuses the same asset filename, so only the tagged download URL pins the
+payload. With the default USE `system-ffmpeg` the bundled FFmpeg build —
+nonfree (DeckLink SDK, OpenSSL with GPL) and self-reported unredistributable
+— is dropped, and the app falls back to `ffmpeg`/`ffprobe` on PATH, an
+upstream-supported mode. The default export preset encodes with libx264, so
+`media-video/ffmpeg` needs `x264`. Disabling `system-ffmpeg` keeps upstream's
+binaries and additionally requires accepting `all-rights-reserved`
+(`metadata/package.license/edorp-wolfcut`).
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-wolfcut \
+  /etc/portage/package.accept_keywords/edorp-wolfcut
+sudo emerge -av media-video/wolfcut
+```
+
+Auto-captions and voice features run through the bundled whisper.cpp CLI and
+a statically linked sherpa-onnx runtime; they download Whisper and Kokoro
+models on demand at first use, outside portage's control.
 
 ### Walker
 
