@@ -588,7 +588,8 @@ Full upstream version audit on 2026-08-14 (working copy at
 Follow-up audit on 2026-09-02, branched from `app-text/md2hd`:
 
 - Bumped: `dev-python/pystray` 0.19.5, `media-gfx/opencadstudio` 0.9.8,
-  `app-emulation/winboat` 0.9.2.
+  `app-emulation/winboat` 0.9.2, `app-misc/chatgpt-desktop` 26.831.20005,
+  `app-misc/unsloth-desktop` 0.1.804_beta.
 - Pystray 0.19.5 still has no PyPI sdist. Instead of holding at 0.19.4, the
   ebuild now drops the `pypi` eclass and fetches the GitHub tag archive, which
   carries the same `setup.py` the old sdists were generated from.
@@ -608,6 +609,12 @@ Follow-up audit on 2026-09-02, branched from `app-text/md2hd`:
 - Still not bumped for the same reasons as the August audit:
   `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.1 (markitdown 0.1.7
   pins), `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins 2.21.0).
+- Unsloth Desktop dropped the version from its release asset names in
+  0.1.804_beta (`Unsloth-Desktop-Ubuntu.deb`, previously
+  `Unsloth-Desktop-0_1_800_beta-Ubuntu.deb`), so `MY_FV` is gone from the
+  ebuild. The release also carries assets again, unlike 0.1.702_beta. ChatGPT
+  Desktop 26.831.20005 is published for both amd64 and arm64 in the versioned
+  APT pool. Both installed cleanly.
 - `net-misc/fluxcast` 0.2.3 is available but was left for a separate pass: the
   portable-fixes patch needs another rebase and a UPnP runtime test.
 - `dev-python/upnpclient/Manifest` still carried `EBUILD`/`MISC` lines even
