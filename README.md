@@ -104,10 +104,10 @@ local machine configuration do not belong in the overlay.
   ([source](https://github.com/awalol/DS5Dongle)). Installs the upstream
   prebuilt UF2 plus the `ds5dongle-config` HID helper. Enable `other-boards`
   for Pico W and Waveshare RP2350B-Plus-W builds.
-- `app-emulation/winboat`: WinBoat 0.9.0 prebuilt Electron app that runs
+- `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 0.9.4, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 0.9.8, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced/acadrust
