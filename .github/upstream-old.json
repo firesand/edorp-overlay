@@ -1,6 +1,6 @@
 {
   "app-benchmarks/unigine-superposition": "1.1",
-  "app-emulation/hbmame": "0.289.1",
+  "app-emulation/hbmame": "0.289.2",
   "app-emulation/linuxmameui": "0.1.0",
   "app-emulation/mame": "0.289",
   "app-emulation/mameuix": "0.1.7",
@@ -22,7 +22,7 @@
   "gui-apps/elephant": "2.21.0",
   "gui-apps/walker": "2.17.0",
   "media-gfx/opencadstudio": "0.9.8",
-  "media-video/wolfcut": "0.2.0_alpha20",
+  "media-video/wolfcut": "0.2.0_alpha21",
   "net-analyzer/bettercap": "2.41.7",
   "net-analyzer/bettercap::caplets": "20260707.141042",
   "net-misc/fluxcast": "0.2.2",

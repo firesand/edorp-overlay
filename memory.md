@@ -585,20 +585,24 @@ Full upstream version audit on 2026-08-14 (working copy at
 
 ## Upstream audit and bumps (Sep 2026)
 
-Full audit and reconciliation on 2026-09-03 (working copy at
+Full audit and reconciliation on 2026-09-03 and 2026-09-04 (working copy at
 `/home/edo/backup-omgently/EDORP`, branch `app-text/md2hd`):
 
 - Merged `claude/update-all-packages-3fb25a` (which introduced `pystray` 0.19.5,
   `opencadstudio` 0.9.8, `winboat` 0.9.2, and the `upnpclient` thin manifest).
-- Bumped: `app-misc/chatgpt-desktop` 26.901.20858 (official APT pool has both
-  amd64 and arm64 debs), `app-misc/unsloth-desktop` 0.1.806_beta (new GitHub
-  release with `Unsloth-Desktop-Ubuntu.deb`), `media-video/wolfcut`
-  0.2.0_alpha20 (GitHub release tag `v0.2.0-alpha.20` with deb and third-party
-  notices).
+- Bumped: `app-emulation/hbmame` 0.289.2 (`_COMMIT=a97bb8bb78b07e114cda57c5e44c08fb5b00ec40`;
+  both cps1 and cps2 downstream patches still apply cleanly; added tools flag to metadata.xml
+  and wrapped excessive line length), `media-video/wolfcut` 0.2.0_alpha21 (GitHub release
+  tag `v0.2.0-alpha.21` with deb and notices), `app-misc/chatgpt-desktop` 26.901.20858
+  (official APT pool has both amd64 and arm64 debs), `app-misc/unsloth-desktop` 0.1.806_beta
+  (new GitHub release with `Unsloth-Desktop-Ubuntu.deb`).
 - Added: `app-misc/claude-desktop` 1.40609.1 (Anthropic's official Linux Electron
   deb repackaged to `/opt/claude-desktop`, with `Anthropic` license and
   `edorp-claude-desktop` accept keywords). Duplicate `gui-apps/claude-desktop`
   cleaned up.
+- QA fixes: removed `~x86` from `net-misc/fluxcast-0.2.2-r1` keywords (pychromecast lacks x86
+  support, avoiding `NonsolvableDepsInStable`), removed redundant `fluxcast-0.2.2.ebuild`, and
+  pruned redundant `wiflux` 1.0.5-r1/r2 ebuilds leaving 1.0.5-r3.
 - Still not bumped for the same reasons as the August audit:
   `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.1 (markitdown 0.1.7
   pins), `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins 2.21.0).
