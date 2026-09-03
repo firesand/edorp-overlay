@@ -15,7 +15,7 @@ SRC_URI="https://github.com/IlyaP358/fluxcast/archive/refs/tags/v${PV}.tar.gz ->
 
 LICENSE="GPL-3+"
 SLOT="0"
-KEYWORDS="~amd64 ~x86"
+KEYWORDS="~amd64"
 
 # 0.2.2 made the doctor's dnsmasq row a hard gate on the WFD path
 # (diagnostics.py: wfd_candidate = network_hw_ok and media_ok and dnsmasq_ok),
