@@ -5,6 +5,9 @@
     <email>linuxmameui-maintainers@example.invalid</email>
     <name>LinuxMAMEUI maintainers</name>
   </maintainer>
+  <use>
+    <flag name="tools">Build extra tooling binaries</flag>
+  </use>
   <upstream>
     <remote-id type="github">Robbbert/hbmame</remote-id>
     <bugs-to>https://www.1emulation.com/forums/forum/125-messui/</bugs-to>

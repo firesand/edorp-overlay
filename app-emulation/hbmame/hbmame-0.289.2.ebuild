@@ -10,7 +10,7 @@ inherit multiprocessing pax-utils python-any-r1 toolchain-funcs
 DESCRIPTION="HomeBrew MAME command-line emulator"
 HOMEPAGE="https://hbmame.1emulation.com/ https://github.com/Robbbert/hbmame"
 
-_COMMIT="9d31435a4182d0aa6d1cb0891dee5a8022ba2f74"
+_COMMIT="a97bb8bb78b07e114cda57c5e44c08fb5b00ec40"
 SRC_URI="https://github.com/Robbbert/hbmame/archive/${_COMMIT}.tar.gz -> ${P}.tar.gz"
 S="${WORKDIR}/${PN}-${_COMMIT}"
 
@@ -20,8 +20,8 @@ KEYWORDS="~amd64"
 IUSE="debug lto tools"
 
 PATCHES=(
-	"${FILESDIR}/${P}-cps1-unknown-regs.patch"
-	"${FILESDIR}/${P}-cps2-input-include.patch"
+	"${FILESDIR}/${PN}-0.289.1-cps1-unknown-regs.patch"
+	"${FILESDIR}/${PN}-0.289.1-cps2-input-include.patch"
 )
 
 BDEPEND="
@@ -104,7 +104,8 @@ src_install() {
 
 	if use tools; then
 		local tool
-		for tool in castool chdman floptool imgtool jedutil ldresample ldverify nltool nlwav pngcmp regrep romcmp split srcclean testkeys unidasm; do
+		for tool in castool chdman floptool imgtool jedutil ldresample ldverify \
+			nltool nlwav pngcmp regrep romcmp split srcclean testkeys unidasm; do
 			[[ -x ./${tool} ]] && dobin "./${tool}"
 		done
 	fi
