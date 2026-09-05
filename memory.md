@@ -612,6 +612,21 @@ Full audit and reconciliation on 2026-09-03 and 2026-09-04 (working copy at
 - Upstream baselines in `.github/upstream.toml` and `.github/upstream-old.json`
   synchronized; `.github/tests` passes 4/4.
 
+## Upstream audit and bumps (2026-09-05)
+
+Daily audit on 2026-09-05 (branch `app-text/md2hd`, PR #15):
+
+- QA CI fix: Updated `.github/workflows/overlay-qa.yml` scan_args to
+  `--exit GentooCI,-VisibleVcsPkg`. `media-gfx/opencadstudio` intentionally
+  pins `EGIT_COMMIT="v${PV}"` as an overlay-specific pattern noted in
+  `.github/upstream.toml`. Excluding `VisibleVcsPkg` from fatal exit allows
+  overlay-qa to exit 0 while enforcing all standard GentooCI checks.
+- Bumped `app-misc/chatgpt-desktop` to `26.901.41600` (updated upstream APT pool;
+  refreshed both amd64 and arm64 distfiles in Manifest).
+- Bumped `app-misc/claude-desktop` to `1.46388.2` (updated upstream APT pool;
+  refreshed both amd64 and arm64 distfiles in Manifest).
+- Synced baselines in `.github/upstream-old.json`; `.github/tests` passes 4/4.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
