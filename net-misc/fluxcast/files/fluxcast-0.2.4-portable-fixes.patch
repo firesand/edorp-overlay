@@ -1,8 +1,6 @@
-diff --git a/src/capture/capture.py b/src/capture/capture.py
-index 4d99f6e..0f3cb34 100644
 --- a/src/capture/capture.py
 +++ b/src/capture/capture.py
-@@ -413,6 +413,10 @@ def _start_capture_portal(
+@@ -413,6 +413,10 @@
          # always-copy=true!! immediately copy PipeWire buffer to CPU memory so
          # x264enc doesn't stall waiting for DMA-buf download mid-pipeline
          "always-copy=true",
@@ -13,11 +11,9 @@ index 4d99f6e..0f3cb34 100644
          "!", "queue", "max-size-buffers=8", "max-size-time=0", "leaky=downstream",
          "!", "videorate", "skip-to-first=true",
          "!", f"video/x-raw,framerate={fps}/1",
-diff --git a/src/capture/portal_capture.py b/src/capture/portal_capture.py
-index 01993f2..26d6551 100644
 --- a/src/capture/portal_capture.py
 +++ b/src/capture/portal_capture.py
-@@ -397,6 +397,16 @@ def start_portal_capture(
+@@ -397,6 +397,16 @@
                  pass
          runtime.stop()
          raise PortalCaptureError(f"Portal capture setup failed: {exc}") from exc
@@ -34,11 +30,9 @@ index 01993f2..26d6551 100644
  
  
  async def _close_portal_capture_async(session_handle: str, bus: Optional[Any] = None) -> None:
-diff --git a/src/main.py b/src/main.py
-index e54c643..f813e4a 100644
 --- a/src/main.py
 +++ b/src/main.py
-@@ -53,6 +53,7 @@ Wi-Fi Display (Miracast) Options:
+@@ -53,6 +53,7 @@
      --wfd-timeout N          Wi-Fi Direct scan timeout in seconds (default: 8)
      --wfd-go-intent 0-15     P2P group-owner intent; 0 lets the TV be the owner (default: 0)
      --wfd-monitor NAME       Deprecated alias for --monitor
@@ -46,7 +40,7 @@ index e54c643..f813e4a 100644
  """
  
  import argparse
-@@ -60,6 +61,7 @@ import glob
+@@ -60,6 +61,7 @@
  import os
  import signal
  import socket
@@ -54,18 +48,18 @@ index e54c643..f813e4a 100644
  import time
  import sys
  import termios
-@@ -185,6 +187,10 @@ def parse_args() -> argparse.Namespace:
-                           "start the session (default: 0)")
+@@ -194,6 +196,10 @@
+                           "(driver picks the channel).")
      wfd.add_argument("--wfd-monitor", default=None, dest="monitor_name",
                       help="Deprecated alias for --monitor, kept for compatibility")
 +    wfd.add_argument("--wfd-latency", default="low",
 +                     choices=["low", "balanced", "smooth"], dest="wfd_latency",
 +                     help="WFD buffering profile: low (default, lowest lag), "
 +                          "balanced, or smooth (largest buffers for weak Wi-Fi)")
-     wfd.add_argument("--wfd-uibc", action="store_true", dest="wfd_uibc",
-                      help="Experimental: accept touch/mouse input back from the "
-                           "sink (TV/tablet) and inject it locally via uinput. "
-@@ -300,25 +306,68 @@ def main() -> None:
+     wfd.add_argument("--wfd-p2p-backend", default="nm", dest="wfd_p2p_backend",
+                      choices=["nm", "wpas"],
+                      help="How to bring up the P2P link: 'nm' uses "
+@@ -321,25 +327,68 @@
      ffmpeg_procs = None
      stream_server = None
      tv = None
@@ -144,8 +138,6 @@ index e54c643..f813e4a 100644
  
      signal.signal(signal.SIGINT, shutdown)
      signal.signal(signal.SIGTERM, shutdown)
-diff --git a/src/ui/tray.py b/src/ui/tray.py
-index b4f73a1..4223503 100644
 --- a/src/ui/tray.py
 +++ b/src/ui/tray.py
 @@ -1,4 +1,5 @@
@@ -154,7 +146,7 @@ index b4f73a1..4223503 100644
  import sys
  import subprocess
  import threading
-@@ -141,7 +142,12 @@ def _launch(cmd: list, target: str) -> None:
+@@ -207,7 +208,12 @@
      global _proc, _cast_target
      log_fp = open(_LOG_PATH, "ab", buffering=0)
      log_fp.write(f"\n=== {target} :: {' '.join(cmd)} ===\n".encode())
@@ -168,7 +160,7 @@ index b4f73a1..4223503 100644
      log_fp.close()
      with _lock:
          _proc = proc
-@@ -152,18 +158,93 @@ def _launch(cmd: list, target: str) -> None:
+@@ -221,18 +227,93 @@
      threading.Thread(target=_watch, args=(proc, target), daemon=True).start()
  
  
@@ -265,19 +257,19 @@ index b4f73a1..4223503 100644
  # ── discovery ─────────────────────────────────────────────────────────────────
  
  def _scan_wfd() -> None:
-@@ -515,6 +596,11 @@ def _build_menu():
-         items.append(pystray.MenuItem("Rescan Devices", lambda *_: _rescan_all()))
+@@ -628,6 +709,11 @@
+         items.append(pystray.MenuItem(_l("Rescan Devices"), lambda *_: _rescan_all()))
  
      items.append(pystray.Menu.SEPARATOR)
 +    items.append(pystray.MenuItem(
-+        "Start on login",
++        _l("Start on login"),
 +        lambda *_: _toggle_autostart(),
 +        checked=lambda item: _autostart_enabled(),
 +    ))
-     items.append(pystray.MenuItem("About FluxCast", lambda *_: _show_about()))
-     items.append(pystray.MenuItem("Exit", _on_exit))
+     items.append(pystray.MenuItem(_l("About FluxCast"), lambda *_: _show_about()))
+     items.append(pystray.MenuItem(_l("Exit"), _on_exit))
  
-@@ -536,6 +622,10 @@ def run_tray() -> None:
+@@ -649,6 +735,10 @@
  
      def kickoff():
          _log("kickoff: GTK loop is alive, starting scans")
@@ -288,8 +280,6 @@ index b4f73a1..4223503 100644
          _rescan_all()
          return False  # don't repeat
  
-diff --git a/src/wfd/config.py b/src/wfd/config.py
-index c36b98e..bb0f450 100644
 --- a/src/wfd/config.py
 +++ b/src/wfd/config.py
 @@ -1,5 +1,8 @@
@@ -302,7 +292,7 @@ index c36b98e..bb0f450 100644
  
  
  class WFDNotReady(RuntimeError):
-@@ -25,6 +28,8 @@ class WFDMediaConfig:
+@@ -25,6 +28,8 @@
      h264_profile: str = "baseline"
      aosp_pmt_pid: bool = False  # opt-in: PMT on AOSP's 0x0100 instead of the muxer default (#84)
      dump_ts_path: Optional[str] = None
@@ -311,11 +301,9 @@ index c36b98e..bb0f450 100644
  
  @dataclass
  class WFDVideoFormat:
-diff --git a/src/wfd/media/pipeline.py b/src/wfd/media/pipeline.py
-index 7a9b4ab..90110fc 100644
 --- a/src/wfd/media/pipeline.py
 +++ b/src/wfd/media/pipeline.py
-@@ -28,7 +28,8 @@ class WFDMediaPipeline(TestPatternMixin, PortalMixin, X11Mixin, WlrootsMixin):
+@@ -28,7 +28,8 @@
          self.processes: list[subprocess.Popen[bytes]] = []
          self.tx_interface: Optional[str] = None
          self.tx_baseline: Optional[int] = None
@@ -325,11 +313,9 @@ index 7a9b4ab..90110fc 100644
          self._portal_gst_cmd: Optional[list[str]] = None
          self._portal_pw_fd: Optional[int] = None
          self._lpcm_muxer = None   # WFDLPCMMuxer instance for Microsoft adapter
-diff --git a/src/wfd/media/portal.py b/src/wfd/media/portal.py
-index 9071718..d9c1e17 100644
 --- a/src/wfd/media/portal.py
 +++ b/src/wfd/media/portal.py
-@@ -18,22 +18,36 @@ from ..gst import (
+@@ -18,22 +18,36 @@
      _pipewiresrc_selector_attempts, _wfd_gst_prog_map,
  )
  from ..modes import _h264_level_for_mode
@@ -376,7 +362,7 @@ index 9071718..d9c1e17 100644
          # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
          if session.source_type is not None and session.source_type not in (1, 4):
              close_portal_capture(self.portal_session)
-@@ -265,7 +279,11 @@ class PortalMixin:
+@@ -265,7 +279,11 @@
  
          is_lg = "LG" in self.config.peer_name.upper()
          if is_lg:
@@ -389,7 +375,7 @@ index 9071718..d9c1e17 100644
  
          effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
          if effective_kbits > requested_kbits:
-@@ -294,9 +312,13 @@ class PortalMixin:
+@@ -294,9 +312,13 @@
          def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
              # Use more buffers for high-res 1440p capture and move videorate early
              props = _gst_pipewiresrc_properties()
@@ -404,7 +390,7 @@ index 9071718..d9c1e17 100644
              if "resend-last" in props:
                  pipewire_args.append("resend-last=true")
              if "min-force-user-latency" in props:
-@@ -359,7 +381,7 @@ class PortalMixin:
+@@ -359,7 +381,7 @@
                      )
              else:
                  if "vbv-buf-capacity" in x264_props:
@@ -413,7 +399,7 @@ index 9071718..d9c1e17 100644
                  # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
                  if "option-string" in x264_props:
                      opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
-@@ -375,13 +397,16 @@ class PortalMixin:
+@@ -375,13 +397,16 @@
                  f"fd={session.pw_fd}",
                  *pipewire_args,
                  "do-timestamp=true",
@@ -433,7 +419,7 @@ index 9071718..d9c1e17 100644
                  "!", video_caps,
                  "!", "videoconvert",
                  "!", "video/x-raw,format=I420",
-@@ -545,6 +570,7 @@ class PortalMixin:
+@@ -545,6 +570,7 @@
                      f"selector={selector_name}, caps={attempt_name}"
                  )
                  gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
@@ -441,7 +427,7 @@ index 9071718..d9c1e17 100644
                  gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
                  time.sleep(2.5)
                  if gst_proc.poll() is not None:
-@@ -562,6 +588,27 @@ class PortalMixin:
+@@ -562,6 +588,27 @@
                      )
                      continue
  
@@ -469,11 +455,9 @@ index 9071718..d9c1e17 100644
                  self.processes = [gst_proc]
                  self._portal_gst_cmd = gst_cmd
                  self._portal_pw_fd = session.pw_fd
-diff --git a/src/wfd/modes.py b/src/wfd/modes.py
-index c7f08e8..0f2c429 100644
 --- a/src/wfd/modes.py
 +++ b/src/wfd/modes.py
-@@ -72,6 +72,8 @@ def _desired_resolution(config: WFDMediaConfig) -> Optional[tuple[int, int]]:
+@@ -72,6 +72,8 @@
      resolution = _parse_resolution(config.output_resolution)
      if resolution is not None:
          return resolution
@@ -482,7 +466,7 @@ index c7f08e8..0f2c429 100644
      if config.monitor is not None:
          monitor = config.monitor
          return monitor.width, monitor.height
-@@ -90,7 +92,11 @@ def _choose_cea_mode(
+@@ -90,7 +92,11 @@
      max_level = _max_wfd_level(sink_format.level) if sink_format else WFD_LEVEL_42
      resolution = _desired_resolution(config)
      wants_720 = resolution is None or (resolution[0] <= 1280 and resolution[1] <= 720)
@@ -495,11 +479,9 @@ index c7f08e8..0f2c429 100644
      wants_60 = config.fps > 30
      wants_480 = resolution is not None and resolution[0] <= 640 and resolution[1] <= 480
  
-diff --git a/src/wfd/probe.py b/src/wfd/probe.py
-index b4df217..92893d1 100644
 --- a/src/wfd/probe.py
 +++ b/src/wfd/probe.py
-@@ -208,6 +208,8 @@ def _active_rtsp_probe(
+@@ -208,6 +208,8 @@
                      elif method == "PLAY":
                          _reply(msg, extra={"Range": "npt=now-"})
                          mode = _choose_cea_mode(media_config, st["sink_vfmt"])
@@ -508,7 +490,7 @@ index b4df217..92893d1 100644
                          eff_cfg = replace(
                              media_config,
                              source_port=st["src_port"],
-@@ -215,6 +217,7 @@ def _active_rtsp_probe(
+@@ -215,6 +217,7 @@
                              fps=mode.fps,
                              no_audio=st["no_audio"],
                              h264_profile=_encoder_h264_profile(st["sink_vfmt"]),
@@ -516,11 +498,9 @@ index b4df217..92893d1 100644
                          )
                          media = WFDMediaPipeline(
                              eff_cfg,
-diff --git a/src/wfd/rtsp/handler.py b/src/wfd/rtsp/handler.py
-index d7954be..ef3db25 100644
 --- a/src/wfd/rtsp/handler.py
 +++ b/src/wfd/rtsp/handler.py
-@@ -409,6 +409,8 @@ class _WFDRTSPHandler(socketserver.StreamRequestHandler):
+@@ -409,6 +409,8 @@
              raise WFDNotReady("Cannot start media before the TV RTP port is known.")
          if self.media is None:
              mode = self._cea_mode()
@@ -529,7 +509,7 @@ index d7954be..ef3db25 100644
              effective_config = replace(
                  self.media_config,
                  source_port=self.source_rtp_port,
-@@ -416,6 +418,7 @@ class _WFDRTSPHandler(socketserver.StreamRequestHandler):
+@@ -416,6 +418,7 @@
                  fps=mode.fps,
                  no_audio=self.media_config.no_audio or self.negotiated_no_audio,
                  h264_profile=_encoder_h264_profile(self.sink_video_format),
@@ -537,11 +517,9 @@ index d7954be..ef3db25 100644
              )
              # Say so when the sink has no mode matching an explicit --output-res,
              # instead of silently streaming something else (#84).
-diff --git a/src/wfd/session.py b/src/wfd/session.py
-index aad716f..5633ddc 100644
 --- a/src/wfd/session.py
 +++ b/src/wfd/session.py
-@@ -3,6 +3,9 @@ import time
+@@ -3,6 +3,9 @@
  
  from diagnostics import print_report, run_diagnostics
  
@@ -551,7 +529,7 @@ index aad716f..5633ddc 100644
  from .config import WFDMediaConfig, WFDNotReady
  from .constants import WFD_RTSP_PORT, WFD_UIBC_PORT
  from .dump import report_ts_dump
-@@ -44,6 +47,7 @@ def start_experimental_backend(args) -> None:
+@@ -45,6 +48,7 @@
          )
  
      monitor = None
@@ -559,7 +537,7 @@ index aad716f..5633ddc 100644
      if not getattr(args, "wfd_test_pattern", False) and not getattr(args, "wfd_dry_run", False):
          selected_backend = getattr(args, "wfd_capture_backend", "auto")
          portal_mode = selected_backend == "portal" or (
-@@ -86,6 +90,24 @@ def start_experimental_backend(args) -> None:
+@@ -87,6 +91,24 @@
          )
          return
  
@@ -584,7 +562,7 @@ index aad716f..5633ddc 100644
      no_audio = getattr(args, "wfd_no_audio", False)
      if getattr(args, "wfd_test_pattern", False):
          if no_audio:
-@@ -110,6 +132,8 @@ def start_experimental_backend(args) -> None:
+@@ -111,6 +133,8 @@
          uibc=getattr(args, "wfd_uibc", False),
          aosp_pmt_pid=getattr(args, "wfd_aosp_pmt_pid", False),
          dump_ts_path=getattr(args, "wfd_dump_ts", None),
@@ -593,7 +571,7 @@ index aad716f..5633ddc 100644
      )
      if media_config.dump_ts_path:
          print(f"[FluxCast WFD] Dumping transmitted MPEG-TS to: {media_config.dump_ts_path}")
-@@ -168,6 +192,9 @@ def start_experimental_backend(args) -> None:
+@@ -182,6 +206,9 @@
          _cleanup_step("TS dump report",
                        lambda: report_ts_dump(media_config.dump_ts_path))
          _cleanup_step("RTSP server shutdown", rtsp.stop)

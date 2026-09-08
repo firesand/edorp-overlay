@@ -6,7 +6,7 @@ PYTHON_COMPAT=( python3_{10..14} )
 inherit desktop distutils-r1 xdg
 
 PATCHES=(
-	"${FILESDIR}/fluxcast-0.2.2-portable-fixes.patch"
+	"${FILESDIR}/fluxcast-0.2.4-portable-fixes.patch"
 )
 
 DESCRIPTION="Stream your Linux desktop to a Smart TV via Miracast/WFD, DLNA, or Chromecast"
@@ -17,7 +17,7 @@ LICENSE="GPL-3+"
 SLOT="0"
 KEYWORDS="~amd64"
 
-# 0.2.2 made the doctor's dnsmasq row a hard gate on the WFD path
+# Since 0.2.2 the doctor's dnsmasq row is a hard gate on the WFD path
 # (diagnostics.py: wfd_candidate = network_hw_ok and media_ok and dnsmasq_ok),
 # so without the binary in PATH every Miracast cast aborts before it starts.
 RDEPEND="
