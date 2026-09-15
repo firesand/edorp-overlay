@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     container:
-      image: ghcr.io/pkgcore/pkgcheck@sha256:49910215ab2157ebd84fa0dad593572875f63fd5d278b1ff0d921105e4c11c89
+      image: ghcr.io/pkgcore/pkgcheck@sha256:fa872ad5ae1b549552d6b593fd68e50ff5cbc6ecf1425dc72706b60ab3403b5a
 
     steps:
       - name: Remove image-wide Git trust
