@@ -83,7 +83,10 @@ src_install() {
 	# --locked: plain "cargo install" ignores Cargo.lock and re-resolves the
 	# git branch dependencies (iced_aw), which needs network access that the
 	# sandbox blocks; the lockfile pins them to the fetched revisions instead.
-	cargo_src_install --locked
+	# --bin: 2026.37 added src/bin/ocs_launcher.rs, a macOS-only helper that
+	# compiles to an empty main() everywhere else; without this it would land
+	# in /usr/bin as a do-nothing binary.
+	cargo_src_install --locked --bin OpenCADStudio
 
 	dodoc README.md
 
