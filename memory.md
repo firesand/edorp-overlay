@@ -705,16 +705,27 @@ Weekly audit on 2026-09-16. PR #16 from the 2026-09-09 audit was still open and
 - Unsloth Desktop's Ubuntu deb roughly halved in size at 0.1.808_beta
   (47 MB -> 24 MB) but the unpacked layout is unchanged, so the ebuild needed
   no edits beyond the version.
-- `app-emulation/mameuix` 0.1.8 is BUILD-VERIFIED but not committed. It builds
-  clean offline against vendored crates in 2m33s (598 crates, 22 MB binary, no
-  errors, MSRV still 1.88). The blocker is purely distribution: 0.1.8 moved
-  `tantivy` to a git revision (`quickwit-oss/tantivy` rev `5ca3933`), which
-  `CRATES` cannot express. `cargo vendor` handles it by writing a
-  `[source."git+...?rev=..."] replace-with = "vendored-sources"` stanza, so the
-  fix is the same vendor-tarball pattern `gui-apps/elephant` already uses --
-  upload `mameuix-0.1.8-vendor.tar.xz` to a `mameuix-vendor-0.1.8` release on
-  `firesand/edorp-overlay` and add it to SRC_URI. That upload is the user's
-  call, so it was left out of this branch.
+- `app-emulation/mameuix` bumped to 0.1.8. 0.1.8 moved `tantivy` to a git
+  revision (`quickwit-oss/tantivy` rev `5ca3933`), which plain `CRATES` cannot
+  express. The answer was cargo.eclass's `GIT_CRATES`, NOT the vendor-tarball
+  pattern `gui-apps/elephant` uses: `GIT_CRATES` fetches the repo as an
+  ordinary GitHub archive, so all nine tantivy workspace crates share one
+  4.2 MB distfile and nothing has to be hosted. A 64 MB vendor tarball had
+  been prepared before `GIT_CRATES` was found; it was not needed and not
+  uploaded.
+- Two things that only a real `ebuild ... install` caught, worth remembering
+  for the next `GIT_CRATES` conversion:
+  - `--locked` is incompatible with `GIT_CRATES`. The eclass wires the git
+    crates in through a `[patch.'<repo uri>']` section, which is a resolution
+    change, so cargo must rewrite `Cargo.lock` and `cargo build --locked`
+    dies. Drop `--locked` from `cargo_src_configure`; the generated config
+    sets `net.offline`, so the rewrite is still hermetic, and
+    `cargo_src_install` adds `--frozen` once src_compile has settled the
+    lockfile. `app-editors/zed` is the only ::gentoo `GIT_CRATES` consumer and
+    it defines no `src_configure` at all, which is the same convention.
+  - The ebuild never declared `QA_PRESTRIPPED` even though upstream's release
+    profile has set `strip = true` since 0.1.7, so every build emitted a
+    pre-stripped QA notice. Added.
 - Still blocked for unchanged reasons: `dev-python/magika` 1.0.3 and
   `dev-python/mammoth` 1.12.2 (markitdown 0.1.7 still pins `magika~=0.6.1` and
   `mammoth~=1.11.0`), `gui-apps/elephant` 2.22.0 (walker 2.17.0 still pins

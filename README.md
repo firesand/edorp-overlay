@@ -73,7 +73,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/hbmame`: HBMAME 0.288.2 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
-  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.7`
+  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
   fetches GitHub tag `v0.1.7` plus crates via `CRATES`; live ebuild `9999`
   uses `cargo_live_src_unpack`. Requires `app-emulation/mame` from this
   overlay. Portable **AppImage** builds live in the MAMEUIx repo
