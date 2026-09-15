@@ -675,6 +675,55 @@ Daily audit on 2026-09-09 (worktree branched from `app-text/md2hd`):
   `~gui-apps/elephant-2.21.0` and walker cut no new release).
 - Everything else was up to date; `.github/tests` passes 4/4.
 
+## Upstream audit and bumps (2026-09-16)
+
+Weekly audit on 2026-09-16. PR #16 from the 2026-09-09 audit was still open and
+`app-text/md2hd` had not moved, so this branch stacks on
+`claude/update-packages-2026-09-09` rather than on md2hd.
+
+- Bumped: `app-misc/chatgpt-desktop` 26.908.70816, `app-misc/claude-desktop`
+  1.52386.6, `app-misc/unsloth-desktop` 0.1.808_beta,
+  `media-gfx/opencadstudio` 2026.37, `net-misc/fluxcast` 0.2.6, and the pinned
+  pkgcheck CI image to 0.10.44
+  (`sha256:fa872ad5ae1b549552d6b593fd68e50ff5cbc6ecf1425dc72706b60ab3403b5a`).
+- OpenCADStudio 2026.37 adds `src/bin/ocs_launcher.rs`, a macOS document-open
+  helper that compiles to an empty `main()` off macOS. `cargo install` installs
+  every bin target, so both ebuilds now pass `--bin OpenCADStudio` to
+  `cargo_src_install` to keep a do-nothing binary out of /usr/bin. Re-vendoring
+  gives 716 crates (up from 706), MSRV is still 1.92, and the implied Gentoo
+  license set is unchanged. New deps: a `cadkernel-constraints` git dependency,
+  `unicode-bidi`, `fluent-syntax`, and clap's `string` feature.
+- FluxCast 0.2.6 needed a real merge rather than a re-anchor. Upstream rewrote
+  `_open_portal_session` in `src/wfd/media/portal.py`: `allow_window=True`, a
+  widened `source_type` set that now accepts windows, and
+  `session.on_closed = _end_session_on_portal_revoke`. The downstream change in
+  the same method reuses an already-authorized portal session, so upstream's
+  new body was kept verbatim and wrapped in the
+  `if self.portal_session is None` guard; `_WFD_LATENCY_PROFILES` moved above
+  upstream's new module-level helper. The patch applies at `--fuzz=0` to both
+  v0.2.6 and master. Still no cast/UPnP runtime test possible here.
+- Unsloth Desktop's Ubuntu deb roughly halved in size at 0.1.808_beta
+  (47 MB -> 24 MB) but the unpacked layout is unchanged, so the ebuild needed
+  no edits beyond the version.
+- `app-emulation/mameuix` 0.1.8 is BUILD-VERIFIED but not committed. It builds
+  clean offline against vendored crates in 2m33s (598 crates, 22 MB binary, no
+  errors, MSRV still 1.88). The blocker is purely distribution: 0.1.8 moved
+  `tantivy` to a git revision (`quickwit-oss/tantivy` rev `5ca3933`), which
+  `CRATES` cannot express. `cargo vendor` handles it by writing a
+  `[source."git+...?rev=..."] replace-with = "vendored-sources"` stanza, so the
+  fix is the same vendor-tarball pattern `gui-apps/elephant` already uses --
+  upload `mameuix-0.1.8-vendor.tar.xz` to a `mameuix-vendor-0.1.8` release on
+  `firesand/edorp-overlay` and add it to SRC_URI. That upload is the user's
+  call, so it was left out of this branch.
+- Still blocked for unchanged reasons: `dev-python/magika` 1.0.3 and
+  `dev-python/mammoth` 1.12.2 (markitdown 0.1.7 still pins `magika~=0.6.1` and
+  `mammoth~=1.11.0`), `gui-apps/elephant` 2.22.0 (walker 2.17.0 still pins
+  `~gui-apps/elephant-2.21.0` and cut no new release).
+- pkgcheck exits 0 on both this branch and its baseline with the CI's own
+  `--exit GentooCI,-VisibleVcsPkg`; the only finding differences are the
+  fluxcast patch filename and the opencadstudio version string.
+  `.github/tests` passes 4/4.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
