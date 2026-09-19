@@ -65,9 +65,12 @@ local machine configuration do not belong in the overlay.
   recursive ZIP handling; PDF, DOCX, PPTX, Outlook, and Excel support are
   optional USE flags.
 - `dev-python/magika`: AI-based content-type detector required by MarkItDown.
+  Both `0.6.3` and `1.0.3` are packaged: MarkItDown pins `magika~=0.6.1`, so
+  it keeps resolving to `0.6.3`, while `1.0.3` is available on its own.
 - `dev-python/cobble`, `dev-python/mammoth`, `dev-python/pdfplumber`, and
   `dev-python/python-pptx`: optional MarkItDown dependencies for DOCX, PDF,
-  and PPTX conversion.
+  and PPTX conversion. `dev-python/mammoth` is packaged at both `1.11.0` and
+  `1.12.2` for the same reason (MarkItDown pins `mammoth~=1.11.0`).
 - `app-emulation/linuxmameui`: imported from the local LinuxMAMEUI Gentoo
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a

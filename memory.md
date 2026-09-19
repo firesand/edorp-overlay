@@ -735,6 +735,64 @@ Weekly audit on 2026-09-16. PR #16 from the 2026-09-09 audit was still open and
   fluxcast patch filename and the opencadstudio version string.
   `.github/tests` passes 4/4.
 
+## Upstream audit and bumps (2026-09-19)
+
+Audit on 2026-09-19. `app-text/md2hd` (PR #15) and
+`claude/update-packages-2026-09-16` had diverged: md2hd carried the plexo
+addition, the 09-16 line carried the 09-09 and 09-16 audits. This branch
+merges the 09-16 line into md2hd first so the audit runs against the union;
+the only conflict was `net-misc/fluxcast` in `.github/upstream-old.json`
+(0.2.2 vs 0.2.6), resolved to the packaged 0.2.6 while keeping plexo.
+
+- Bumped: `app-misc/chatgpt-desktop` 26.915.31945, `app-misc/claude-desktop`
+  2.2553.1, `app-misc/unsloth-desktop` 0.1.811_beta, and `net-misc/plexo`
+  1.0.0_rc7.
+- Claude Desktop moved to a 2.x series. Both APT indexes report 2.2553.1 and
+  the bundle layout is unchanged; every NEEDED entry of the Electron binary
+  is still covered by RDEPEND. Note that `dpkg-deb` is absent on this host,
+  so the `.deb` Depends field cannot be read here -- use `scanelf -qn` on the
+  staged binary instead, which is what the dependency check was based on.
+- Plexo rc.7 is the interesting one. The existing `verify-resources.py`
+  refused the bump because rc.7 added the `koffi` native addon and the ARM64
+  `.deb` ships only `build/koffi/linux_arm64/koffi.node`, which cannot run on
+  amd64 Electron. Upstream also started publishing native Linux amd64 builds
+  at rc.7, so the ebuild now installs the upstream `amd64` `.deb` as shipped
+  (it bundles the same Electron 39.8.10 the lockfile pins and carries
+  `linux_x64/koffi.node`). The separate 113 MB Electron distfile is gone.
+  `verify-resources.py` now checks the lockfile versions, the ASAR package
+  identity, that the runtime is x86-64, that every `linux_x64` addon is
+  x86-64, and that no addon family lacks a `linux_x64` build. Upstream names
+  its notices `LICENSE.electron.txt`, not `LICENSE`.
+- `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.2 are no longer
+  deferred. MarkItDown 0.1.7 still pins `magika~=0.6.1` and `mammoth~=1.11.0`,
+  so both were ADDED ALONGSIDE the old ebuilds rather than replacing them,
+  which is what the watcher notes ("retain the old ebuild if needed") call
+  for. markitdown's `<magika-0.7` and `<mammoth-1.12` bounds keep resolving to
+  0.6.3 and 1.11.0. magika 1.0 drops NumPy and python-dotenv and needs
+  onnxruntime >=1.24.1 for python3_14; GURU has 1.28.0/1.29.0, so the whole
+  PYTHON_COMPAT range stays satisfiable.
+- `sys-firmware/ds5dongle` was a phantom detection, not a real update. Its
+  watcher entry set both `prefix = "v"` and a `from_pattern` that expects the
+  leading `v`; the prefix strip ran first, so the `-hotfix` suffix survived
+  and the dashboard reported `0.7.2-hotfix` against a packaged `0.7.2`
+  forever. The ebuild already packages that exact tag via
+  `MY_PV="${PV}-hotfix"`. Dropping `prefix` lets `from_pattern` remove both.
+- STILL BLOCKED: `gui-apps/elephant` 2.22.0. This is not a Walker-pairing
+  problem as previously recorded -- elephant v2.22.0 was published one minute
+  before walker v2.17.0 and their changelogs pair up feature for feature
+  (aptpackages provider, Proton Pass actions, pinned-clipboard handling), so
+  2.22.0 IS walker 2.17.0's backend and the overlay's `~elephant-2.21.0` pin
+  is stale. The real blocker is distribution: elephant's SRC_URI pulls a Go
+  vendor tarball from a release on `firesand/edorp-overlay`, and only
+  `elephant-vendor-2.21.0` exists. A deterministic
+  `elephant-2.22.0-vendor.tar.xz` was generated but NOT uploaded, since
+  publishing a release asset is the user's call. Bumping elephant also needs a
+  walker revbump to move the pin to `~gui-apps/elephant-2.22.0`.
+- Tests: `.github/tests` passes 4/4; `pkgcheck scan` reports no finding
+  against any version changed here (the 38 repo-wide findings are
+  pre-existing). Each bumped package was staged through a real `ebuild`
+  install phase.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
