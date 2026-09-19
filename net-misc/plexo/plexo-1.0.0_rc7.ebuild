@@ -7,20 +7,20 @@ PYTHON_COMPAT=( python3_{11..15} )
 inherit desktop pax-utils python-any-r1 unpacker xdg
 
 MY_PV="$(ver_rs 3 - 4 .)"
+# The Electron revision upstream bundles, as pinned in package-lock.json.
 ELECTRON_PV="39.8.10"
 
 DESCRIPTION="Download manager using multiple network connections in parallel"
 HOMEPAGE="https://github.com/anmolkapil/plexo"
 
-# Upstream's Linux releases (including the unlabelled AppImage) are arm64.
-# Only the architecture-independent application resources are taken from the
-# deb. Pair them with the official amd64 Electron pinned in package-lock.json.
+# Upstream began publishing native Linux amd64 builds at 1.0.0_rc.7, so the
+# bundle is installed as shipped. The source tarball supplies the licence and
+# the lockfile the bundle is validated against.
 SRC_URI="
-	https://github.com/anmolkapil/plexo/releases/download/v${MY_PV}/plexo_${MY_PV}_arm64.deb
-		-> ${P}-arm64.deb
+	https://github.com/anmolkapil/plexo/releases/download/v${MY_PV}/plexo_${MY_PV}_amd64.deb
+		-> ${P}-amd64.deb
 	https://github.com/anmolkapil/plexo/archive/refs/tags/v${MY_PV}.tar.gz
 		-> ${P}.gh.tar.gz
-	https://github.com/electron/electron/releases/download/v${ELECTRON_PV}/electron-v${ELECTRON_PV}-linux-x64.zip
 "
 S="${WORKDIR}"
 
@@ -74,29 +74,33 @@ pkg_pretend() {
 }
 
 src_unpack() {
-	unpack_deb "${P}-arm64.deb"
+	unpack_deb "${P}-amd64.deb"
 	unpack "${P}.gh.tar.gz"
-	mkdir electron || die
-	cd electron || die
-	unpack "electron-v${ELECTRON_PV}-linux-x64.zip"
 }
 
 src_prepare() {
 	default
 
-	# Refuse future bumps with native addons or a mismatched Electron runtime.
+	# Refuse future bumps whose runtime or native addons are not really amd64.
 	"${PYTHON}" "${FILESDIR}/verify-resources.py" \
 		opt/Plexo/resources "plexo-${MY_PV}/package-lock.json" \
-		"${MY_PV}" "${ELECTRON_PV}" || die "Application resource validation failed"
-
-	rm electron/resources/default_app.asar electron/chrome-sandbox || die
-	cp -a opt/Plexo/resources/. electron/resources/ || die
-	mv electron/electron electron/plexo || die
+		"${MY_PV}" "${ELECTRON_PV}" opt/Plexo/plexo ||
+		die "Application resource validation failed"
 }
 
 src_install() {
-	dodir /opt/plexo
-	cp -a electron/. "${ED}/opt/plexo/" || die
+	# Take the bundled notices before the tree is moved into the image.
+	newdoc "plexo-${MY_PV}/LICENSE" LICENSE.plexo
+	newdoc opt/Plexo/LICENSE.electron.txt LICENSE.electron
+	dodoc opt/Plexo/LICENSES.chromium.html
+	rm opt/Plexo/LICENSE.electron.txt opt/Plexo/LICENSES.chromium.html || die
+
+	dodir /opt
+	mv opt/Plexo "${ED}/opt/plexo" || die
+
+	# chrome-sandbox must be setuid-root for the Chromium sandbox helper.
+	fperms 4755 /opt/plexo/chrome-sandbox
+
 	pax-mark m "${ED}/opt/plexo/plexo"
 	dosym -r /opt/plexo/plexo /usr/bin/plexo
 
@@ -107,10 +111,6 @@ src_install() {
 	done
 	make_desktop_entry plexo Plexo plexo "Network;FileTransfer;" \
 		"StartupWMClass=Plexo"
-
-	newdoc "plexo-${MY_PV}/LICENSE" LICENSE.plexo
-	newdoc electron/LICENSE LICENSE.electron
-	dodoc electron/LICENSES.chromium.html
 }
 
 pkg_postinst() {

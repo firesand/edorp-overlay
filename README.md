@@ -152,13 +152,16 @@ local machine configuration do not belong in the overlay.
 
 ### Plexo
 
-Plexo `1.0.0_rc4` packages upstream `v1.0.0-rc.4`, a release candidate.
-Upstream currently publishes Linux binaries only for ARM64, including its
-unlabelled AppImage. The ebuild extracts only the portable application resources
-from the `.deb` and pairs them with official Electron `39.8.10` for amd64,
-matching the upstream lockfile. Requires an amd64/glibc system; musl is not
-supported. It checks for native addons and mismatched versions before
-installation; no ARM64 executable is installed.
+Plexo `1.0.0_rc7` packages upstream `v1.0.0-rc.7`, a release candidate.
+Upstream began publishing native Linux amd64 builds at this release, so the
+ebuild now installs the upstream `amd64` `.deb` as shipped, with its own
+bundled Electron `39.8.10`, instead of repacking ARM64 resources onto a
+separately downloaded runtime. That repack is no longer possible in any case:
+`rc.7` added the `koffi` native addon, and the ARM64 `.deb` carries only an
+`aarch64` build of it. Requires an amd64/glibc system; musl is not supported.
+Before installation the ebuild verifies the bundle against the upstream
+lockfile and checks that the runtime and every loadable native addon really
+are x86-64.
 
 ```bash
 sudo cp metadata/package.accept_keywords/edorp-plexo \
