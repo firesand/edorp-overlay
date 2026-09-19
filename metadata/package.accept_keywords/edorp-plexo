@@ -1,0 +1,2 @@
+# Plexo release candidate, using the matching official amd64 Electron runtime.
+net-misc/plexo ~amd64

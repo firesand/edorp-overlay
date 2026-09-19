@@ -26,6 +26,7 @@
   "net-analyzer/bettercap": "2.41.7",
   "net-analyzer/bettercap::caplets": "20260707.141042",
   "net-misc/fluxcast": "0.2.2",
+  "net-misc/plexo": "1.0.0_rc4",
   "net-wireless/bully": "20260622.011703",
   "net-wireless/hcxdumptool": "7.1.2",
   "net-wireless/hcxtools": "7.1.2",
