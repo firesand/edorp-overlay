@@ -627,6 +627,114 @@ Daily audit on 2026-09-05 (branch `app-text/md2hd`, PR #15):
   refreshed both amd64 and arm64 distfiles in Manifest).
 - Synced baselines in `.github/upstream-old.json`; `.github/tests` passes 4/4.
 
+## Upstream audit and bumps (2026-09-09)
+
+Daily audit on 2026-09-09 (worktree branched from `app-text/md2hd`):
+
+- Bumped: `app-misc/chatgpt-desktop` 26.901.51231 (both amd64 and arm64 in the
+  APT pool), `app-misc/unsloth-desktop` 0.1.807_beta,
+  `media-gfx/opencadstudio` 2026.36, `net-misc/fluxcast` 0.2.4.
+- OpenCADStudio switched from semver to CalVer at `v2026.36` (Cargo.toml says
+  `2026.36.0`, the tag is `v2026.36`, so `EGIT_COMMIT="v${PV}"` still resolves).
+  `vercmp` puts 2026.36 above 0.9.8 and below 9999, so the SLOT ordering is
+  safe. Re-vendoring 706 crates with `cargo vendor --locked` succeeded, MSRV is
+  still 1.92, and the crate license set is byte-identical to 0.9.8's, so the
+  `LICENSE+=` block did not change. New deps this cycle are base64, getrandom
+  and an `iced_runtime` git pin; `acadrust`/`cadkernel` moved to new revisions.
+- FluxCast 0.2.4: the downstream `portable-fixes` patch was finally rebased.
+  Only 2 of ~30 hunks failed against 0.2.4 and both were context drift, not
+  semantic conflicts: upstream inserted `--wfd-p2p-backend` after
+  `--wfd-monitor` (moving the anchor for the downstream `--wfd-latency`
+  option), and it wrapped every tray menu label in `_l()` for the new
+  `src/i18n` module (moving the anchor for the downstream "Start on login"
+  item, which now uses `_l("Start on login")` to match). The regenerated patch
+  applies at `--fuzz=0` to both v0.2.4 and current master. Verified: all 11
+  patched files byte-compile, `ebuild ... clean install` succeeds, and the
+  installed `main.py --help` lists `--wfd-latency {low,balanced,smooth}`.
+  NOT verified: any real cast — no UPnP/Miracast runtime test was possible.
+- `net-misc/fluxcast-9999` had been left pointing at
+  `fluxcast-0.1.5-portable-fixes.patch`, which fails 6 hunks against master
+  since the 0.2.x `src/wfd/` restructure; it now uses the 0.2.4 patch, which
+  was checked against master. The dead 0.1.5 and superseded 0.2.2 patches were
+  removed, which also shrinks the `files/` directory pkgcheck was flagging.
+- CI: refreshed the pinned pkgcheck image to 0.10.43,
+  `sha256:49910215ab2157ebd84fa0dad593572875f63fd5d278b1ff0d921105e4c11c89`.
+  The digest for the previously pinned 0.10.40 resolves to exactly the old pin,
+  which confirms the GHCR lookup method.
+- NOT bumped: `app-emulation/mameuix` 0.1.8. It moved `tantivy` from the
+  crates.io `"0.22"` release to a git revision
+  (`quickwit-oss/tantivy` rev `5ca3933`), and the `CRATES` mechanism cannot
+  express git dependencies. Bumping needs the ebuild converted to the
+  fetch-and-vendor-in-`src_unpack` pattern that `media-gfx/opencadstudio` uses,
+  plus a full Rust build test. The 0.1.8 crates.io set is otherwise ready:
+  589 registry crates, MSRV still 1.88, and every install path
+  (`mameuix.desktop`, `debian/mameuix.1`, `assets/icons/...`) still exists.
+- Still not bumped for unchanged reasons: `dev-python/magika` 1.0.3 and
+  `dev-python/mammoth` 1.12.1 (markitdown 0.1.7 pins `magika~=0.6.1` and
+  `mammoth~=1.11.0`), `gui-apps/elephant` 2.22.0 (walker 2.17.0 still pins
+  `~gui-apps/elephant-2.21.0` and walker cut no new release).
+- Everything else was up to date; `.github/tests` passes 4/4.
+
+## Upstream audit and bumps (2026-09-16)
+
+Weekly audit on 2026-09-16. PR #16 from the 2026-09-09 audit was still open and
+`app-text/md2hd` had not moved, so this branch stacks on
+`claude/update-packages-2026-09-09` rather than on md2hd.
+
+- Bumped: `app-misc/chatgpt-desktop` 26.908.70816, `app-misc/claude-desktop`
+  1.52386.6, `app-misc/unsloth-desktop` 0.1.808_beta,
+  `media-gfx/opencadstudio` 2026.37, `net-misc/fluxcast` 0.2.6, and the pinned
+  pkgcheck CI image to 0.10.44
+  (`sha256:fa872ad5ae1b549552d6b593fd68e50ff5cbc6ecf1425dc72706b60ab3403b5a`).
+- OpenCADStudio 2026.37 adds `src/bin/ocs_launcher.rs`, a macOS document-open
+  helper that compiles to an empty `main()` off macOS. `cargo install` installs
+  every bin target, so both ebuilds now pass `--bin OpenCADStudio` to
+  `cargo_src_install` to keep a do-nothing binary out of /usr/bin. Re-vendoring
+  gives 716 crates (up from 706), MSRV is still 1.92, and the implied Gentoo
+  license set is unchanged. New deps: a `cadkernel-constraints` git dependency,
+  `unicode-bidi`, `fluent-syntax`, and clap's `string` feature.
+- FluxCast 0.2.6 needed a real merge rather than a re-anchor. Upstream rewrote
+  `_open_portal_session` in `src/wfd/media/portal.py`: `allow_window=True`, a
+  widened `source_type` set that now accepts windows, and
+  `session.on_closed = _end_session_on_portal_revoke`. The downstream change in
+  the same method reuses an already-authorized portal session, so upstream's
+  new body was kept verbatim and wrapped in the
+  `if self.portal_session is None` guard; `_WFD_LATENCY_PROFILES` moved above
+  upstream's new module-level helper. The patch applies at `--fuzz=0` to both
+  v0.2.6 and master. Still no cast/UPnP runtime test possible here.
+- Unsloth Desktop's Ubuntu deb roughly halved in size at 0.1.808_beta
+  (47 MB -> 24 MB) but the unpacked layout is unchanged, so the ebuild needed
+  no edits beyond the version.
+- `app-emulation/mameuix` bumped to 0.1.8. 0.1.8 moved `tantivy` to a git
+  revision (`quickwit-oss/tantivy` rev `5ca3933`), which plain `CRATES` cannot
+  express. The answer was cargo.eclass's `GIT_CRATES`, NOT the vendor-tarball
+  pattern `gui-apps/elephant` uses: `GIT_CRATES` fetches the repo as an
+  ordinary GitHub archive, so all nine tantivy workspace crates share one
+  4.2 MB distfile and nothing has to be hosted. A 64 MB vendor tarball had
+  been prepared before `GIT_CRATES` was found; it was not needed and not
+  uploaded.
+- Two things that only a real `ebuild ... install` caught, worth remembering
+  for the next `GIT_CRATES` conversion:
+  - `--locked` is incompatible with `GIT_CRATES`. The eclass wires the git
+    crates in through a `[patch.'<repo uri>']` section, which is a resolution
+    change, so cargo must rewrite `Cargo.lock` and `cargo build --locked`
+    dies. Drop `--locked` from `cargo_src_configure`; the generated config
+    sets `net.offline`, so the rewrite is still hermetic, and
+    `cargo_src_install` adds `--frozen` once src_compile has settled the
+    lockfile. `app-editors/zed` is the only ::gentoo `GIT_CRATES` consumer and
+    it defines no `src_configure` at all, which is the same convention.
+  - The ebuild never declared `QA_PRESTRIPPED` even though upstream's release
+    profile has set `strip = true` since 0.1.7, so every build emitted a
+    pre-stripped QA notice. Added.
+- Still blocked for unchanged reasons: `dev-python/magika` 1.0.3 and
+  `dev-python/mammoth` 1.12.2 (markitdown 0.1.7 still pins `magika~=0.6.1` and
+  `mammoth~=1.11.0`), `gui-apps/elephant` 2.22.0 (walker 2.17.0 still pins
+  `~gui-apps/elephant-2.21.0` and cut no new release).
+- pkgcheck exits 0 on both this branch and its baseline with the CI's own
+  `--exit GentooCI,-VisibleVcsPkg`; the only finding differences are the
+  fluxcast patch filename and the opencadstudio version string.
+  `.github/tests` passes 4/4.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
