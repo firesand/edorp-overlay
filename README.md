@@ -77,7 +77,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/hbmame`: HBMAME 0.288.2 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
-  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.7`
+  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
   fetches GitHub tag `v0.1.7` plus crates via `CRATES`; live ebuild `9999`
   uses `cargo_live_src_unpack`. Requires `app-emulation/mame` from this
   overlay. Portable **AppImage** builds live in the MAMEUIx repo
@@ -111,7 +111,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 0.9.8, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.37, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced/acadrust

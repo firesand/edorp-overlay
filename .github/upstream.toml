@@ -169,7 +169,7 @@ github = "HakanSeven12/OpenCADStudio"
 use_latest_release = true
 prefix = "v"
 policy = "review"
-note = "Versioned ebuild pins EGIT_COMMIT to the tag; smoke-test cargo vendoring after bumps."
+note = "Upstream moved from semver to CalVer at v2026.36; the versioned ebuild pins EGIT_COMMIT to the tag, so smoke-test cargo vendoring after bumps."
 
 # Every release so far is a prerelease, so GitHub's "latest release" resolves
 # nothing; widen the patterns when upstream cuts a stable tag.
