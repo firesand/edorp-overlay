@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Unsloth Desktop is a Tauri application for running and training LLMs,
+		diffusion, and audio models on local hardware. This package installs
+		the upstream prebuilt amd64 binary from the GitHub release; it does
+		not build the app from source. Only the desktop shell is packaged:
+		on first launch the app bootstraps its own Python environment,
+		including PyTorch and the unsloth wheels, into ~/.unsloth/studio,
+		which portage neither installs nor removes.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/unslothai/unsloth/issues</bugs-to>
+		<changelog>https://github.com/unslothai/unsloth/releases</changelog>
+		<doc>https://unsloth.ai/docs/desktop</doc>
+		<remote-id type="github">unslothai/unsloth</remote-id>
+	</upstream>
+</pkgmetadata>

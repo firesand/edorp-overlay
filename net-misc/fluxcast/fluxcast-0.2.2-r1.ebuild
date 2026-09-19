@@ -6,7 +6,7 @@ PYTHON_COMPAT=( python3_{10..14} )
 inherit desktop distutils-r1 xdg
 
 PATCHES=(
-	"${FILESDIR}/fluxcast-0.1.2-portal-before-wfd.patch"
+	"${FILESDIR}/fluxcast-0.2.2-portable-fixes.patch"
 )
 
 DESCRIPTION="Stream your Linux desktop to a Smart TV via Miracast/WFD, DLNA, or Chromecast"
@@ -15,8 +15,11 @@ SRC_URI="https://github.com/IlyaP358/fluxcast/archive/refs/tags/v${PV}.tar.gz ->
 
 LICENSE="GPL-3+"
 SLOT="0"
-KEYWORDS="~amd64 ~x86"
+KEYWORDS="~amd64"
 
+# 0.2.2 made the doctor's dnsmasq row a hard gate on the WFD path
+# (diagnostics.py: wfd_candidate = network_hw_ok and media_ok and dnsmasq_ok),
+# so without the binary in PATH every Miracast cast aborts before it starts.
 RDEPEND="
 	dev-libs/libayatana-appindicator
 	dev-libs/glib
@@ -27,6 +30,7 @@ RDEPEND="
 	dev-python/pystray[${PYTHON_USEDEP}]
 	dev-python/python-dateutil[${PYTHON_USEDEP}]
 	dev-python/upnpclient[${PYTHON_USEDEP}]
+	gui-apps/wf-recorder
 	media-libs/gst-plugins-bad
 	media-libs/gst-plugins-base
 	media-libs/gst-plugins-good
@@ -38,6 +42,7 @@ RDEPEND="
 	media-plugins/gst-plugins-x264
 	media-video/ffmpeg[x264]
 	media-video/pipewire[gstreamer]
+	net-dns/dnsmasq[dhcp]
 	net-misc/networkmanager[tools,wifi]
 	net-wireless/iw
 	net-wireless/wpa_supplicant[dbus,p2p,wps]

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		WolfCut (formerly Concat) is a free, open-source CapCut-style video
+		editor: multi-track timelines, split/trim/merge, transitions, speed
+		control, auto-captions, voice filters, and text overlays. It is a
+		Tauri application whose Rust engine drives FFmpeg as external
+		processes. This package installs the upstream prebuilt amd64 deb
+		payload; it does not build the app from source. Transcription and
+		text-to-speech run through the bundled whisper.cpp CLI and a
+		statically linked sherpa-onnx runtime, with models downloaded on
+		demand at first use.
+	</longdescription>
+	<use>
+		<flag name="system-ffmpeg">
+			Drop the bundled nonfree FFmpeg build and run ffmpeg/ffprobe
+			from <pkg>media-video/ffmpeg</pkg> found on PATH instead.
+		</flag>
+	</use>
+	<upstream>
+		<bugs-to>https://github.com/jub0t/Concat/issues</bugs-to>
+		<changelog>https://github.com/jub0t/Concat/releases</changelog>
+		<remote-id type="github">jub0t/Concat</remote-id>
+	</upstream>
+</pkgmetadata>

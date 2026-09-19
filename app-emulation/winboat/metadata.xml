@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		WinBoat is an Electron application that runs Windows inside a
+		Docker or Podman container (dockur/windows) and composites Windows
+		apps onto the Linux desktop with FreeRDP RemoteApp. This package
+		installs the upstream amd64 prebuilt binary; it does not build the
+		Electron app from source.
+	</longdescription>
+	<use>
+		<flag name="docker">
+			Install Docker Engine, Docker CLI, and Docker Compose v2 for the
+			default container runtime
+		</flag>
+		<flag name="podman">
+			Install Podman and podman-compose as an alternate container runtime
+		</flag>
+	</use>
+	<upstream>
+		<bugs-to>https://github.com/winboat-org/winboat/issues</bugs-to>
+		<changelog>https://github.com/winboat-org/winboat/releases</changelog>
+		<remote-id type="github">winboat-org/winboat</remote-id>
+	</upstream>
+</pkgmetadata>

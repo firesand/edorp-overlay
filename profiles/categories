@@ -5,7 +5,11 @@ app-portage
 app-text
 dev-python
 games-emulation
+gui-apps
+media-gfx
+media-video
 net-analyzer
 net-misc
 net-wireless
+sys-firmware
 sys-power

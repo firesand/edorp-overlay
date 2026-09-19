@@ -39,6 +39,7 @@ RDEPEND="
 	media-plugins/gst-plugins-x264
 	media-video/ffmpeg[x264]
 	media-video/pipewire[gstreamer]
+	net-dns/dnsmasq[dhcp]
 	net-misc/networkmanager[tools,wifi]
 	net-wireless/iw
 	net-wireless/wpa_supplicant[dbus,p2p,wps]

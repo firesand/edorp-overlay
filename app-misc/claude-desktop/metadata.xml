@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Claude Desktop is Anthropic's Electron desktop application for
+		Claude.ai, offering the same Chat, Cowork, and Claude Code
+		experience as the macOS and Windows apps. This package installs
+		Anthropic's upstream amd64/arm64 prebuilt .deb payload under
+		/opt/claude-desktop; it does not build the Electron app from
+		source. Cowork's sandboxed VM support additionally needs QEMU/KVM
+		(see optfeature). Linux support is upstream beta.
+	</longdescription>
+	<upstream>
+		<doc lang="en">https://code.claude.com/docs/en/desktop-linux</doc>
+		<remote-id type="github">anthropics/claude-code</remote-id>
+	</upstream>
+</pkgmetadata>

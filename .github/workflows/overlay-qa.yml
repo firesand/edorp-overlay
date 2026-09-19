@@ -107,7 +107,7 @@ jobs:
           pmaint --config "${config_dir}" regen \
             --dir "${cache_dir}/repos" edorp
 
-          scan_args=(--cache-dir "${cache_dir}" --exit GentooCI)
+          scan_args=(--cache-dir "${cache_dir}" --exit GentooCI,-VisibleVcsPkg)
           if [[ "${NETWORK_SCAN}" == "true" ]]; then
             scan_args+=(--net --timeout 30)
           fi

@@ -43,6 +43,42 @@ prefix = "v"
 policy = "review"
 note = "Regenerate and review the large Cargo dependency list."
 
+["app-emulation/winboat"]
+source = "github"
+github = "winboat-org/winboat"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Binary repack of the upstream x64 tarball; refresh both the tag and the release asset."
+
+# The vendor publishes no release feed, but its APT index is machine-readable.
+["app-misc/chatgpt-desktop"]
+source = "regex"
+url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-amd64/Packages"
+regex = 'Version: ([0-9][0-9.]*)'
+policy = "review"
+note = "Confirm the arm64 index reports the same version, then refresh both distfiles."
+
+# Proprietary Electron .deb served from Anthropic's apt repository. The
+# per-arch Packages index lists every published version; the regex source
+# selects the newest. Shares the app-misc/claude-desktop name with gentoo-zh;
+# a bump must refresh both the amd64 and arm64 debs and regenerate the Manifest.
+["app-misc/claude-desktop"]
+source = "regex"
+url = "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages"
+regex = 'claude-desktop_([0-9][0-9.]+)_amd64\.deb'
+policy = "review"
+note = "Bump amd64 + arm64 debs together and regenerate the Manifest."
+
+["app-misc/unsloth-desktop"]
+source = "github"
+github = "unslothai/unsloth"
+use_latest_release = true
+from_pattern = '^v([0-9.]+)-beta$'
+to_pattern = '\1_beta'
+policy = "review"
+note = "Beta releases land several times a day, and the numbering appends digits (0.1.70 then 0.1.701); confirm the new tag really sorts newer before bumping."
+
 ["app-portage/equery-gui"]
 source = "github"
 github = "firesand/equery-gui"
@@ -56,6 +92,12 @@ source = "pypi"
 pypi = "markitdown"
 policy = "review"
 note = "Review every optional format dependency and supported Python target."
+
+["app-text/md2hd"]
+source = "npm"
+npm = "md2hd"
+policy = "review"
+note = "Upstream cuts no git tags or GitHub releases, so npm is the only versioned feed."
 
 # The workflow image is immutable by digest, so Dependabot cannot infer its
 # package version. This signal prompts a manual digest refresh.
@@ -91,6 +133,7 @@ policy = "review"
 source = "pypi"
 pypi = "pystray"
 policy = "review"
+note = "PyPI ships wheels only after 0.19.3, so the ebuild fetches the GitHub tag archive."
 
 ["dev-python/python-pptx"]
 source = "pypi"
@@ -120,6 +163,26 @@ policy = "review"
 group = "walker-stack"
 note = "Update with Elephant; regenerate Cargo sources and recheck downstream patches."
 
+["media-gfx/opencadstudio"]
+source = "github"
+github = "HakanSeven12/OpenCADStudio"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Versioned ebuild pins EGIT_COMMIT to the tag; smoke-test cargo vendoring after bumps."
+
+# Every release so far is a prerelease, so GitHub's "latest release" resolves
+# nothing; widen the patterns when upstream cuts a stable tag.
+["media-video/wolfcut"]
+source = "github"
+github = "jub0t/Concat"
+use_max_tag = true
+include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$'
+from_pattern = '^v([0-9.]+)-alpha\.([0-9]+)$'
+to_pattern = '\1_alpha\2'
+policy = "review"
+note = "Alpha releases reuse one asset filename; refresh the deb, the notices file, and both Manifest entries together."
+
 ["net-analyzer/bettercap"]
 source = "github"
 github = "bettercap/bettercap"
@@ -141,6 +204,17 @@ source = "pypi"
 pypi = "fluxcast"
 policy = "review"
 note = "Rebase the overlay patches and test UPnP discovery."
+
+["net-misc/plexo"]
+source = "github"
+github = "anmolkapil/plexo"
+use_max_tag = true
+include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?$'
+prefix = "v"
+from_pattern = '-rc\.'
+to_pattern = '_rc'
+policy = "review"
+note = "Check release architectures, portable ASAR resources, and the exact Electron version in package-lock.json; update all distfiles together."
 
 # Snapshot packages deliberately use full UTC commit timestamps so multiple
 # commits on the same day cannot be hidden.
@@ -188,6 +262,16 @@ use_latest_release = true
 prefix = "v"
 policy = "review"
 note = "Rebase and test every downstream patch before accepting a bump."
+
+["sys-firmware/ds5dongle"]
+source = "github"
+github = "awalol/DS5Dongle"
+use_latest_release = true
+prefix = "v"
+from_pattern = '^v([0-9]+\.[0-9]+\.[0-9]+)(?:-hotfix)?$'
+to_pattern = '\1'
+policy = "review"
+note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the published tag and refresh SRC_URI assets."
 
 # Live-only packages have no version bump; smoke-build their HEAD manually.
 ["sys-power/asusctl"]

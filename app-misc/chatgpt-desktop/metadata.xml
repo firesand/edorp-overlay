@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		The OpenAI ChatGPT desktop application for Linux, which also ships
+		the Codex coding agent, its own Node runtime, and ripgrep under
+		/opt/chatgpt-desktop/resources. This package installs the upstream
+		prebuilt Electron binary from the vendor APT pool; it does not build
+		the application from source, and the APT repository that the
+		upstream .deb configures for background self-updates is not
+		installed.
+	</longdescription>
+	<use>
+		<flag name="apparmor">
+			Install the upstream <pkg>sys-apps/apparmor</pkg> profile, which
+			grants the userns rule that the Chromium sandbox requires
+		</flag>
+	</use>
+	<upstream>
+		<bugs-to>https://github.com/openai/codex/issues</bugs-to>
+		<doc>https://developers.openai.com/codex/app</doc>
+	</upstream>
+</pkgmetadata>
