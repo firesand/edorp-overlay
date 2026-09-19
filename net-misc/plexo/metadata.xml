@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Plexo is an Electron download manager that distributes HTTP byte-range
+		requests across multiple network connections, with pause and resume,
+		download recovery, and per-interface progress reporting. This package
+		reuses the architecture-independent resources from the upstream Linux
+		release with the matching official amd64 Electron runtime. It does not
+		build the application from source.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/anmolkapil/plexo/issues</bugs-to>
+		<changelog>https://github.com/anmolkapil/plexo/releases</changelog>
+		<remote-id type="github">anmolkapil/plexo</remote-id>
+	</upstream>
+</pkgmetadata>

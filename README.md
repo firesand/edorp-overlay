@@ -48,6 +48,10 @@ local machine configuration do not belong in the overlay.
   bundle.
 - `dev-python/pystray`: Fluxcast dependency.
 - `dev-python/upnpclient`: Fluxcast dependency.
+- `net-misc/plexo`: Plexo download manager with parallel downloads across
+  multiple network connections ([source](https://github.com/anmolkapil/plexo)).
+  Reuses the upstream application's portable resources with the matching
+  official amd64 Electron runtime. Requires glibc and `~amd64` keywording.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
 - `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
@@ -145,6 +149,28 @@ local machine configuration do not belong in the overlay.
   release `.deb`; the default USE `system-ffmpeg` swaps the bundled nonfree
   FFmpeg for the system one. Needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-wolfcut`).
+
+### Plexo
+
+Plexo `1.0.0_rc4` packages upstream `v1.0.0-rc.4`, a release candidate.
+Upstream currently publishes Linux binaries only for ARM64, including its
+unlabelled AppImage. The ebuild extracts only the portable application resources
+from the `.deb` and pairs them with official Electron `39.8.10` for amd64,
+matching the upstream lockfile. Requires an amd64/glibc system; musl is not
+supported. It checks for native addons and mismatched versions before
+installation; no ARM64 executable is installed.
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-plexo \
+  /etc/portage/package.accept_keywords/edorp-plexo
+sudo emerge -av net-misc/plexo
+```
+
+Launch `plexo` or select Plexo from the desktop menu. The Chromium sandbox
+requires unprivileged user namespaces (`CONFIG_USER_NS=y`); the launcher does
+not disable the sandbox. Each selected network needs a working route to the
+download server. Multiple interfaces alone do not guarantee combined bandwidth.
+Updates are managed by Portage.
 
 ### WinBoat
 
