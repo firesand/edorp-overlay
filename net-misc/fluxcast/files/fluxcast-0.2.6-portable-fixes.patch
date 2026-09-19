@@ -13,7 +13,7 @@
          "!", f"video/x-raw,framerate={fps}/1",
 --- a/src/capture/portal_capture.py
 +++ b/src/capture/portal_capture.py
-@@ -397,6 +397,16 @@
+@@ -421,6 +421,16 @@
                  pass
          runtime.stop()
          raise PortalCaptureError(f"Portal capture setup failed: {exc}") from exc
@@ -48,7 +48,7 @@
  import time
  import sys
  import termios
-@@ -194,6 +196,10 @@
+@@ -201,6 +203,10 @@
                            "(driver picks the channel).")
      wfd.add_argument("--wfd-monitor", default=None, dest="monitor_name",
                       help="Deprecated alias for --monitor, kept for compatibility")
@@ -59,7 +59,7 @@
      wfd.add_argument("--wfd-p2p-backend", default="nm", dest="wfd_p2p_backend",
                       choices=["nm", "wpas"],
                       help="How to bring up the P2P link: 'nm' uses "
-@@ -321,25 +327,68 @@
+@@ -330,25 +336,68 @@
      ffmpeg_procs = None
      stream_server = None
      tv = None
@@ -315,7 +315,7 @@
          self._lpcm_muxer = None   # WFDLPCMMuxer instance for Microsoft adapter
 --- a/src/wfd/media/portal.py
 +++ b/src/wfd/media/portal.py
-@@ -18,22 +18,36 @@
+@@ -20,7 +20,17 @@
      _pipewiresrc_selector_attempts, _wfd_gst_prog_map,
  )
  from ..modes import _h264_level_for_mode
@@ -333,6 +333,9 @@
 +}
  
  
+ def _end_session_on_portal_revoke() -> None:
+@@ -37,20 +47,24 @@
+ 
  class PortalMixin:
      def _open_portal_session(self, monitor):
 -        print("[FluxCast WFD Media] Opening portal screen-share dialog (KDE/GNOME Wayland)...")
@@ -341,6 +344,9 @@
 -                timeout=120.0,
 -                preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
 -                preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
+-                # This pipeline letterboxes with videoscale add-borders, so a
+-                # window of any shape is safe to accept here (#62).
+-                allow_window=True,
 -            )
 -        except PortalCaptureError as exc:
 -            raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
@@ -351,6 +357,9 @@
 +                    timeout=120.0,
 +                    preferred_position=(monitor.x, monitor.y) if monitor is not None else None,
 +                    preferred_size=(monitor.width, monitor.height) if monitor is not None else None,
++                    # This pipeline letterboxes with videoscale add-borders, so a
++                    # window of any shape is safe to accept here (#62).
++                    allow_window=True,
 +                )
 +            except PortalCaptureError as exc:
 +                raise WFDNotReady(f"portal capture setup failed: {exc}") from exc
@@ -360,9 +369,9 @@
          session = self.portal_session
 +        assert session is not None
          # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
-         if session.source_type is not None and session.source_type not in (1, 4):
+         if session.source_type is not None and session.source_type not in (1, 2, 4):
              close_portal_capture(self.portal_session)
-@@ -265,7 +279,11 @@
+@@ -285,7 +299,11 @@
  
          is_lg = "LG" in self.config.peer_name.upper()
          if is_lg:
@@ -375,7 +384,7 @@
  
          effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
          if effective_kbits > requested_kbits:
-@@ -294,9 +312,13 @@
+@@ -314,9 +332,13 @@
          def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
              # Use more buffers for high-res 1440p capture and move videorate early
              props = _gst_pipewiresrc_properties()
@@ -390,7 +399,7 @@
              if "resend-last" in props:
                  pipewire_args.append("resend-last=true")
              if "min-force-user-latency" in props:
-@@ -359,7 +381,7 @@
+@@ -379,7 +401,7 @@
                      )
              else:
                  if "vbv-buf-capacity" in x264_props:
@@ -399,7 +408,7 @@
                  # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
                  if "option-string" in x264_props:
                      opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
-@@ -375,13 +397,16 @@
+@@ -395,13 +417,16 @@
                  f"fd={session.pw_fd}",
                  *pipewire_args,
                  "do-timestamp=true",
@@ -419,7 +428,7 @@
                  "!", video_caps,
                  "!", "videoconvert",
                  "!", "video/x-raw,format=I420",
-@@ -545,6 +570,7 @@
+@@ -565,6 +590,7 @@
                      f"selector={selector_name}, caps={attempt_name}"
                  )
                  gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
@@ -427,7 +436,7 @@
                  gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
                  time.sleep(2.5)
                  if gst_proc.poll() is not None:
-@@ -562,6 +588,27 @@
+@@ -582,6 +608,27 @@
                      )
                      continue
  

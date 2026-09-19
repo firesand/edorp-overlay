@@ -1,0 +1,687 @@
+# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+CRATES="
+	ab_glyph@0.2.32
+	ab_glyph_rasterizer@0.1.10
+	accesskit@0.19.0
+	accesskit_atspi_common@0.12.0
+	accesskit_consumer@0.28.0
+	accesskit_macos@0.20.0
+	accesskit_unix@0.15.0
+	accesskit_windows@0.27.0
+	accesskit_winit@0.27.0
+	adler2@2.0.1
+	aes@0.8.4
+	ahash@0.8.12
+	aho-corasick@1.1.5
+	aligned-vec@0.6.4
+	aligned@0.4.3
+	allocator-api2@0.2.21
+	android-activity@0.6.1
+	android-properties@0.2.2
+	android_system_properties@0.1.6
+	anyhow@1.0.104
+	arbitrary@1.4.2
+	arboard@3.6.1
+	arc-swap@1.9.2
+	arg_enum_proc_macro@0.3.4
+	arrayref@0.3.9
+	arrayvec@0.7.8
+	as-raw-xcb-connection@1.0.1
+	as-slice@0.2.1
+	ash@0.38.0+1.3.281
+	ashpd@0.11.1
+	async-broadcast@0.7.2
+	async-channel@2.5.0
+	async-executor@1.14.0
+	async-fs@2.2.0
+	async-io@2.6.0
+	async-lock@3.4.2
+	async-net@2.0.0
+	async-process@2.5.0
+	async-recursion@1.1.1
+	async-signal@0.2.14
+	async-task@4.7.1
+	async-trait@0.1.92
+	atomic-waker@1.1.2
+	atspi-common@0.9.0
+	atspi-connection@0.9.0
+	atspi-proxies@0.9.0
+	atspi@0.25.0
+	autocfg@1.5.1
+	av-scenechange@0.14.1
+	av1-grain@0.2.5
+	avif-serialize@0.8.9
+	base64@0.22.1
+	bit-set@0.8.0
+	bit-vec@0.8.0
+	bit_field@0.10.3
+	bitflags@1.3.2
+	bitflags@2.13.1
+	bitpacking@0.9.3
+	bitstream-io@4.10.0
+	block-buffer@0.10.4
+	block2@0.5.1
+	block2@0.6.2
+	block@0.1.6
+	blocking@1.7.0
+	bon-macros@3.10.0
+	bon@3.10.0
+	built@0.8.1
+	bumpalo@3.20.3
+	bytemuck@1.25.2
+	bytemuck_derive@1.12.0
+	byteorder-lite@0.1.0
+	byteorder@1.5.0
+	bytes@1.12.1
+	bzip2@0.6.1
+	calloop-wayland-source@0.3.0
+	calloop-wayland-source@0.4.1
+	calloop@0.13.0
+	calloop@0.14.4
+	cc@1.4.5
+	census@0.4.2
+	cfg-if@1.0.4
+	cfg_aliases@0.2.2
+	cgl@0.3.2
+	chrono@0.4.45
+	cipher@0.4.4
+	clipboard-win@5.4.1
+	codespan-reporting@0.12.0
+	color_quant@1.1.0
+	combine@4.6.8
+	concurrent-queue@2.5.0
+	constant_time_eq@0.3.1
+	core-foundation-sys@0.8.7
+	core-foundation@0.9.4
+	core-graphics-types@0.1.3
+	core-graphics@0.23.2
+	cpufeatures@0.2.17
+	crc32fast@1.5.1
+	crossbeam-channel@0.5.16
+	crossbeam-deque@0.8.7
+	crossbeam-epoch@0.9.20
+	crossbeam-utils@0.8.22
+	crunchy@0.2.4
+	crypto-common@0.1.7
+	cursor-icon@1.2.0
+	darling@0.24.1
+	darling_core@0.24.1
+	darling_macro@0.24.1
+	datasketches@0.3.0
+	deflate64@0.1.12
+	deranged@0.5.8
+	derive_arbitrary@1.4.2
+	digest@0.10.7
+	dirs-sys@0.5.0
+	dirs@6.0.0
+	dispatch2@0.3.1
+	dispatch@0.2.0
+	displaydoc@0.2.7
+	dlib@0.5.3
+	document-features@0.2.12
+	downcast-rs@1.2.1
+	downcast-rs@2.0.2
+	dpi@0.1.2
+	duplicate@2.0.1
+	ecolor@0.32.3
+	eframe@0.32.3
+	egui-toast@0.18.0
+	egui-wgpu@0.32.3
+	egui-winit@0.32.3
+	egui@0.32.3
+	egui_dock@0.17.0
+	egui_extras@0.32.3
+	egui_glow@0.32.3
+	either@1.18.0
+	emath@0.32.3
+	endi@1.1.1
+	enum-map-derive@0.17.0
+	enum-map@2.7.3
+	enumflags2@0.7.12
+	enumflags2_derive@0.7.12
+	epaint@0.32.3
+	epaint_default_fonts@0.32.3
+	equator-macro@0.4.2
+	equator@0.4.2
+	equivalent@1.0.2
+	erased-serde@0.4.10
+	errno@0.3.14
+	error-code@3.4.0
+	event-listener-strategy@0.5.4
+	event-listener@5.4.2
+	exr@1.74.2
+	fastdivide@0.4.2
+	fastrand@2.5.0
+	fax@0.2.7
+	fdeflate@0.3.7
+	find-msvc-tools@0.1.12
+	flate2@1.1.10
+	fnv@1.0.7
+	foldhash@0.1.5
+	foldhash@0.2.0
+	foreign-types-macros@0.2.4
+	foreign-types-shared@0.3.1
+	foreign-types@0.5.0
+	form_urlencoded@1.2.2
+	fs4@0.13.1
+	futures-channel@0.3.34
+	futures-core@0.3.34
+	futures-io@0.3.34
+	futures-lite@2.6.1
+	futures-macro@0.3.34
+	futures-task@0.3.34
+	futures-util@0.3.34
+	fuzzy-matcher@0.3.7
+	generic-array@0.14.7
+	gethostname@1.1.0
+	getrandom@0.2.17
+	getrandom@0.3.4
+	getrandom@0.4.3
+	gif@0.14.2
+	gl_generator@0.14.0
+	glow@0.16.0
+	glutin-winit@0.5.0
+	glutin@0.32.3
+	glutin_egl_sys@0.7.1
+	glutin_glx_sys@0.6.1
+	glutin_wgl_sys@0.6.1
+	gpu-alloc-types@0.3.1
+	gpu-alloc@0.6.2
+	gpu-allocator@0.27.0
+	gpu-descriptor-types@0.2.0
+	gpu-descriptor@0.3.2
+	half@2.7.1
+	hashbrown@0.15.5
+	hashbrown@0.17.1
+	heck@0.5.0
+	hermit-abi@0.5.3
+	hex@0.4.3
+	hexf-parse@0.2.1
+	hmac@0.12.1
+	htmlescape@0.3.1
+	iana-time-zone-haiku@0.1.2
+	iana-time-zone@0.1.65
+	icu_collections@2.3.0
+	icu_locale_core@2.3.0
+	icu_normalizer@2.3.0
+	icu_normalizer_data@2.3.0
+	icu_properties@2.3.0
+	icu_properties_data@2.3.0
+	icu_provider@2.3.1
+	ident_case@1.0.1
+	idna@1.1.0
+	idna_adapter@1.2.2
+	image-webp@0.2.4
+	image@0.25.10
+	imgref@1.12.3
+	indexmap@2.14.2
+	inout@0.1.4
+	interpolate_name@0.2.4
+	inventory@0.3.24
+	itertools@0.14.0
+	itoa@1.0.18
+	jni-macros@0.22.4
+	jni-sys-macros@0.4.1
+	jni-sys@0.3.1
+	jni-sys@0.4.1
+	jni@0.22.4
+	jobserver@0.1.35
+	js-sys@0.3.105
+	khronos-egl@6.0.0
+	khronos_api@3.1.0
+	lazy_static@1.5.0
+	lebe@0.5.3
+	levenshtein_automata@0.2.1
+	libbz2-rs-sys@0.2.5
+	libc@0.2.189
+	libfuzzer-sys@0.4.13
+	libloading@0.8.9
+	liblzma-sys@0.4.8
+	liblzma@0.4.8
+	libm@0.2.16
+	libredox@0.1.23
+	linux-raw-sys@0.12.1
+	linux-raw-sys@0.4.15
+	litemap@0.8.3
+	litrs@1.0.0
+	lock_api@0.4.14
+	log@0.4.34
+	loop9@0.1.5
+	lru@0.18.4
+	lz4_flex@0.14.0
+	malloc_buf@0.0.6
+	maybe-rayon@0.1.1
+	measure_time@0.9.0
+	memchr@2.8.3
+	memmap2@0.9.11
+	memoffset@0.9.1
+	metal@0.31.0
+	mime@0.3.17
+	mime_guess2@2.3.1
+	minimal-lexical@0.2.1
+	miniz_oxide@0.8.9
+	miniz_oxide@0.9.1
+	moxcms@0.8.1
+	murmurhash32@0.4.0
+	naga@25.0.1
+	ndk-context@0.1.1
+	ndk-sys@0.5.0+25.2.9519653
+	ndk-sys@0.6.0+11769913
+	ndk@0.9.0
+	new_debug_unreachable@1.0.6
+	no_std_io2@0.9.4
+	nohash-hasher@0.2.0
+	nom@7.1.3
+	nom@8.0.0
+	noop_proc_macro@0.3.0
+	num-bigint@0.4.8
+	num-complex@0.4.6
+	num-conv@0.2.2
+	num-derive@0.4.2
+	num-integer@0.1.47
+	num-rational@0.4.2
+	num-traits@0.2.19
+	num_cpus@1.17.0
+	num_enum@0.7.6
+	num_enum_derive@0.7.6
+	objc-sys@0.3.5
+	objc2-app-kit@0.2.2
+	objc2-app-kit@0.3.2
+	objc2-cloud-kit@0.2.2
+	objc2-contacts@0.2.2
+	objc2-core-data@0.2.2
+	objc2-core-foundation@0.3.2
+	objc2-core-graphics@0.3.2
+	objc2-core-image@0.2.2
+	objc2-core-location@0.2.2
+	objc2-encode@4.1.0
+	objc2-foundation@0.2.2
+	objc2-foundation@0.3.2
+	objc2-io-surface@0.3.2
+	objc2-link-presentation@0.2.2
+	objc2-metal@0.2.2
+	objc2-quartz-core@0.2.2
+	objc2-symbols@0.2.2
+	objc2-ui-kit@0.2.2
+	objc2-uniform-type-identifiers@0.2.2
+	objc2-user-notifications@0.2.2
+	objc2@0.5.2
+	objc2@0.6.4
+	objc@0.2.7
+	once_cell@1.21.4
+	oneshot@0.1.13
+	option-ext@0.2.0
+	orbclient@0.3.55
+	ordered-float@4.6.0
+	ordered-float@5.4.0
+	ordered-stream@0.2.0
+	owned_ttf_parser@0.25.1
+	parking@2.2.1
+	parking_lot@0.12.5
+	parking_lot_core@0.9.12
+	paste@1.0.15
+	pastey@0.1.1
+	pbkdf2@0.12.2
+	percent-encoding@2.3.2
+	phf@0.11.3
+	phf_generator@0.11.3
+	phf_macros@0.11.3
+	phf_shared@0.11.3
+	pin-project-internal@1.1.13
+	pin-project-lite@0.2.17
+	pin-project@1.1.13
+	piper@0.2.5
+	pkg-config@0.3.34
+	plain@0.2.3
+	png@0.18.1
+	polling@3.11.0
+	pollster@0.4.0
+	portable-atomic@1.15.0
+	potential_utf@0.1.6
+	powerfmt@0.2.0
+	ppmd-rust@1.4.1
+	ppv-lite86@0.2.21
+	presser@0.3.1
+	prettyplease@0.3.0
+	proc-macro-crate@3.5.0
+	proc-macro2-diagnostics@0.10.1
+	proc-macro2@1.0.107
+	profiling-procmacros@1.0.18
+	profiling@1.0.18
+	pulp-wasm-simd-flag@0.1.1
+	pulp@0.22.3
+	pxfm@0.1.30
+	qoi@0.4.1
+	quick-error@2.0.1
+	quick-xml@0.41.0
+	quote@1.0.47
+	r-efi@5.3.0
+	r-efi@6.0.0
+	rand@0.8.8
+	rand@0.9.5
+	rand_chacha@0.9.0
+	rand_core@0.6.4
+	rand_core@0.9.5
+	range-alloc@0.1.5
+	rav1e@0.8.1
+	ravif@0.13.0
+	raw-cpuid@11.6.0
+	raw-window-handle@0.6.2
+	rayon-core@1.13.0
+	rayon@1.12.0
+	reborrow@0.5.5
+	redox_syscall@0.4.1
+	redox_syscall@0.5.18
+	redox_syscall@0.9.3
+	redox_users@0.5.2
+	regex-automata@0.4.18
+	regex-syntax@0.8.11
+	regex@1.13.1
+	renderdoc-sys@1.1.0
+	rfd@0.15.4
+	rgb@0.8.53
+	rust-stemmers@1.2.0
+	rustc-hash@1.1.0
+	rustc-hash@2.1.3
+	rustc_version@0.4.1
+	rustix@0.38.44
+	rustix@1.1.4
+	rustversion@1.0.23
+	same-file@1.0.6
+	scoped-tls@1.0.1
+	scopeguard@1.2.0
+	sctk-adwaita@0.10.1
+	semver@1.0.28
+	serde@1.0.229
+	serde_core@1.0.229
+	serde_derive@1.0.229
+	serde_json@1.0.151
+	serde_repr@0.1.21
+	serde_spanned@1.1.1
+	sha1@0.10.7
+	shlex@2.0.1
+	signal-hook-registry@1.4.8
+	simd-adler32@0.3.10
+	simd_cesu8@1.2.0
+	simd_helpers@0.1.0
+	simdutf8@0.1.5
+	siphasher@1.0.3
+	sketches-ddsketch@0.4.1
+	slab@0.4.12
+	slotmap@1.1.1
+	smallvec@1.16.0
+	smithay-client-toolkit@0.19.2
+	smithay-client-toolkit@0.20.0
+	smithay-clipboard@0.7.3
+	smol_str@0.2.2
+	spirv@0.3.0+sdk-1.3.268.0
+	stable_deref_trait@1.2.1
+	static_assertions@1.1.0
+	strict-num@0.1.1
+	strsim@0.11.1
+	strum@0.26.3
+	strum_macros@0.26.4
+	subtle@2.6.1
+	syn@2.0.119
+	syn@3.0.5
+	synstructure@0.13.2
+	tantivy-fst@0.5.0
+	tempfile@3.27.0
+	termcolor@1.4.1
+	thiserror-impl@1.0.69
+	thiserror-impl@2.0.20
+	thiserror@1.0.69
+	thiserror@2.0.20
+	thread_local@1.1.10
+	tiff@0.11.3
+	time-core@0.1.9
+	time-macros@0.2.32
+	time@0.3.55
+	tiny-skia-path@0.11.4
+	tiny-skia@0.11.4
+	tinystr@0.8.4
+	toml@0.9.12+spec-1.1.0
+	toml_datetime@0.7.5+spec-1.1.0
+	toml_datetime@1.1.1+spec-1.1.0
+	toml_edit@0.25.13+spec-1.1.0
+	toml_parser@1.1.3+spec-1.1.0
+	toml_writer@1.1.2+spec-1.1.0
+	tracing-attributes@0.1.31
+	tracing-core@0.1.36
+	tracing@0.1.44
+	ttf-parser@0.25.1
+	type-map@0.5.1
+	typeid@1.0.3
+	typenum@1.20.1
+	typetag-impl@0.2.23
+	typetag@0.2.23
+	uds_windows@1.2.1
+	unicase@2.9.0
+	unicode-ident@1.0.24
+	unicode-segmentation@1.13.3
+	unicode-width@0.2.2
+	unwrap-infallible@1.0.0
+	url@2.5.8
+	urlencoding@2.1.3
+	utf8-ranges@1.0.5
+	utf8_iter@1.0.4
+	uuid@1.26.0
+	v_frame@0.3.9
+	version_check@0.9.5
+	walkdir@2.5.0
+	wasi@0.11.1+wasi-snapshot-preview1
+	wasip2@1.0.4+wasi-0.2.12
+	wasm-bindgen-futures@0.4.78
+	wasm-bindgen-macro-support@0.2.128
+	wasm-bindgen-macro@0.2.128
+	wasm-bindgen-shared@0.2.128
+	wasm-bindgen@0.2.128
+	wayland-backend@0.3.17
+	wayland-client@0.31.15
+	wayland-csd-frame@0.3.0
+	wayland-cursor@0.31.14
+	wayland-protocols-experimental@20250721.0.1
+	wayland-protocols-misc@0.3.12
+	wayland-protocols-plasma@0.3.12
+	wayland-protocols-wlr@0.3.12
+	wayland-protocols@0.32.13
+	wayland-scanner@0.31.11
+	wayland-sys@0.31.11
+	web-sys@0.3.105
+	web-time@1.1.0
+	webbrowser@1.2.4
+	weezl@0.1.12
+	wgpu-core-deps-apple@25.0.0
+	wgpu-core-deps-emscripten@25.0.0
+	wgpu-core-deps-windows-linux-android@25.0.0
+	wgpu-core@25.0.2
+	wgpu-hal@25.0.2
+	wgpu-types@25.0.0
+	wgpu@25.0.2
+	winapi-i686-pc-windows-gnu@0.4.0
+	winapi-util@0.1.11
+	winapi-x86_64-pc-windows-gnu@0.4.0
+	winapi@0.3.9
+	windows-collections@0.2.0
+	windows-core@0.58.0
+	windows-core@0.61.2
+	windows-core@0.62.2
+	windows-future@0.2.1
+	windows-implement@0.58.0
+	windows-implement@0.60.2
+	windows-interface@0.58.0
+	windows-interface@0.59.3
+	windows-link@0.1.3
+	windows-link@0.2.1
+	windows-numerics@0.2.0
+	windows-result@0.2.0
+	windows-result@0.3.4
+	windows-result@0.4.1
+	windows-strings@0.1.0
+	windows-strings@0.4.2
+	windows-strings@0.5.1
+	windows-sys@0.52.0
+	windows-sys@0.59.0
+	windows-sys@0.60.2
+	windows-sys@0.61.2
+	windows-targets@0.52.6
+	windows-targets@0.53.5
+	windows-threading@0.1.0
+	windows@0.58.0
+	windows@0.61.3
+	windows_aarch64_gnullvm@0.52.6
+	windows_aarch64_gnullvm@0.53.1
+	windows_aarch64_msvc@0.52.6
+	windows_aarch64_msvc@0.53.1
+	windows_i686_gnu@0.52.6
+	windows_i686_gnu@0.53.1
+	windows_i686_gnullvm@0.52.6
+	windows_i686_gnullvm@0.53.1
+	windows_i686_msvc@0.52.6
+	windows_i686_msvc@0.53.1
+	windows_x86_64_gnu@0.52.6
+	windows_x86_64_gnu@0.53.1
+	windows_x86_64_gnullvm@0.52.6
+	windows_x86_64_gnullvm@0.53.1
+	windows_x86_64_msvc@0.52.6
+	windows_x86_64_msvc@0.53.1
+	winit@0.30.13
+	winnow@0.7.15
+	winnow@1.0.4
+	wit-bindgen@0.57.1
+	writeable@0.6.4
+	x11-dl@2.21.0
+	x11rb-protocol@0.13.2
+	x11rb@0.13.2
+	xcursor@0.3.11
+	xkbcommon-dl@0.4.2
+	xkeysym@0.2.1
+	xml-rs@0.8.29
+	y4m@0.8.0
+	yoke-derive@0.8.2
+	yoke@0.8.3
+	zbus-lockstep-macros@0.5.2
+	zbus-lockstep@0.5.2
+	zbus@5.19.0
+	zbus_macros@5.19.0
+	zbus_names@4.3.4
+	zbus_xml@5.2.1
+	zcheapstr@1.1.0
+	zerocopy-derive@0.8.56
+	zerocopy@0.8.56
+	zerofrom-derive@0.1.7
+	zerofrom@0.1.8
+	zeroize@1.9.0
+	zeroize_derive@1.5.0
+	zerotrie@0.2.5
+	zerovec-derive@0.11.6
+	zerovec@0.11.8
+	zip@4.6.1
+	zlib-rs@0.6.7
+	zmij@1.0.23
+	zopfli@0.8.3
+	zstd-safe@7.3.0
+	zstd-sys@2.1.0+zstd.1.5.7
+	zstd@0.13.3
+	zune-core@0.5.3
+	zune-inflate@0.2.54
+	zune-jpeg@0.5.15
+	zvariant@5.15.0
+	zvariant_derive@5.15.0
+	zvariant_utils@4.2.0
+"
+
+# 0.1.8 moved tantivy from the crates.io release to a git revision, which
+# CRATES cannot express. All nine crates below are workspace members of the
+# same repository at the same commit, so they share one distfile.
+TANTIVY_COMMIT="5ca39332002c2c87fb5d2abc707cf527b3319d42"
+declare -A GIT_CRATES=(
+	[ownedbytes]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/ownedbytes"
+	[tantivy]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%"
+	[tantivy-bitpacker]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/bitpacker"
+	[tantivy-columnar]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/columnar"
+	[tantivy-common]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/common"
+	[tantivy-query-grammar]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/query-grammar"
+	[tantivy-sstable]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/sstable"
+	[tantivy-stacker]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/stacker"
+	[tantivy-tokenizer-api]="https://github.com/quickwit-oss/tantivy;${TANTIVY_COMMIT};tantivy-%commit%/tokenizer-api"
+)
+
+RUST_MIN_VER="1.88.0"
+
+inherit cargo desktop xdg
+
+DESCRIPTION="Modern GUI frontend for the MAME arcade emulator"
+HOMEPAGE="https://github.com/firesand/MAMEUIx"
+SRC_URI="
+	https://github.com/firesand/MAMEUIx/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz
+	${CARGO_CRATE_URIS}
+"
+S="${WORKDIR}/MAMEUIx-${PV}"
+
+LICENSE="MIT"
+# Dependent crate licenses (from Cargo.lock / cargo metadata)
+LICENSE+="
+	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions Boost-1.0 BSD BSD-2
+	BZIP2 CC0-1.0 ISC LGPL-2.1+ MIT MIT-0 MPL-2.0 OFL-1.1
+	UbuntuFontLicense-1.0 Unicode-3.0 Unlicense UoI-NCSA ZLIB
+"
+
+SLOT="0"
+KEYWORDS="~amd64"
+
+BDEPEND="
+	virtual/pkgconfig
+"
+DEPEND="
+	app-arch/xz-utils:=
+	app-arch/zstd:=
+	dev-libs/wayland
+	media-libs/libglvnd
+	x11-libs/libX11
+	x11-libs/libxcb
+	x11-libs/libXcursor
+	x11-libs/libXi
+	x11-libs/libXinerama
+	x11-libs/libXrandr
+	x11-libs/libxkbcommon[X]
+"
+RDEPEND="
+	${DEPEND}
+	>=app-emulation/mame-0.200
+"
+
+QA_FLAGS_IGNORED="usr/bin/mameuix"
+# Upstream's release profile (strip = true) pre-strips the binary
+QA_PRESTRIPPED="usr/bin/mameuix"
+
+export PKG_CONFIG_ALLOW_CROSS=1
+export ZSTD_SYS_USE_PKG_CONFIG=1
+
+src_configure() {
+	# No --locked: the GIT_CRATES support in cargo.eclass overrides the tantivy
+	# git dependency through a [patch] section, which is a resolution change, so
+	# cargo has to rewrite Cargo.lock. The generated config sets net.offline, so
+	# the rewrite still happens without network access, and cargo_src_install
+	# adds --frozen once src_compile has settled the lockfile.
+	cargo_src_configure
+}
+
+src_install() {
+	cargo_src_install
+
+	domenu mameuix.desktop
+	doman debian/mameuix.1
+
+	local size
+	for size in 16 32 48 64 128 256; do
+		newicon -s "${size}" "assets/icons/${size}x${size}/mameuix.png" mameuix.png
+	done
+	newicon -s scalable assets/icons/scalable/mameuix.svg mameuix.svg
+
+	dodoc README.md CHANGELOG.md
+}
