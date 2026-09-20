@@ -788,10 +788,27 @@ the only conflict was `net-misc/fluxcast` in `.github/upstream-old.json`
   `elephant-2.22.0-vendor.tar.xz` was generated but NOT uploaded, since
   publishing a release asset is the user's call. Bumping elephant also needs a
   walker revbump to move the pin to `~gui-apps/elephant-2.22.0`.
-- Tests: `.github/tests` passes 4/4; `pkgcheck scan` reports no finding
-  against any version changed here (the 38 repo-wide findings are
-  pre-existing). Each bumped package was staged through a real `ebuild`
-  install phase.
+- Elephant was UNBLOCKED later the same session: the user uploaded the
+  generated tarball as `elephant-vendor-2.22.0`, and its Manifest hashes match
+  the locally generated file byte for byte. `gui-apps/elephant` 2.22.0 is a
+  straight version copy of the 2.21.0 ebuild -- 2.22.0 adds the `aptpackages`
+  and `protonpass` providers, but neither gets a USE flag: `aptpackages` is
+  Debian-specific (like the already-omitted `archlinuxpkgs`/`dnfpackages`) and
+  `protonpass` needs `pass-cli`, which is packaged in neither Gentoo nor GURU.
+  `assets/elephant.service` is unchanged between the two versions (the
+  changelog's "systemd user service" change was in upstream's Nix packaging).
+  `gui-apps/walker` is revbumped to `-r1` to move its pin to
+  `~gui-apps/elephant-2.22.0`; `${P}` carries no revision, so the FILESDIR
+  patch path still resolves.
+- Tests: `.github/tests` passes 4/4; `pkgcheck scan --exit
+  GentooCI,-VisibleVcsPkg` exits 0 and reports no finding against any version
+  changed here (the repo-wide findings, including walker's
+  `MissingUseDepDefault` on `protobuf[protoc]`, are pre-existing). Each bumped
+  package was staged through a real `ebuild` install phase.
+- NOTE for this host: `dobin` fails as non-root with "cannot change ownership
+  ... Operation not permitted", so elephant's install phase cannot complete
+  here at ANY version (2.21.0 fails identically). Compile is the meaningful
+  local check for it; the install phase needs a root/portage-sandboxed run.
 
 ## Future Session Checklist
 

@@ -57,7 +57,7 @@ local machine configuration do not belong in the overlay.
 - `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
   application launcher. The ebuild builds entirely from pinned Cargo sources
   and replaces the obsolete Go-based package from GURU.
-- `gui-apps/elephant`: Elephant 2.21.0 backend for Walker, built with its Go
+- `gui-apps/elephant`: Elephant 2.22.0 backend for Walker, built with its Go
   provider plugins in one package to preserve Go plugin ABI compatibility.
 - `app-text/markitdown`: Microsoft MarkItDown command-line tool and Python
   library for converting supported documents to Markdown. The base package
@@ -301,7 +301,7 @@ models on demand at first use, outside portage's control.
 ### Walker
 
 Walker 2 is a frontend for the separately released Elephant daemon and its
-provider modules. Walker 2.17.0 pins Elephant 2.21.0, so the Walker ebuild
+provider modules. Walker 2.17.0 pins Elephant 2.22.0, so the Walker ebuild
 depends on that matching Elephant version from EDORP. Elephant always includes
 the five providers needed for Walker's normal default query and common
 prefixes: desktop applications, calculator, web search, provider list, and
