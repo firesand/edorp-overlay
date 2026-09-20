@@ -305,7 +305,7 @@ DEPEND="
 RDEPEND="
 	${DEPEND}
 	gnome-base/gsettings-desktop-schemas
-	~gui-apps/elephant-2.21.0
+	~gui-apps/elephant-2.22.0
 	gstreamer? (
 		media-libs/gst-plugins-good:1.0
 		media-plugins/gst-plugins-libav:1.0
@@ -347,7 +347,7 @@ pkg_postinst() {
 		fi
 	done
 
-	elog "Walker 2.17.0 is installed with its paired Elephant 2.21.0 backend."
+	elog "Walker 2.17.0 is installed with its paired Elephant 2.22.0 backend."
 	elog "On systemd, start Elephant in the graphical user session with:"
 	elog "  systemctl --user enable --now elephant.service"
 	elog "On non-systemd sessions, autostart /usr/bin/elephant from the compositor"
