@@ -1,0 +1,14 @@
+struct CPS1config is defined in both cps1.h and cps2.h, but the cps2.h copy
+lacks the trailing bootleg_kludge field. Under LTO, GCC reports the two
+layouts as a One Definition Rule violation, which is fatal with -Werror=odr.
+Add the field so both definitions are identical. cps2 initialises the
+struct positionally with fewer entries, so the new field keeps its default.
+
+--- a/src/hbmame/includes/cps2.h
++++ b/src/hbmame/includes/cps2.h
+@@ -98,2 +98,4 @@
+-	int out2_addr = 0;
++	int out2_addr = 0;
++
++	int bootleg_kludge = 0;
+ };

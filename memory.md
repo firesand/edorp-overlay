@@ -23,7 +23,7 @@ The overlay is intended for personal packages and experiments, starting with:
   LinuxMAMEUI.
 - Future applications can be added later.
 
-Status as of 2026-07-17:
+Status as of 2026-07-19:
 
 - `/home/edo/EDORP` has been initialized as the EDORP overlay root.
 - Git has been initialized locally on branch `main`.
@@ -45,6 +45,13 @@ Status as of 2026-07-17:
   local setup scripts from that directory were excluded.
 - `equery-gui` source lives at `https://github.com/firesand/equery-gui`. The
   overlay ebuild is `app-portage/equery-gui/equery-gui-0.1.0.ebuild`.
+- `sys-firmware/ds5dongle` packages upstream DualSense Pico 2 W bridge
+  firmware from https://github.com/awalol/DS5Dongle (PV `0.7.2` → tag
+  `v0.7.2-hotfix`).
+- `app-emulation/winboat` packages the upstream WinBoat 0.9.2 amd64
+  prebuilt from https://github.com/winboat-org/winboat (site:
+  https://www.winboat.app/). Runtime needs FreeRDP 3.x with sound plus
+  Docker Compose v2 or Podman Compose; KVM required.
 
 ## Overlay Direction
 
@@ -99,9 +106,11 @@ app-portage
 app-text
 dev-python
 games-emulation
+gui-apps
 net-analyzer
 net-misc
 net-wireless
+sys-firmware
 sys-power
 ```
 
@@ -182,6 +191,44 @@ Actual imported package placement:
 - `net-wireless/mdk4` (additional IEEE 802.11/deauthentication backend)
 - `net-wireless/bully` (alternative WPS backend)
 - `net-analyzer/bettercap` (modular network and wireless auditing framework)
+- `sys-firmware/ds5dongle` (DualSense Pico 2 W bridge firmware + config helper)
+
+## DS5Dongle (Jul 2026)
+
+- Upstream: https://github.com/awalol/DS5Dongle
+- Overlay package: `sys-firmware/ds5dongle/ds5dongle-0.7.2.ebuild`, keyword
+  `~amd64`.
+- Gentoo PV `0.7.2` maps to upstream tag/release asset `v0.7.2-hotfix` via
+  `MY_PV`. When bumping, keep `MY_PV`, the UF2 filename, and any
+  `other-boards` zip name aligned with the published tag.
+- Packaging model: install the upstream prebuilt Pico 2 W UF2 under
+  `/usr/share/ds5dongle/`, optionally the Pico W and Waveshare UF2s from
+  `other.board.zip` when `USE=other-boards`, and install
+  `tools/config_tool.py` as `/usr/bin/ds5dongle-config` with
+  `dev-python/hidapi`. Do not attempt an in-tree Pico SDK / arm-none-eabi
+  cross build unless that toolchain story is deliberately added later.
+- Runtime configuration also exists as the upstream web UI at
+  https://ds5.awalol.eu.org; the ebuild only packages the local HID helper.
+- Watcher entry uses a regex that strips an optional `-hotfix` suffix so the
+  dashboard compares against Gentoo PV `0.7.2`.
+
+Install:
+
+```bash
+echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+doas emerge -av sys-firmware/ds5dongle
+```
+
+Validation completed on 2026-07-19:
+
+- Manifest generation fetched the `v0.7.2-hotfix` source archive, Pico 2 W UF2,
+  and `other.board.zip`.
+- `pkgcheck scan` reported only the informational `PythonCompatUpdate` for
+  `python3_15` (kept at 3.12–3.14 to match current overlay Python practice).
+- Image install passed with and without `USE=other-boards`. Default install
+  stages `/usr/share/ds5dongle/ds5-bridge-pico2w.uf2` and
+  `/usr/bin/ds5dongle-config`; `other-boards` also stages the Pico W and
+  Waveshare UF2s under `/usr/share/ds5dongle/other-boards/`.
 
 ## MarkItDown (Jul 2026)
 
@@ -501,6 +548,268 @@ Validation completed on 2026-07-12:
   was attempted. Those checks require compatible hardware and an explicitly
   authorized test network.
 
+## Upstream audit and bumps (Aug 2026)
+
+Full upstream version audit on 2026-08-14 (working copy at
+`/home/edo/backup-omgently/EDORP`, branch `app-text/md2hd`):
+
+- Bumped: `app-emulation/mame` 0.289, `app-emulation/hbmame` 0.289.1
+  (`_COMMIT=9d31435a4182d0aa6d1cb0891dee5a8022ba2f74`, tag `tag289`; both
+  downstream patches still apply, cps2 patch with 1-line offset),
+  `app-misc/chatgpt-desktop` 26.810.41047, `app-text/markitdown` 0.1.7
+  (dep pins unchanged upstream), `dev-python/pystray` 0.19.4 (0.19.5 has no
+  PyPI sdist — stay on pypi eclass with 0.19.4),
+  `net-misc/fluxcast` 0.2.2 (portable-fixes patch fully rebased onto the new
+  `src/wfd/` package layout; old 0.1.2-r*/0.1.4/0.1.5 ebuilds dropped as
+  `RedundantVersion`; upstream forgot to bump its own pyproject version),
+  `media-gfx/opencadstudio` 0.9.5 (vendored unpack verified; no Manifest
+  needed under thin-manifests).
+- Deliberately NOT bumped: `dev-python/magika` (markitdown 0.1.7 still pins
+  `magika~=0.6.1`, i.e. `<0.7`; PyPI 1.0.3 is incompatible) and
+  `dev-python/mammoth` (markitdown 0.1.7 pins `mammoth~=1.11.0`; shipping
+  1.12.1 would make `markitdown[docx]` unsatisfiable — revisit when
+  markitdown relaxes the pin).
+- Held: `app-misc/unsloth-desktop` 0.1.702_beta (GitHub release published
+  2026-08-13 but has zero assets; .deb URL 404s — recheck later),
+  `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins `~gui-apps/elephant-2.21.0`
+  and a bump needs a new vendor tarball uploaded to the overlay's GitHub
+  releases; bump only together with a walker release that supports it).
+- `app-emulation/linuxmameui` upstream repo (github.com/linuxmameui) returns
+  404; the ebuild is `RESTRICT=fetch` from a local archive, so no public
+  version check is possible.
+- Everything else was up-to-date at audit time.
+- `media-gfx/opencadstudio` and `app-emulation/winboat` were missing from the
+  upstream watcher; both were added to `.github/upstream.toml` and
+  `upstream-old.json` during this audit (the winboat gap had been failing
+  `test_real_config_and_baseline_cover_the_same_entries`).
+
+## Upstream audit and bumps (Sep 2026)
+
+Full audit and reconciliation on 2026-09-03 and 2026-09-04 (working copy at
+`/home/edo/backup-omgently/EDORP`, branch `app-text/md2hd`):
+
+- Merged `claude/update-all-packages-3fb25a` (which introduced `pystray` 0.19.5,
+  `opencadstudio` 0.9.8, `winboat` 0.9.2, and the `upnpclient` thin manifest).
+- Bumped: `app-emulation/hbmame` 0.289.2 (`_COMMIT=a97bb8bb78b07e114cda57c5e44c08fb5b00ec40`;
+  both cps1 and cps2 downstream patches still apply cleanly; added tools flag to metadata.xml
+  and wrapped excessive line length), `media-video/wolfcut` 0.2.0_alpha21 (GitHub release
+  tag `v0.2.0-alpha.21` with deb and notices), `app-misc/chatgpt-desktop` 26.901.20858
+  (official APT pool has both amd64 and arm64 debs), `app-misc/unsloth-desktop` 0.1.806_beta
+  (new GitHub release with `Unsloth-Desktop-Ubuntu.deb`).
+- Added: `app-misc/claude-desktop` 1.40609.1 (Anthropic's official Linux Electron
+  deb repackaged to `/opt/claude-desktop`, with `Anthropic` license and
+  `edorp-claude-desktop` accept keywords). Duplicate `gui-apps/claude-desktop`
+  cleaned up.
+- QA fixes: removed `~x86` from `net-misc/fluxcast-0.2.2-r1` keywords (pychromecast lacks x86
+  support, avoiding `NonsolvableDepsInStable`), removed redundant `fluxcast-0.2.2.ebuild`, and
+  pruned redundant `wiflux` 1.0.5-r1/r2 ebuilds leaving 1.0.5-r3.
+- Still not bumped for the same reasons as the August audit:
+  `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.1 (markitdown 0.1.7
+  pins), `gui-apps/elephant` 2.22.0 (walker 2.17.0 pins 2.21.0).
+- `net-misc/fluxcast` 0.2.4 is available on PyPI but left for a separate pass:
+  downstream `portable-fixes.patch` fails against 0.2.4 and requires rebase plus
+  a UPnP runtime test.
+- Upstream baselines in `.github/upstream.toml` and `.github/upstream-old.json`
+  synchronized; `.github/tests` passes 4/4.
+
+## Upstream audit and bumps (2026-09-05)
+
+Daily audit on 2026-09-05 (branch `app-text/md2hd`, PR #15):
+
+- QA CI fix: Updated `.github/workflows/overlay-qa.yml` scan_args to
+  `--exit GentooCI,-VisibleVcsPkg`. `media-gfx/opencadstudio` intentionally
+  pins `EGIT_COMMIT="v${PV}"` as an overlay-specific pattern noted in
+  `.github/upstream.toml`. Excluding `VisibleVcsPkg` from fatal exit allows
+  overlay-qa to exit 0 while enforcing all standard GentooCI checks.
+- Bumped `app-misc/chatgpt-desktop` to `26.901.41600` (updated upstream APT pool;
+  refreshed both amd64 and arm64 distfiles in Manifest).
+- Bumped `app-misc/claude-desktop` to `1.46388.2` (updated upstream APT pool;
+  refreshed both amd64 and arm64 distfiles in Manifest).
+- Synced baselines in `.github/upstream-old.json`; `.github/tests` passes 4/4.
+
+## Upstream audit and bumps (2026-09-09)
+
+Daily audit on 2026-09-09 (worktree branched from `app-text/md2hd`):
+
+- Bumped: `app-misc/chatgpt-desktop` 26.901.51231 (both amd64 and arm64 in the
+  APT pool), `app-misc/unsloth-desktop` 0.1.807_beta,
+  `media-gfx/opencadstudio` 2026.36, `net-misc/fluxcast` 0.2.4.
+- OpenCADStudio switched from semver to CalVer at `v2026.36` (Cargo.toml says
+  `2026.36.0`, the tag is `v2026.36`, so `EGIT_COMMIT="v${PV}"` still resolves).
+  `vercmp` puts 2026.36 above 0.9.8 and below 9999, so the SLOT ordering is
+  safe. Re-vendoring 706 crates with `cargo vendor --locked` succeeded, MSRV is
+  still 1.92, and the crate license set is byte-identical to 0.9.8's, so the
+  `LICENSE+=` block did not change. New deps this cycle are base64, getrandom
+  and an `iced_runtime` git pin; `acadrust`/`cadkernel` moved to new revisions.
+- FluxCast 0.2.4: the downstream `portable-fixes` patch was finally rebased.
+  Only 2 of ~30 hunks failed against 0.2.4 and both were context drift, not
+  semantic conflicts: upstream inserted `--wfd-p2p-backend` after
+  `--wfd-monitor` (moving the anchor for the downstream `--wfd-latency`
+  option), and it wrapped every tray menu label in `_l()` for the new
+  `src/i18n` module (moving the anchor for the downstream "Start on login"
+  item, which now uses `_l("Start on login")` to match). The regenerated patch
+  applies at `--fuzz=0` to both v0.2.4 and current master. Verified: all 11
+  patched files byte-compile, `ebuild ... clean install` succeeds, and the
+  installed `main.py --help` lists `--wfd-latency {low,balanced,smooth}`.
+  NOT verified: any real cast — no UPnP/Miracast runtime test was possible.
+- `net-misc/fluxcast-9999` had been left pointing at
+  `fluxcast-0.1.5-portable-fixes.patch`, which fails 6 hunks against master
+  since the 0.2.x `src/wfd/` restructure; it now uses the 0.2.4 patch, which
+  was checked against master. The dead 0.1.5 and superseded 0.2.2 patches were
+  removed, which also shrinks the `files/` directory pkgcheck was flagging.
+- CI: refreshed the pinned pkgcheck image to 0.10.43,
+  `sha256:49910215ab2157ebd84fa0dad593572875f63fd5d278b1ff0d921105e4c11c89`.
+  The digest for the previously pinned 0.10.40 resolves to exactly the old pin,
+  which confirms the GHCR lookup method.
+- NOT bumped: `app-emulation/mameuix` 0.1.8. It moved `tantivy` from the
+  crates.io `"0.22"` release to a git revision
+  (`quickwit-oss/tantivy` rev `5ca3933`), and the `CRATES` mechanism cannot
+  express git dependencies. Bumping needs the ebuild converted to the
+  fetch-and-vendor-in-`src_unpack` pattern that `media-gfx/opencadstudio` uses,
+  plus a full Rust build test. The 0.1.8 crates.io set is otherwise ready:
+  589 registry crates, MSRV still 1.88, and every install path
+  (`mameuix.desktop`, `debian/mameuix.1`, `assets/icons/...`) still exists.
+- Still not bumped for unchanged reasons: `dev-python/magika` 1.0.3 and
+  `dev-python/mammoth` 1.12.1 (markitdown 0.1.7 pins `magika~=0.6.1` and
+  `mammoth~=1.11.0`), `gui-apps/elephant` 2.22.0 (walker 2.17.0 still pins
+  `~gui-apps/elephant-2.21.0` and walker cut no new release).
+- Everything else was up to date; `.github/tests` passes 4/4.
+
+## Upstream audit and bumps (2026-09-16)
+
+Weekly audit on 2026-09-16. PR #16 from the 2026-09-09 audit was still open and
+`app-text/md2hd` had not moved, so this branch stacks on
+`claude/update-packages-2026-09-09` rather than on md2hd.
+
+- Bumped: `app-misc/chatgpt-desktop` 26.908.70816, `app-misc/claude-desktop`
+  1.52386.6, `app-misc/unsloth-desktop` 0.1.808_beta,
+  `media-gfx/opencadstudio` 2026.37, `net-misc/fluxcast` 0.2.6, and the pinned
+  pkgcheck CI image to 0.10.44
+  (`sha256:fa872ad5ae1b549552d6b593fd68e50ff5cbc6ecf1425dc72706b60ab3403b5a`).
+- OpenCADStudio 2026.37 adds `src/bin/ocs_launcher.rs`, a macOS document-open
+  helper that compiles to an empty `main()` off macOS. `cargo install` installs
+  every bin target, so both ebuilds now pass `--bin OpenCADStudio` to
+  `cargo_src_install` to keep a do-nothing binary out of /usr/bin. Re-vendoring
+  gives 716 crates (up from 706), MSRV is still 1.92, and the implied Gentoo
+  license set is unchanged. New deps: a `cadkernel-constraints` git dependency,
+  `unicode-bidi`, `fluent-syntax`, and clap's `string` feature.
+- FluxCast 0.2.6 needed a real merge rather than a re-anchor. Upstream rewrote
+  `_open_portal_session` in `src/wfd/media/portal.py`: `allow_window=True`, a
+  widened `source_type` set that now accepts windows, and
+  `session.on_closed = _end_session_on_portal_revoke`. The downstream change in
+  the same method reuses an already-authorized portal session, so upstream's
+  new body was kept verbatim and wrapped in the
+  `if self.portal_session is None` guard; `_WFD_LATENCY_PROFILES` moved above
+  upstream's new module-level helper. The patch applies at `--fuzz=0` to both
+  v0.2.6 and master. Still no cast/UPnP runtime test possible here.
+- Unsloth Desktop's Ubuntu deb roughly halved in size at 0.1.808_beta
+  (47 MB -> 24 MB) but the unpacked layout is unchanged, so the ebuild needed
+  no edits beyond the version.
+- `app-emulation/mameuix` bumped to 0.1.8. 0.1.8 moved `tantivy` to a git
+  revision (`quickwit-oss/tantivy` rev `5ca3933`), which plain `CRATES` cannot
+  express. The answer was cargo.eclass's `GIT_CRATES`, NOT the vendor-tarball
+  pattern `gui-apps/elephant` uses: `GIT_CRATES` fetches the repo as an
+  ordinary GitHub archive, so all nine tantivy workspace crates share one
+  4.2 MB distfile and nothing has to be hosted. A 64 MB vendor tarball had
+  been prepared before `GIT_CRATES` was found; it was not needed and not
+  uploaded.
+- Two things that only a real `ebuild ... install` caught, worth remembering
+  for the next `GIT_CRATES` conversion:
+  - `--locked` is incompatible with `GIT_CRATES`. The eclass wires the git
+    crates in through a `[patch.'<repo uri>']` section, which is a resolution
+    change, so cargo must rewrite `Cargo.lock` and `cargo build --locked`
+    dies. Drop `--locked` from `cargo_src_configure`; the generated config
+    sets `net.offline`, so the rewrite is still hermetic, and
+    `cargo_src_install` adds `--frozen` once src_compile has settled the
+    lockfile. `app-editors/zed` is the only ::gentoo `GIT_CRATES` consumer and
+    it defines no `src_configure` at all, which is the same convention.
+  - The ebuild never declared `QA_PRESTRIPPED` even though upstream's release
+    profile has set `strip = true` since 0.1.7, so every build emitted a
+    pre-stripped QA notice. Added.
+- Still blocked for unchanged reasons: `dev-python/magika` 1.0.3 and
+  `dev-python/mammoth` 1.12.2 (markitdown 0.1.7 still pins `magika~=0.6.1` and
+  `mammoth~=1.11.0`), `gui-apps/elephant` 2.22.0 (walker 2.17.0 still pins
+  `~gui-apps/elephant-2.21.0` and cut no new release).
+- pkgcheck exits 0 on both this branch and its baseline with the CI's own
+  `--exit GentooCI,-VisibleVcsPkg`; the only finding differences are the
+  fluxcast patch filename and the opencadstudio version string.
+  `.github/tests` passes 4/4.
+
+## Upstream audit and bumps (2026-09-19)
+
+Audit on 2026-09-19. `app-text/md2hd` (PR #15) and
+`claude/update-packages-2026-09-16` had diverged: md2hd carried the plexo
+addition, the 09-16 line carried the 09-09 and 09-16 audits. This branch
+merges the 09-16 line into md2hd first so the audit runs against the union;
+the only conflict was `net-misc/fluxcast` in `.github/upstream-old.json`
+(0.2.2 vs 0.2.6), resolved to the packaged 0.2.6 while keeping plexo.
+
+- Bumped: `app-misc/chatgpt-desktop` 26.915.31945, `app-misc/claude-desktop`
+  2.2553.1, `app-misc/unsloth-desktop` 0.1.811_beta, and `net-misc/plexo`
+  1.0.0_rc7.
+- Claude Desktop moved to a 2.x series. Both APT indexes report 2.2553.1 and
+  the bundle layout is unchanged; every NEEDED entry of the Electron binary
+  is still covered by RDEPEND. Note that `dpkg-deb` is absent on this host,
+  so the `.deb` Depends field cannot be read here -- use `scanelf -qn` on the
+  staged binary instead, which is what the dependency check was based on.
+- Plexo rc.7 is the interesting one. The existing `verify-resources.py`
+  refused the bump because rc.7 added the `koffi` native addon and the ARM64
+  `.deb` ships only `build/koffi/linux_arm64/koffi.node`, which cannot run on
+  amd64 Electron. Upstream also started publishing native Linux amd64 builds
+  at rc.7, so the ebuild now installs the upstream `amd64` `.deb` as shipped
+  (it bundles the same Electron 39.8.10 the lockfile pins and carries
+  `linux_x64/koffi.node`). The separate 113 MB Electron distfile is gone.
+  `verify-resources.py` now checks the lockfile versions, the ASAR package
+  identity, that the runtime is x86-64, that every `linux_x64` addon is
+  x86-64, and that no addon family lacks a `linux_x64` build. Upstream names
+  its notices `LICENSE.electron.txt`, not `LICENSE`.
+- `dev-python/magika` 1.0.3 and `dev-python/mammoth` 1.12.2 are no longer
+  deferred. MarkItDown 0.1.7 still pins `magika~=0.6.1` and `mammoth~=1.11.0`,
+  so both were ADDED ALONGSIDE the old ebuilds rather than replacing them,
+  which is what the watcher notes ("retain the old ebuild if needed") call
+  for. markitdown's `<magika-0.7` and `<mammoth-1.12` bounds keep resolving to
+  0.6.3 and 1.11.0. magika 1.0 drops NumPy and python-dotenv and needs
+  onnxruntime >=1.24.1 for python3_14; GURU has 1.28.0/1.29.0, so the whole
+  PYTHON_COMPAT range stays satisfiable.
+- `sys-firmware/ds5dongle` was a phantom detection, not a real update. Its
+  watcher entry set both `prefix = "v"` and a `from_pattern` that expects the
+  leading `v`; the prefix strip ran first, so the `-hotfix` suffix survived
+  and the dashboard reported `0.7.2-hotfix` against a packaged `0.7.2`
+  forever. The ebuild already packages that exact tag via
+  `MY_PV="${PV}-hotfix"`. Dropping `prefix` lets `from_pattern` remove both.
+- STILL BLOCKED: `gui-apps/elephant` 2.22.0. This is not a Walker-pairing
+  problem as previously recorded -- elephant v2.22.0 was published one minute
+  before walker v2.17.0 and their changelogs pair up feature for feature
+  (aptpackages provider, Proton Pass actions, pinned-clipboard handling), so
+  2.22.0 IS walker 2.17.0's backend and the overlay's `~elephant-2.21.0` pin
+  is stale. The real blocker is distribution: elephant's SRC_URI pulls a Go
+  vendor tarball from a release on `firesand/edorp-overlay`, and only
+  `elephant-vendor-2.21.0` exists. A deterministic
+  `elephant-2.22.0-vendor.tar.xz` was generated but NOT uploaded, since
+  publishing a release asset is the user's call. Bumping elephant also needs a
+  walker revbump to move the pin to `~gui-apps/elephant-2.22.0`.
+- Elephant was UNBLOCKED later the same session: the user uploaded the
+  generated tarball as `elephant-vendor-2.22.0`, and its Manifest hashes match
+  the locally generated file byte for byte. `gui-apps/elephant` 2.22.0 is a
+  straight version copy of the 2.21.0 ebuild -- 2.22.0 adds the `aptpackages`
+  and `protonpass` providers, but neither gets a USE flag: `aptpackages` is
+  Debian-specific (like the already-omitted `archlinuxpkgs`/`dnfpackages`) and
+  `protonpass` needs `pass-cli`, which is packaged in neither Gentoo nor GURU.
+  `assets/elephant.service` is unchanged between the two versions (the
+  changelog's "systemd user service" change was in upstream's Nix packaging).
+  `gui-apps/walker` is revbumped to `-r1` to move its pin to
+  `~gui-apps/elephant-2.22.0`; `${P}` carries no revision, so the FILESDIR
+  patch path still resolves.
+- Tests: `.github/tests` passes 4/4; `pkgcheck scan --exit
+  GentooCI,-VisibleVcsPkg` exits 0 and reports no finding against any version
+  changed here (the repo-wide findings, including walker's
+  `MissingUseDepDefault` on `protobuf[protoc]`, are pre-existing). Each bumped
+  package was staged through a real `ebuild` install phase.
+- NOTE for this host: `dobin` fails as non-root with "cannot change ownership
+  ... Operation not permitted", so elephant's install phase cannot complete
+  here at ANY version (2.21.0 fails identically). Compile is the meaningful
+  local check for it; the install phase needs a root/portage-sandboxed run.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
@@ -530,6 +839,7 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-analyzer/bettercap/better
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r1.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild net-wireless/wiflux/wiflux-1.0.5-r3.ebuild clean
+PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-firmware/ds5dongle/ds5dongle-0.7.2.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/asusctl/asusctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild sys-power/supergfxctl/supergfxctl-9999.ebuild clean
 PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superposition/unigine-superposition-1.1.ebuild clean

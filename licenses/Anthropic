@@ -1,0 +1,28 @@
+Anthropic Claude Desktop — Proprietary Software License
+=======================================================
+
+Claude Desktop is proprietary software. Copyright (c) 2026 Anthropic PBC.
+All rights reserved.
+
+The upstream Debian package declares its own files as "Proprietary"
+(usr/share/doc/claude-desktop/copyright). The application is made freely
+available for download by Anthropic PBC, but it is not free/open-source
+software: it may not be redistributed or mirrored, and use is governed by
+Anthropic's applicable terms of service.
+
+Use of Claude Desktop and the Claude.ai / Claude Code services it connects to
+is subject to Anthropic's Consumer Terms of Service, Commercial Terms of
+Service, Usage Policy, and Privacy Policy, as applicable:
+
+    https://www.anthropic.com/legal/consumer-terms
+    https://www.anthropic.com/legal/commercial-terms
+    https://www.anthropic.com/legal/aup
+    https://www.anthropic.com/legal/privacy
+
+Bundled third-party components (for example the Electron/Chromium runtime and
+virtiofsd) retain their own licenses, reproduced within the distributed
+package (LICENSES.chromium.html, virtiofsd.LICENSE-APACHE,
+virtiofsd.LICENSE-BSD-3-Clause).
+
+This license text is a packaging convenience summary and is not itself the
+governing agreement; the linked Anthropic terms above control.

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		DS5Dongle turns a Raspberry Pi Pico 2 W (or selected compatible boards)
+		into a Bluetooth bridge for the DualSense controller, exposing it to
+		the host as a wired USB gamepad with HD haptics and headset audio.
+		This package installs the upstream prebuilt UF2 firmware and the HID
+		configuration helper. It does not cross-compile firmware from source.
+	</longdescription>
+	<use>
+		<flag name="other-boards">
+			Install alternate UF2 builds for Raspberry Pi Pico W and
+			Waveshare RP2350B-Plus-W boards
+		</flag>
+	</use>
+	<upstream>
+		<bugs-to>https://github.com/awalol/DS5Dongle/issues</bugs-to>
+		<changelog>https://github.com/awalol/DS5Dongle/releases</changelog>
+		<remote-id type="github">awalol/DS5Dongle</remote-id>
+	</upstream>
+</pkgmetadata>

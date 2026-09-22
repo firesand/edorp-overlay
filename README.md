@@ -48,12 +48,16 @@ local machine configuration do not belong in the overlay.
   bundle.
 - `dev-python/pystray`: Fluxcast dependency.
 - `dev-python/upnpclient`: Fluxcast dependency.
+- `net-misc/plexo`: Plexo download manager with parallel downloads across
+  multiple network connections ([source](https://github.com/anmolkapil/plexo)).
+  Installs the upstream amd64 `.deb` with its matching bundled Electron
+  runtime. Requires glibc and `~amd64` keywording.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
 - `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
   application launcher. The ebuild builds entirely from pinned Cargo sources
   and replaces the obsolete Go-based package from GURU.
-- `gui-apps/elephant`: Elephant 2.21.0 backend for Walker, built with its Go
+- `gui-apps/elephant`: Elephant 2.22.0 backend for Walker, built with its Go
   provider plugins in one package to preserve Go plugin ABI compatibility.
 - `app-text/markitdown`: Microsoft MarkItDown command-line tool and Python
   library for converting supported documents to Markdown. The base package
@@ -61,20 +65,23 @@ local machine configuration do not belong in the overlay.
   recursive ZIP handling; PDF, DOCX, PPTX, Outlook, and Excel support are
   optional USE flags.
 - `dev-python/magika`: AI-based content-type detector required by MarkItDown.
+  Both `0.6.3` and `1.0.3` are packaged: MarkItDown pins `magika~=0.6.1`, so
+  it keeps resolving to `0.6.3`, while `1.0.3` is available on its own.
 - `dev-python/cobble`, `dev-python/mammoth`, `dev-python/pdfplumber`, and
   `dev-python/python-pptx`: optional MarkItDown dependencies for DOCX, PDF,
-  and PPTX conversion.
+  and PPTX conversion. `dev-python/mammoth` is packaged at both `1.11.0` and
+  `1.12.2` for the same reason (MarkItDown pins `mammoth~=1.11.0`).
 - `app-emulation/linuxmameui`: imported from the local LinuxMAMEUI Gentoo
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a
   release tarball or Git source URI exists.
-- `app-emulation/mame`: MAME 0.288 ebuild imported from local LinuxMAMEUI
+- `app-emulation/mame`: MAME 0.289-r1 ebuild imported from local LinuxMAMEUI
   packaging.
-- `app-emulation/hbmame`: HBMAME 0.288.2 ebuild imported from local LinuxMAMEUI
+- `app-emulation/hbmame`: HBMAME 0.289.2-r1 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
-  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.7`
-  fetches GitHub tag `v0.1.7` plus crates via `CRATES`; live ebuild `9999`
+  ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
+  fetches GitHub tag `v0.1.8` plus crates via `CRATES`; live ebuild `9999`
   uses `cargo_live_src_unpack`. Requires `app-emulation/mame` from this
   overlay. Portable **AppImage** builds live in the MAMEUIx repo
   (`./build-appimage.sh`); GitHub Releases may attach `MAMEUIx-*-x86_64.AppImage`
@@ -99,12 +106,212 @@ local machine configuration do not belong in the overlay.
   bounds checks, nl80211 support, and current compiler fixes.
 - `net-analyzer/bettercap`: modular network reconnaissance and auditing
   framework, built reproducibly from source with offline Go module distfiles.
+- `sys-firmware/ds5dongle`: DualSense wireless bridge firmware for the
+  Raspberry Pi Pico 2 W
+  ([source](https://github.com/awalol/DS5Dongle)). Installs the upstream
+  prebuilt UF2 plus the `ds5dongle-config` HID helper. Enable `other-boards`
+  for Pico W and Waveshare RP2350B-Plus-W builds.
+- `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
+  Windows apps on Linux via Docker/Podman + FreeRDP
+  ([upstream](https://www.winboat.app/)).
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.38, a Rust/iced 2D/3D CAD
+  application with DWG/DXF support
+  ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
+  from the pinned git tag; Cargo dependencies (crates.io plus the iced/acadrust
+  git patches) are fetched and vendored in `src_unpack` because upstream pins
+  git revisions that the `CRATES` mechanism cannot express. Requires Rust
+  >= 1.92 and `~amd64` keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+- `app-misc/chatgpt-desktop`: OpenAI's ChatGPT desktop app for Linux,
+  repackaged from the upstream `.deb`
+  ([upstream](https://developers.openai.com/codex/app)). Bundles the Codex
+  agent, its own Node runtime, and ripgrep under
+  `/opt/chatgpt-desktop/resources`. Proprietary, so it needs `~amd64`
+  keywording plus an `all-rights-reserved` license entry
+  (`metadata/package.accept_keywords/edorp-chatgpt-desktop`,
+  `metadata/package.license/edorp-chatgpt-desktop`).
+- `app-misc/claude-desktop`: Claude Desktop, Anthropic's prebuilt Electron app
+  for Claude.ai (Chat, Cowork, and Claude Code)
+  ([upstream](https://code.claude.com/docs/en/desktop-linux)). Unpacks the
+  upstream `amd64`/`arm64` `.deb` into `/opt/claude-desktop`. Proprietary
+  (`LICENSE="Anthropic"`), needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-claude-desktop`).
+- `app-misc/unsloth-desktop`: Unsloth Desktop (beta), a Tauri app for running
+  and training LLMs and diffusion models locally
+  ([upstream](https://unsloth.ai/docs/desktop)). Only the desktop shell is
+  packaged; the app bootstraps its own PyTorch environment into
+  `~/.unsloth/studio` on first launch. Needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-unsloth-desktop`).
+- `app-text/md2hd`: point it at a markdown file or a folder of notes and it
+  draws them as a graph, frontmatter becoming nodes and wikilinks becoming
+  edges, served on loopback and read in a browser
+  ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
+  needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
+- `media-video/wolfcut`: Concat (formerly WolfCut), a multi-track video
+  editor built with Slint ([source](https://github.com/jub0t/Concat)).
+  Repackaged from the upstream amd64 `.deb`; the default `system-ffmpeg`
+  USE flag selects matching FFmpeg 8.1 libraries. The package atom remains
+  `wolfcut` for existing installations; the application now launches as
+  `concat`, with `wolfcut-desktop` retained as an alias.
+
+### Plexo
+
+Plexo `1.0.0_rc8` packages upstream `v1.0.0-rc.8`, a release candidate.
+Upstream began publishing native Linux amd64 builds at rc7, so the
+ebuild installs the upstream `amd64` `.deb`, with its own
+bundled Electron `39.8.10`, instead of repacking ARM64 resources onto a
+separately downloaded runtime. That repack is no longer possible in any case:
+`rc.7` added the `koffi` native addon, and the ARM64 `.deb` carries only an
+`aarch64` build of it. Requires an amd64/glibc system; musl is not supported.
+Before installation the ebuild verifies the bundle against the upstream
+lockfile and checks that the runtime and every loadable native addon really
+are x86-64.
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-plexo \
+  /etc/portage/package.accept_keywords/edorp-plexo
+sudo emerge -av net-misc/plexo
+```
+
+Launch `plexo` or select Plexo from the desktop menu. The Chromium sandbox
+requires unprivileged user namespaces (`CONFIG_USER_NS=y`); the launcher does
+not disable the sandbox. Each selected network needs a working route to the
+download server. Multiple interfaces alone do not guarantee combined bandwidth.
+Updates are managed by Portage.
+
+### WinBoat
+
+WinBoat packages the upstream `winboat-*-x64.tar.gz` release (not a from-source
+Electron build). Default USE `docker` pulls in Docker Engine, CLI, and Compose
+v2; enable `podman` for the Podman path instead (or in addition). FreeRDP 3.x
+with `client`, `X`, and `pulseaudio` is required for RemoteApp windows.
+
+```bash
+# If this machine uses the local checkout instead of /var/db/repos/edorp:
+doas cp metadata/edorp.local.conf /etc/portage/repos.conf/edorp.conf
+doas cp metadata/package.accept_keywords/edorp-winboat \
+  /etc/portage/package.accept_keywords/edorp-winboat
+doas cp metadata/package.use/edorp-winboat \
+  /etc/portage/package.use/edorp-winboat
+doas emerge -av app-emulation/winboat
+```
+
+After install, ensure Docker is running, add your user to the `docker` group,
+re-login, and confirm `docker compose version` works before launching
+`winboat`. KVM must be available (`/dev/kvm`). WinBoat does not provide a
+Windows license. This package conflicts with `app-emulation/winboat-bin` from
+gentoo-zh.
+
+### DS5Dongle
+
+This package ships the upstream release firmware; it does not cross-compile
+with the Pico SDK. Flash the Pico 2 W by holding BOOTSEL, connecting USB, and
+copying `/usr/share/ds5dongle/ds5-bridge-pico2w.uf2` onto the mounted drive.
+
+```bash
+echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+doas emerge -av sys-firmware/ds5dongle
+```
+
+After the DualSense is connected through the dongle, adjust settings with
+`ds5dongle-config get` / `ds5dongle-config set ...`, or use the upstream web
+UI at https://ds5.awalol.eu.org.
+
+### ChatGPT Desktop
+
+Sourced from the versioned APT pool rather than the advertised
+`linux/deb/latest/chatgpt_amd64.deb`, which changes in place and so cannot be
+pinned by a Manifest. The APT repository and signing key that the upstream
+`.deb` installs for background self-updates are deliberately dropped; bump the
+ebuild to update instead.
+
+```bash
+doas cp metadata/package.accept_keywords/edorp-chatgpt-desktop \
+  /etc/portage/package.accept_keywords/edorp-chatgpt-desktop
+doas cp metadata/package.license/edorp-chatgpt-desktop \
+  /etc/portage/package.license/edorp-chatgpt-desktop
+doas emerge -av app-misc/chatgpt-desktop
+```
+
+This build ships no setuid `chrome-sandbox`, so the Chromium sandbox relies on
+unprivileged user namespaces (`CONFIG_USER_NS=y`). Enable USE `apparmor` to
+install the upstream profile that grants the matching `userns` rule. The
+bundled Codex agent is separate from `dev-util/codex`.
+
+### Unsloth Desktop
+
+Built from the upstream `.deb` rather than the AppImage so the Tauri binary
+keeps its FHS layout: it resolves resources as `<exe dir>/../lib/Unsloth`, and
+that `lib` is literal, never `$(get_libdir)`.
+
+```bash
+echo "app-misc/unsloth-desktop ~amd64" | doas tee \
+  /etc/portage/package.accept_keywords/edorp-unsloth-desktop
+doas emerge -av app-misc/unsloth-desktop
+```
+
+This installs the GUI only. On first launch the app downloads a private Python
+environment (uv, PyTorch, the unsloth wheels — several GB) into
+`~/.unsloth/studio`, which portage neither tracks nor removes on unmerge. Its
+built-in system-dependency installer only drives `apt`, so on Gentoo it asks
+you to install anything missing yourself. Upstream publishes beta releases
+several times a day, so expect frequent bumps.
+
+### md2hd
+
+Installed from the npm tarball rather than a git snapshot: upstream publishes
+no tags or GitHub releases, and the visualizer under `dist/` is built in a
+separate unpublished repository, so the published bundle is the only form
+there is to ship.
+
+```bash
+echo "app-text/md2hd ~amd64" | doas tee \
+  /etc/portage/package.accept_keywords/edorp-md2hd
+doas emerge -av app-text/md2hd
+```
+
+`md2hd notes/` serves the map on 127.0.0.1:4173 and opens a browser with
+`xdg-open`; `--no-open` skips that and `--port N` moves it. Nothing is offered
+to the network. `bin/` and `dist/` install under `/usr/share/md2hd` with only a
+launcher symlink on PATH, and they have to stay siblings because the script
+resolves the app as `<script dir>/../dist`.
+
+### Concat (media-video/wolfcut)
+
+Version 0.2.3 replaces WolfCut's Tauri interface with Concat's Slint interface.
+The application is now AGPL-3.0-or-later with an upstream plugin exception;
+its Slint component uses GPL-3.0, the embedded font uses OFL-1.1, and effect
+preview photographs use the Unsplash license. License texts and upstream
+notices are installed with the package.
+
+The prebuilt amd64 application requires glibc >=2.35. If your license policy
+excludes Unsplash, review `/var/db/repos/gentoo/licenses/Unsplash` before
+copying the supplied acceptance entry below.
+
+The binary links FFmpeg libraries directly. With the default `system-ffmpeg`
+USE flag, it uses system FFmpeg >=8.1 with ABI `60.62.62` and `x264` enabled.
+Disabling that flag retains upstream's GPL FFmpeg libraries. The earlier
+nonfree FFmpeg bundle and its `all-rights-reserved` acceptance are no longer
+needed. ONNX Runtime remains bundled beside the application.
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-wolfcut \
+  /etc/portage/package.accept_keywords/edorp-wolfcut
+sudo cp metadata/package.license/edorp-wolfcut \
+  /etc/portage/package.license/edorp-wolfcut
+sudo emerge -av media-video/wolfcut
+```
+
+Launch `concat` or the Concat menu entry; `wolfcut-desktop` is a compatibility
+alias. Back up existing projects before opening them in this rewritten
+application. Speech and cutout features download models on demand, outside
+Portage's control.
 
 ### Walker
 
 Walker 2 is a frontend for the separately released Elephant daemon and its
-provider modules. Walker 2.17.0 pins Elephant 2.21.0, so the Walker ebuild
-depends on that matching Elephant version from EDORP. Elephant always includes
+provider modules. EDORP pairs Walker 2.17.0 with Elephant 2.22.0, whose
+protocol schemas match; the Walker ebuild pins that packaged Elephant version.
+Elephant always includes
 the five providers needed for Walker's normal default query and common
 prefixes: desktop applications, calculator, web search, provider list, and
 command runner. Standalone dmenu mode still works without a running Elephant
@@ -183,9 +390,14 @@ select it with `--dict FILE`.
 
 ### MarkItDown
 
-The versioned `app-text/markitdown-0.1.6` ebuild builds the GitHub release with
+The versioned `app-text/markitdown-0.1.8` ebuild builds the GitHub release with
 Hatchling. It supports Python 3.12 through 3.14. Python 3.14 was smoke-tested
 with the CLI, Magika detection, HTML, CSV, and the targeted upstream core tests.
+
+MarkItDown 0.1.8 still requires Magika below 0.7 and, for DOCX, Mammoth below
+1.12. The overlay keeps Magika 0.6.3 and Mammoth 1.11.0 for those dependencies.
+Let Portage select the compatible versions; do not force the newest Magika
+or Mammoth into the same installation as MarkItDown.
 
 This is deliberately not equivalent to `pip install markitdown[all]`. The
 `docx`, `outlook`, `pdf`, `pptx`, `xls`, and `xlsx` USE flags are available.
@@ -232,6 +444,29 @@ requests for MarkItDown, Magika, ONNX Runtime, and its GURU dependencies. The
 ONNX Runtime source stack is substantial; a dependency preview currently
 reports roughly 453 MiB of source downloads for the base package, or 517 MiB
 with `docx pdf pptx` enabled, on amd64.
+
+### Claude Desktop
+
+`app-misc/claude-desktop` repackages Anthropic's official Linux `.deb`
+(published in their apt repository) into `/opt/claude-desktop`, with a
+`/usr/bin/claude-desktop` launcher, the `com.anthropic.Claude.desktop` menu
+entry, and the hicolor icons. The Debian maintainer-script behaviour (writing
+an AppArmor profile and registering Anthropic's apt repo + unattended-upgrades
+snippet) is intentionally dropped — Portage manages updates. `chrome-sandbox`
+is installed setuid-root for the Chromium sandbox helper.
+
+```bash
+# Accept keywords and install:
+sudo cp metadata/package.accept_keywords/edorp-claude-desktop \
+  /etc/portage/package.accept_keywords/edorp-claude-desktop
+sudo emerge -av app-misc/claude-desktop
+```
+
+Linux support is upstream **beta** and only `amd64`/`arm64` are published.
+Optional: `virtual/secret-service` for keyring storage, and `app-emulation/qemu`
+plus KVM (`/dev/kvm`, hardware virtualization) for Cowork's sandboxed VM. Sign
+in with a Claude.ai subscription or organization SSO (no Console API key); the
+app shares `~/.claude` with Claude Code.
 
 ### ASUS laptop (systemd only)
 

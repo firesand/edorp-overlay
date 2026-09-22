@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 import tomllib
 import unittest
@@ -16,6 +17,33 @@ SPEC.loader.exec_module(dashboard)
 
 
 class RenderDashboardTest(unittest.TestCase):
+    def test_unsloth_watcher_normalizes_beta_and_stable_releases(self) -> None:
+        with (REPO_ROOT / ".github/upstream.toml").open("rb") as file:
+            entry = tomllib.load(file)["app-misc/unsloth-desktop"]
+        for tag, version in (
+            ("v0.1.812-beta", "0.1.812_beta"),
+            ("v1.0.0", "1.0.0"),
+        ):
+            with self.subTest(tag=tag):
+                normalized = tag.removeprefix(entry["prefix"])
+                normalized = re.sub(entry["from_pattern"], entry["to_pattern"], normalized)
+                self.assertEqual(normalized, version)
+
+    def test_wolfcut_watcher_accepts_concat_stable_releases(self) -> None:
+        with (REPO_ROOT / ".github/upstream.toml").open("rb") as file:
+            entry = tomllib.load(file)["media-video/wolfcut"]
+        for tag, version in (
+            ("v0.2.0-alpha.21", "0.2.0_alpha21"),
+            ("v0.2.3", "0.2.3"),
+        ):
+            with self.subTest(tag=tag):
+                self.assertIsNotNone(re.fullmatch(entry["include_regex"], tag))
+                normalized = tag.removeprefix(entry["prefix"])
+                normalized = re.sub(entry["from_pattern"], entry["to_pattern"], normalized)
+                self.assertEqual(normalized, version)
+        for tag in ("nightly", "models-v1", "v0.2.3-rc.1"):
+            self.assertIsNone(re.fullmatch(entry["include_regex"], tag))
+
     def test_empty_update_list_closes_dashboard(self) -> None:
         self.assertEqual(dashboard.render_dashboard([], {}), "")
         self.assertEqual(

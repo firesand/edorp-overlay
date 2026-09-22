@@ -5,6 +5,10 @@
     <email>linuxmameui-maintainers@example.invalid</email>
     <name>LinuxMAMEUI maintainers</name>
   </maintainer>
+  <use>
+    <flag name="qtdebug">Build the Qt-based debugger UI (links against dev-qt/qtbase)</flag>
+    <flag name="tools">Build extra tooling binaries</flag>
+  </use>
   <upstream>
     <remote-id type="github">mamedev/mame</remote-id>
     <bugs-to>https://github.com/mamedev/mame/issues</bugs-to>

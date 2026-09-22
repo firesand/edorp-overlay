@@ -6,7 +6,7 @@ PYTHON_COMPAT=( python3_{10..14} )
 inherit desktop distutils-r1 git-r3 xdg
 
 PATCHES=(
-	"${FILESDIR}/fluxcast-0.1.5-portable-fixes.patch"
+	"${FILESDIR}/fluxcast-0.2.6-portable-fixes.patch"
 )
 
 DESCRIPTION="Stream your Linux desktop to a Smart TV via Miracast/WFD, DLNA, or Chromecast"
@@ -39,6 +39,7 @@ RDEPEND="
 	media-plugins/gst-plugins-x264
 	media-video/ffmpeg[x264]
 	media-video/pipewire[gstreamer]
+	net-dns/dnsmasq[dhcp]
 	net-misc/networkmanager[tools,wifi]
 	net-wireless/iw
 	net-wireless/wpa_supplicant[dbus,p2p,wps]
