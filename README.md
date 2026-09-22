@@ -75,9 +75,9 @@ local machine configuration do not belong in the overlay.
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a
   release tarball or Git source URI exists.
-- `app-emulation/mame`: MAME 0.289 ebuild imported from local LinuxMAMEUI
+- `app-emulation/mame`: MAME 0.289-r1 ebuild imported from local LinuxMAMEUI
   packaging.
-- `app-emulation/hbmame`: HBMAME 0.289.2 ebuild imported from local LinuxMAMEUI
+- `app-emulation/hbmame`: HBMAME 0.289.2-r1 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
   ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
@@ -283,6 +283,10 @@ its Slint component uses GPL-3.0, the embedded font uses OFL-1.1, and effect
 preview photographs use the Unsplash license. License texts and upstream
 notices are installed with the package.
 
+The prebuilt amd64 application requires glibc >=2.35. If your license policy
+excludes Unsplash, review `/var/db/repos/gentoo/licenses/Unsplash` before
+copying the supplied acceptance entry below.
+
 The binary links FFmpeg libraries directly. With the default `system-ffmpeg`
 USE flag, it uses system FFmpeg >=8.1 with ABI `60.62.62` and `x264` enabled.
 Disabling that flag retains upstream's GPL FFmpeg libraries. The earlier
@@ -292,6 +296,8 @@ needed. ONNX Runtime remains bundled beside the application.
 ```bash
 sudo cp metadata/package.accept_keywords/edorp-wolfcut \
   /etc/portage/package.accept_keywords/edorp-wolfcut
+sudo cp metadata/package.license/edorp-wolfcut \
+  /etc/portage/package.license/edorp-wolfcut
 sudo emerge -av media-video/wolfcut
 ```
 
@@ -387,6 +393,11 @@ select it with `--dict FILE`.
 The versioned `app-text/markitdown-0.1.8` ebuild builds the GitHub release with
 Hatchling. It supports Python 3.12 through 3.14. Python 3.14 was smoke-tested
 with the CLI, Magika detection, HTML, CSV, and the targeted upstream core tests.
+
+MarkItDown 0.1.8 still requires Magika below 0.7 and, for DOCX, Mammoth below
+1.12. The overlay keeps Magika 0.6.3 and Mammoth 1.11.0 for those dependencies.
+Let Portage select the compatible versions; do not force the newest Magika
+or Mammoth into the same installation as MarkItDown.
 
 This is deliberately not equivalent to `pip install markitdown[all]`. The
 `docx`, `outlook`, `pdf`, `pptx`, `xls`, and `xlsx` USE flags are available.

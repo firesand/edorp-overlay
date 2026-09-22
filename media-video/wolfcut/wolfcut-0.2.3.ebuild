@@ -35,7 +35,7 @@ RDEPEND="
 	media-libs/mesa
 	media-libs/vulkan-loader
 	sys-apps/xdg-desktop-portal
-	sys-libs/glibc
+	>=sys-libs/glibc-2.35
 	x11-libs/gtk+:3
 	x11-libs/libX11
 	x11-libs/libxcb

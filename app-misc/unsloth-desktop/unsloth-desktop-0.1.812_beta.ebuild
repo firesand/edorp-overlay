@@ -39,6 +39,7 @@ RDEPEND="
 	net-misc/curl
 	sys-apps/dbus
 	sys-apps/pciutils
+	>=sys-libs/glibc-2.34
 	x11-libs/cairo
 	x11-libs/gdk-pixbuf:2
 	x11-libs/gtk+:3

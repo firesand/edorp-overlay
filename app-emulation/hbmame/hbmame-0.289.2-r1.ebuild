@@ -5,17 +5,25 @@ EAPI=8
 
 PYTHON_COMPAT=( python3_{11..14} )
 
-inherit multiprocessing pax-utils python-any-r1 toolchain-funcs
+inherit flag-o-matic multiprocessing pax-utils python-any-r1 toolchain-funcs
 
-DESCRIPTION="Multiple Arcade Machine Emulator"
-HOMEPAGE="https://www.mamedev.org/ https://github.com/mamedev/mame"
-SRC_URI="https://github.com/mamedev/mame/archive/refs/tags/mame${PV//.}.tar.gz -> ${P}.tar.gz"
-S="${WORKDIR}/${PN}-mame${PV//.}"
+DESCRIPTION="HomeBrew MAME command-line emulator"
+HOMEPAGE="https://hbmame.1emulation.com/ https://github.com/Robbbert/hbmame"
+
+_COMMIT="a97bb8bb78b07e114cda57c5e44c08fb5b00ec40"
+SRC_URI="https://github.com/Robbbert/hbmame/archive/${_COMMIT}.tar.gz -> ${P}.tar.gz"
+S="${WORKDIR}/${PN}-${_COMMIT}"
 
 LICENSE="GPL-2+ BSD LGPL-2.1 MIT CC0-1.0 ZLIB"
 SLOT="0"
 KEYWORDS="~amd64"
 IUSE="debug lto qtdebug tools"
+
+PATCHES=(
+	"${FILESDIR}/${PN}-0.289.1-cps1-unknown-regs.patch"
+	"${FILESDIR}/${PN}-0.289.1-cps2-input-include.patch"
+	"${FILESDIR}/${PN}-0.289.2-cps2-config-odr.patch"
+)
 
 BDEPEND="
 	${PYTHON_DEPS}
@@ -38,8 +46,18 @@ pkg_setup() {
 }
 
 src_compile() {
+	# The bundled zlib has different const-qualified layouts across units.
+	# Keep LTO and other fatal warnings while allowing that ODR diagnostic.
+	if tc-is-gcc; then
+		append-flags -Wno-error=odr
+		append-ldflags -Wno-error=odr
+	fi
+	# Qt's protected RTTI symbols cannot use executable copy relocations.
+	use qtdebug && append-flags -fPIC
+
 	local args=(
 		-j"$(makeopts_jobs)"
+		TARGET=hbmame
 		ARCH=
 		NOWERROR=1
 		PTR64=1
@@ -62,17 +80,17 @@ src_compile() {
 }
 
 src_install() {
-	local binary="./mame"
+	local binary="./hbmame"
 
 	if [[ ! -x ${binary} ]]; then
-		binary="$(find . -type f -perm -111 -name mame -print -quit)"
+		binary="$(find . -type f -perm -111 -name hbmame -print -quit)"
 	fi
 
-	[[ -x ${binary} ]] || die "Unable to find built mame executable"
+	[[ -x ${binary} ]] || die "Unable to find built hbmame executable"
 
 	exeinto /usr/libexec/${PN}
 	doexe "${binary}"
-	pax-mark m "${ED}/usr/libexec/${PN}/mame" || die
+	pax-mark m "${ED}/usr/libexec/${PN}/hbmame" || die
 
 	insinto /usr/share/${PN}
 	for dir in artwork bgfx ctrlr hash hlsl ini language plugins; do
@@ -83,7 +101,7 @@ src_install() {
 
 	cat > "${T}/${PN}" <<-EOF || die
 		#!/bin/sh
-		exec /usr/libexec/${PN}/mame \\
+		exec /usr/libexec/${PN}/hbmame \\
 			-homepath "\${HOME}/.${PN}" \\
 			-inipath "\${HOME}/.${PN};/etc/${PN};/usr/share/${PN}/ini" \\
 			-artpath "\${HOME}/.${PN}/artwork;/usr/share/${PN}/artwork" \\
@@ -98,10 +116,11 @@ src_install() {
 
 	if use tools; then
 		local tool
-		for tool in castool chdman floptool imgtool jedutil ldresample ldverify nltool nlwav pngcmp regrep romcmp split srcclean testkeys unidasm; do
+		for tool in castool chdman floptool imgtool jedutil ldresample ldverify \
+			nltool nlwav pngcmp regrep romcmp split srcclean testkeys unidasm; do
 			[[ -x ./${tool} ]] && dobin "./${tool}"
 		done
 	fi
 
-	dodoc README.md docs/legal/*
+	dodoc README.md COPYING
 }

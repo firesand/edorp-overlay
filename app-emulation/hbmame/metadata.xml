@@ -6,6 +6,7 @@
     <name>LinuxMAMEUI maintainers</name>
   </maintainer>
   <use>
+    <flag name="qtdebug">Build the Qt-based debugger UI (links against dev-qt/qtbase)</flag>
     <flag name="tools">Build extra tooling binaries</flag>
   </use>
   <upstream>

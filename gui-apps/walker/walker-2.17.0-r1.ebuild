@@ -312,7 +312,7 @@ RDEPEND="
 	)
 "
 BDEPEND="
-	dev-libs/protobuf[protoc]
+	dev-libs/protobuf[protoc(+)]
 	virtual/pkgconfig
 "
 
