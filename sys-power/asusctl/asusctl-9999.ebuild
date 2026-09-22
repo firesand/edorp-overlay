@@ -3,7 +3,7 @@
 
 EAPI=8
 
-RUST_MIN_VER="1.82.0"
+RUST_MIN_VER="1.93.0"
 LLVM_COMPAT=( 21 )
 
 EGIT_REPO_URI="https://github.com/OpenGamingCollective/asusctl.git"
@@ -22,6 +22,7 @@ RESTRICT="test"
 BDEPEND="
 	dev-build/cmake
 	virtual/pkgconfig
+	gui? ( sys-devel/gettext )
 	$(llvm_gen_dep '
 		llvm-core/clang:${LLVM_SLOT}=
 		llvm-core/llvm:${LLVM_SLOT}=
@@ -97,7 +98,7 @@ src_install() {
 
 	if use gui; then
 		dobin "${target_dir}/rog-control-center"
-		domenu rog-control-center/data/rog-control-center.desktop
+		domenu rog-control-center/data/org.opengamingcollective.rog-control-center.desktop
 
 		newicon -s 512 rog-control-center/data/rog-control-center.png \
 			rog-control-center.png
@@ -105,6 +106,14 @@ src_install() {
 		insinto /usr/share/metainfo
 		doins \
 			rog-control-center/data/org.opengamingcollective.rog-control-center.metainfo.xml
+
+		local catalog locale
+		for catalog in "${target_dir}"/build/rog-control-center-*/out/translations/*/LC_MESSAGES/rog-control-center.mo; do
+			[[ -f ${catalog} ]] || die "No compiled ROG Control Center translations"
+			locale=${catalog%/LC_MESSAGES/*}
+			insinto "/usr/share/locale/${locale##*/}/LC_MESSAGES"
+			doins "${catalog}"
+		done
 
 		insinto /usr/share/rog-gui/layouts
 		doins -r rog-aura/data/layouts/*
@@ -125,8 +134,8 @@ pkg_postinst() {
 
 	elog "Enable the system services with:"
 	elog "  systemctl enable --now asusd.service asus-shutdown.service"
-	elog "asusd-user is installed but intentionally not enabled: upstream 6.3.8"
-	elog "still targets the legacy /xyz/ljones/Aura D-Bus object, while current"
+	elog "asusd-user is installed but intentionally not enabled: its Aura client"
+	elog "still targets the legacy /xyz/ljones/Aura D-Bus object, while"
 	elog "asusd exposes per-device Aura paths."
 	elog "Linux 6.19 or newer is required for the newer asus-armoury TDP controls."
 }

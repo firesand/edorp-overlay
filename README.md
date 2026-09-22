@@ -50,8 +50,8 @@ local machine configuration do not belong in the overlay.
 - `dev-python/upnpclient`: Fluxcast dependency.
 - `net-misc/plexo`: Plexo download manager with parallel downloads across
   multiple network connections ([source](https://github.com/anmolkapil/plexo)).
-  Reuses the upstream application's portable resources with the matching
-  official amd64 Electron runtime. Requires glibc and `~amd64` keywording.
+  Installs the upstream amd64 `.deb` with its matching bundled Electron
+  runtime. Requires glibc and `~amd64` keywording.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
 - `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
@@ -75,13 +75,13 @@ local machine configuration do not belong in the overlay.
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a
   release tarball or Git source URI exists.
-- `app-emulation/mame`: MAME 0.288 ebuild imported from local LinuxMAMEUI
+- `app-emulation/mame`: MAME 0.289 ebuild imported from local LinuxMAMEUI
   packaging.
-- `app-emulation/hbmame`: HBMAME 0.288.2 ebuild imported from local LinuxMAMEUI
+- `app-emulation/hbmame`: HBMAME 0.289.2 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
   ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
-  fetches GitHub tag `v0.1.7` plus crates via `CRATES`; live ebuild `9999`
+  fetches GitHub tag `v0.1.8` plus crates via `CRATES`; live ebuild `9999`
   uses `cargo_live_src_unpack`. Requires `app-emulation/mame` from this
   overlay. Portable **AppImage** builds live in the MAMEUIx repo
   (`./build-appimage.sh`); GitHub Releases may attach `MAMEUIx-*-x86_64.AppImage`
@@ -114,7 +114,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.37, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.38, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced/acadrust
@@ -146,18 +146,18 @@ local machine configuration do not belong in the overlay.
   edges, served on loopback and read in a browser
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
-- `media-video/wolfcut`: WolfCut (formerly Concat), a free CapCut-style
-  multi-track video editor built on Tauri
-  ([source](https://github.com/jub0t/Concat)). Repackaged from the upstream
-  release `.deb`; the default USE `system-ffmpeg` swaps the bundled nonfree
-  FFmpeg for the system one. Needs `~amd64` keywording
-  (`metadata/package.accept_keywords/edorp-wolfcut`).
+- `media-video/wolfcut`: Concat (formerly WolfCut), a multi-track video
+  editor built with Slint ([source](https://github.com/jub0t/Concat)).
+  Repackaged from the upstream amd64 `.deb`; the default `system-ffmpeg`
+  USE flag selects matching FFmpeg 8.1 libraries. The package atom remains
+  `wolfcut` for existing installations; the application now launches as
+  `concat`, with `wolfcut-desktop` retained as an alias.
 
 ### Plexo
 
-Plexo `1.0.0_rc7` packages upstream `v1.0.0-rc.7`, a release candidate.
-Upstream began publishing native Linux amd64 builds at this release, so the
-ebuild now installs the upstream `amd64` `.deb` as shipped, with its own
+Plexo `1.0.0_rc8` packages upstream `v1.0.0-rc.8`, a release candidate.
+Upstream began publishing native Linux amd64 builds at rc7, so the
+ebuild installs the upstream `amd64` `.deb`, with its own
 bundled Electron `39.8.10`, instead of repacking ARM64 resources onto a
 separately downloaded runtime. That repack is no longer possible in any case:
 `rc.7` added the `koffi` native addon, and the ARM64 `.deb` carries only an
@@ -275,18 +275,19 @@ to the network. `bin/` and `dist/` install under `/usr/share/md2hd` with only a
 launcher symlink on PATH, and they have to stay siblings because the script
 resolves the app as `<script dir>/../dist`.
 
-### WolfCut
+### Concat (media-video/wolfcut)
 
-Repackaged from the upstream release `.deb`. Every release so far is an
-alpha; tag `v0.2.0-alpha.17` maps to version `0.2.0_alpha17`, and each alpha
-reuses the same asset filename, so only the tagged download URL pins the
-payload. With the default USE `system-ffmpeg` the bundled FFmpeg build —
-nonfree (DeckLink SDK, OpenSSL with GPL) and self-reported unredistributable
-— is dropped, and the app falls back to `ffmpeg`/`ffprobe` on PATH, an
-upstream-supported mode. The default export preset encodes with libx264, so
-`media-video/ffmpeg` needs `x264`. Disabling `system-ffmpeg` keeps upstream's
-binaries and additionally requires accepting `all-rights-reserved`
-(`metadata/package.license/edorp-wolfcut`).
+Version 0.2.3 replaces WolfCut's Tauri interface with Concat's Slint interface.
+The application is now AGPL-3.0-or-later with an upstream plugin exception;
+its Slint component uses GPL-3.0, the embedded font uses OFL-1.1, and effect
+preview photographs use the Unsplash license. License texts and upstream
+notices are installed with the package.
+
+The binary links FFmpeg libraries directly. With the default `system-ffmpeg`
+USE flag, it uses system FFmpeg >=8.1 with ABI `60.62.62` and `x264` enabled.
+Disabling that flag retains upstream's GPL FFmpeg libraries. The earlier
+nonfree FFmpeg bundle and its `all-rights-reserved` acceptance are no longer
+needed. ONNX Runtime remains bundled beside the application.
 
 ```bash
 sudo cp metadata/package.accept_keywords/edorp-wolfcut \
@@ -294,15 +295,17 @@ sudo cp metadata/package.accept_keywords/edorp-wolfcut \
 sudo emerge -av media-video/wolfcut
 ```
 
-Auto-captions and voice features run through the bundled whisper.cpp CLI and
-a statically linked sherpa-onnx runtime; they download Whisper and Kokoro
-models on demand at first use, outside portage's control.
+Launch `concat` or the Concat menu entry; `wolfcut-desktop` is a compatibility
+alias. Back up existing projects before opening them in this rewritten
+application. Speech and cutout features download models on demand, outside
+Portage's control.
 
 ### Walker
 
 Walker 2 is a frontend for the separately released Elephant daemon and its
-provider modules. Walker 2.17.0 pins Elephant 2.22.0, so the Walker ebuild
-depends on that matching Elephant version from EDORP. Elephant always includes
+provider modules. EDORP pairs Walker 2.17.0 with Elephant 2.22.0, whose
+protocol schemas match; the Walker ebuild pins that packaged Elephant version.
+Elephant always includes
 the five providers needed for Walker's normal default query and common
 prefixes: desktop applications, calculator, web search, provider list, and
 command runner. Standalone dmenu mode still works without a running Elephant
@@ -381,7 +384,7 @@ select it with `--dict FILE`.
 
 ### MarkItDown
 
-The versioned `app-text/markitdown-0.1.6` ebuild builds the GitHub release with
+The versioned `app-text/markitdown-0.1.8` ebuild builds the GitHub release with
 Hatchling. It supports Python 3.12 through 3.14. Python 3.14 was smoke-tested
 with the CLI, Magika detection, HTML, CSV, and the targeted upstream core tests.
 

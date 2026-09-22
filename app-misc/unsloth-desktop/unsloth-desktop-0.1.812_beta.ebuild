@@ -24,7 +24,7 @@ S="${WORKDIR}"
 # crates under the usual permissive terms.
 LICENSE="AGPL-3 Apache-2.0 BSD BSD-2 ISC MIT"
 SLOT="0"
-# Upstream builds no Linux arm64 desktop asset; ARM64 is macOS only.
+# The upstream amd64 Debian bundle is validated by this repack.
 KEYWORDS="-* ~amd64"
 RESTRICT="strip"
 
@@ -72,6 +72,9 @@ src_install() {
 
 	insinto /usr/share/icons
 	doins -r usr/share/icons/hicolor
+
+	# The bundled PolicyKit action is only for installing Debian updates.
+	# Omit it: the desktop shell is managed by Portage on Gentoo.
 }
 
 pkg_postinst() {
@@ -84,6 +87,7 @@ pkg_postinst() {
 	elog
 	elog "The bundled installer can only add missing system packages through"
 	elog "apt, so on Gentoo it will ask you to install them yourself."
+	elog "Update the desktop shell with Portage; in-app Debian updates do not apply."
 
 	optfeature "building Python extensions during the first-run setup" \
 		sys-devel/gcc dev-build/cmake

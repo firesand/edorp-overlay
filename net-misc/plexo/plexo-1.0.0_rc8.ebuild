@@ -86,6 +86,10 @@ src_prepare() {
 		opt/Plexo/resources "plexo-${MY_PV}/package-lock.json" \
 		"${MY_PV}" "${ELECTRON_PV}" opt/Plexo/plexo ||
 		die "Application resource validation failed"
+
+	# The amd64 bundle also carries an unused ARM64 Koffi addon. Keeping it
+	# triggers foreign-architecture soname warnings in the installed image.
+	rm -r opt/Plexo/resources/app.asar.unpacked/node_modules/koffi/build/koffi/linux_arm64 || die
 }
 
 src_install() {

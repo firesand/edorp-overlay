@@ -21,7 +21,7 @@ LICENSE="GPL-3+"
 # Dependent crate licenses
 LICENSE+="
 	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions Boost-1.0 BSD BSD-2
-	CC0-1.0 CDLA-Permissive-2.0 ISC MIT MPL-2.0 OFL-1.1 Unicode-3.0
+	CC0-1.0 CDLA-Permissive-2.0 ISC LGPL-2.1+ MIT MPL-2.0 OFL-1.1 Unicode-3.0
 	Unlicense UoI-NCSA ZLIB
 "
 
@@ -65,8 +65,8 @@ src_unpack() {
 	# network access and depends on the offline config in ${ECARGO_HOME}.
 	export CARGO_HOME="${registry_dir}"
 	pushd "${S}" > /dev/null || die
-	"${CARGO}" fetch || die
-	"${CARGO}" vendor "${ECARGO_VENDOR}" || die
+	"${CARGO}" fetch --locked || die
+	"${CARGO}" vendor --locked "${ECARGO_VENDOR}" || die
 	popd > /dev/null || die
 	unset CARGO_HOME
 

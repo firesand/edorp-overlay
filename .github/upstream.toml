@@ -74,8 +74,9 @@ note = "Bump amd64 + arm64 debs together and regenerate the Manifest."
 source = "github"
 github = "unslothai/unsloth"
 use_latest_release = true
-from_pattern = '^v([0-9.]+)-beta$'
-to_pattern = '\1_beta'
+prefix = "v"
+from_pattern = '-beta$'
+to_pattern = '_beta'
 policy = "review"
 note = "Beta releases land several times a day, and the numbering appends digits (0.1.70 then 0.1.701); confirm the new tag really sorts newer before bumping."
 
@@ -116,13 +117,13 @@ policy = "review"
 source = "pypi"
 pypi = "magika"
 policy = "review"
-note = "MarkItDown 0.1.6 requires Magika below 0.7; retain the old ebuild if needed."
+note = "MarkItDown 0.1.8 requires Magika below 0.7; retain the old ebuild if needed."
 
 ["dev-python/mammoth"]
 source = "pypi"
 pypi = "mammoth"
 policy = "review"
-note = "MarkItDown 0.1.6 requires Mammoth below 1.12; retain the old ebuild if needed."
+note = "MarkItDown 0.1.8 requires Mammoth below 1.12; retain the old ebuild if needed."
 
 ["dev-python/pdfplumber"]
 source = "pypi"
@@ -171,17 +172,18 @@ prefix = "v"
 policy = "review"
 note = "Upstream moved from semver to CalVer at v2026.36; the versioned ebuild pins EGIT_COMMIT to the tag, so smoke-test cargo vendoring after bumps."
 
-# Every release so far is a prerelease, so GitHub's "latest release" resolves
-# nothing; widen the patterns when upstream cuts a stable tag.
+# Include stable tags as well as the earlier alpha series; upstream now
+# releases Concat under its original name.
 ["media-video/wolfcut"]
 source = "github"
 github = "jub0t/Concat"
 use_max_tag = true
-include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$'
-from_pattern = '^v([0-9.]+)-alpha\.([0-9]+)$'
-to_pattern = '\1_alpha\2'
+include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+(?:-alpha\.[0-9]+)?$'
+prefix = "v"
+from_pattern = '-alpha\.'
+to_pattern = '_alpha'
 policy = "review"
-note = "Alpha releases reuse one asset filename; refresh the deb, the notices file, and both Manifest entries together."
+note = "Concat replaced WolfCut's Tauri build with Slint; check asset layout, licenses, FFmpeg ABI and bundled runtime libraries."
 
 ["net-analyzer/bettercap"]
 source = "github"
