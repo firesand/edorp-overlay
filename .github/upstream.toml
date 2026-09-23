@@ -146,6 +146,14 @@ source = "pypi"
 pypi = "upnpclient"
 policy = "review"
 
+["games-util/dlss-updater"]
+source = "github"
+github = "Recol/DLSS-Updater"
+use_latest_release = true
+prefix = "V"
+policy = "review"
+note = "Recheck the Flatpak OSTree commit, Flet client archive, bundled notices and native GUI; V5.0.3 tagged source says 5.0.2 but its release binary displays 5.0.3."
+
 ["gui-apps/elephant"]
 source = "github"
 github = "abenz1267/elephant"

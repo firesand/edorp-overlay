@@ -19,6 +19,7 @@
   "dev-python/pystray": "0.19.5",
   "dev-python/python-pptx": "1.0.2",
   "dev-python/upnpclient": "2.0.3",
+  "games-util/dlss-updater": "5.0.3",
   "gui-apps/elephant": "2.22.0",
   "gui-apps/walker": "2.17.0",
   "media-gfx/opencadstudio": "2026.38",

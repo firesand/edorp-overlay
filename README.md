@@ -52,6 +52,10 @@ local machine configuration do not belong in the overlay.
   multiple network connections ([source](https://github.com/anmolkapil/plexo)).
   Installs the upstream amd64 `.deb` with its matching bundled Electron
   runtime. Requires glibc and `~amd64` keywording.
+- `games-util/dlss-updater`: DLSS, XeSS and FSR DLL updater for Linux games
+  ([source](https://github.com/Recol/DLSS-Updater#linux)). Repackages the
+  upstream amd64 Flatpak executable with its Flet client for native Gentoo
+  use; no Flatpak runtime is installed. Requires glibc and `~amd64`.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
 - `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
@@ -152,6 +156,18 @@ local machine configuration do not belong in the overlay.
   USE flag selects matching FFmpeg 8.1 libraries. The package atom remains
   `wolfcut` for existing installations; the application now launches as
   `concat`, with `wolfcut-desktop` retained as an alias.
+
+### DLSS Updater
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-dlss-updater \
+  /etc/portage/package.accept_keywords/edorp-dlss-updater
+sudo emerge -av games-util/dlss-updater
+```
+
+Run `dlss-updater` or use the desktop entry. The GUI client is installed with
+the package; the game DLL catalogue and selected DLLs are fetched by the app
+into your user cache on first use.
 
 ### Plexo
 
