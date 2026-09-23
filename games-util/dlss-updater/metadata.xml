@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		DLSS Updater scans games installed through Steam, Wine and other launchers
+		for DLSS, XeSS and FSR DLLs, backs up originals and can replace them with
+		newer releases. This package extracts the upstream amd64 Flatpak's
+		PyInstaller application and pairs it with the matching Flet 1.0.0 Linux
+		client. It uses host GTK and libsecret libraries; it does not install a
+		Flatpak runtime. Game DLLs are downloaded to the user's cache at runtime.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/Recol/DLSS-Updater/issues</bugs-to>
+		<changelog>https://github.com/Recol/DLSS-Updater/releases</changelog>
+		<remote-id type="github">Recol/DLSS-Updater</remote-id>
+	</upstream>
+</pkgmetadata>

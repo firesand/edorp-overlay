@@ -5,6 +5,7 @@ app-portage
 app-text
 dev-python
 games-emulation
+games-util
 gui-apps
 media-gfx
 media-video
