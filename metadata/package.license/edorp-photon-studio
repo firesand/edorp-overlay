@@ -1,0 +1,6 @@
+# Photon Studio is proprietary software downloaded from Tenzen Studio. Its
+# bundled background-removal model includes DINOv3 weights, and lensfun data
+# carries CC-BY-SA-3.0. Review the terms before accepting.
+# https://tenzen.studio/legal/terms-of-service/
+# https://ai.meta.com/resources/models-and-libraries/dinov3-license/
+media-gfx/photon-studio all-rights-reserved DINOv3 CC-BY-SA-3.0

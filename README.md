@@ -125,6 +125,12 @@ local machine configuration do not belong in the overlay.
   git patches) are fetched and vendored in `src_unpack` because upstream pins
   git revisions that the `CRATES` mechanism cannot express. Requires Rust
   >= 1.92 and `~amd64` keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+- `media-gfx/photon-studio`: Photon Studio 0.1.21, Tenzen Studio's offline image
+  editor with layers, retouching and PSD support
+  ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
+  Linux x64 Flatpak release and launches its bundled Electron application
+  natively. Requires glibc, `~amd64` keywording and acceptance of the
+  proprietary app and bundled model licenses.
 - `app-misc/chatgpt-desktop`: OpenAI's ChatGPT desktop app for Linux,
   repackaged from the upstream `.deb`
   ([upstream](https://developers.openai.com/codex/app)). Bundles the Codex
@@ -168,6 +174,22 @@ sudo emerge -av games-util/dlss-updater
 Run `dlss-updater` or use the desktop entry. The GUI client is installed with
 the package; the game DLL catalogue and selected DLLs are fetched by the app
 into your user cache on first use.
+
+### Photon Studio
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-photon-studio \
+  /etc/portage/package.accept_keywords/edorp-photon-studio
+sudo cp metadata/package.license/edorp-photon-studio \
+  /etc/portage/package.license/edorp-photon-studio
+sudo emerge -av media-gfx/photon-studio
+```
+
+Run `photon-studio` or use the Photon Studio menu entry. This package uses
+host libraries with the upstream Electron application; it does not install a
+Flatpak runtime. Application updates are delivered through Portage. Its
+background-removal model is **Built with DINOv3**; the DINOv3 agreement is
+installed with the package.
 
 ### Plexo
 

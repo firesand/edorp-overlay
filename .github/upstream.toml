@@ -180,6 +180,13 @@ prefix = "v"
 policy = "review"
 note = "Upstream moved from semver to CalVer at v2026.36; the versioned ebuild pins EGIT_COMMIT to the tag, so smoke-test cargo vendoring after bumps."
 
+["media-gfx/photon-studio"]
+source = "regex"
+url = "https://tenzen.studio/api/v1/photon/releases/latest"
+regex = '"version":"([0-9]+(?:\.[0-9]+)+)"'
+policy = "review"
+note = "Recheck the Linux x64 Flatpak URL, OSTree commit, bundled Electron/native modules, licenses and native GUI before bumping."
+
 # Include stable tags as well as the earlier alpha series; upstream now
 # releases Concat under its original name.
 ["media-video/wolfcut"]
