@@ -70,6 +70,14 @@ regex = 'claude-desktop_([0-9][0-9.]+)_amd64\.deb'
 policy = "review"
 note = "Bump amd64 + arm64 debs together and regenerate the Manifest."
 
+# Grok Bot's stable Linux x64 API publishes the version and exact .deb URL.
+["app-misc/grok-bot"]
+source = "regex"
+url = "https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand"
+regex = '"version":"([0-9]+(?:\.[0-9]+)+)"'
+policy = "review"
+note = "Recheck the debUrl and commitSha from the release API, bundled licenses, and native GUI before bumping."
+
 ["app-misc/unsloth-desktop"]
 source = "github"
 github = "unslothai/unsloth"
