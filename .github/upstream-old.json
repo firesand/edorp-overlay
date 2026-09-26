@@ -8,6 +8,7 @@
   "app-misc/chatgpt-desktop": "26.930.31428",
   "app-misc/claude-desktop": "2.9939.4",
   "app-misc/comfy-desktop": "1.1.5",
+  "app-misc/grok-bot": "0.59.1",
   "app-misc/unsloth-desktop": "0.1.902_beta",
   "app-portage/equery-gui": "0.1.0",
   "app-text/markitdown": "0.1.8",
