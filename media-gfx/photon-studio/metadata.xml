@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Photon Studio is a proprietary desktop image editor with layers,
+		retouching tools, and native PSD support. This package extracts its
+		upstream amd64 Flatpak payload and launches the bundled Electron app
+		natively with host libraries; Flatpak itself is not installed.
+	</longdescription>
+</pkgmetadata>

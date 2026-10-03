@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Grok Bot is SpaceXAI's desktop client for persistent AI agents that
+		work on a cloud computer. This package installs the official Linux
+		desktop binary and requires an eligible account to use the service.
+	</longdescription>
+	<upstream>
+		<doc lang="en">https://docs.x.ai/grok-bot/get-started</doc>
+	</upstream>
+</pkgmetadata>

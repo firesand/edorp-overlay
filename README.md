@@ -52,6 +52,10 @@ local machine configuration do not belong in the overlay.
   multiple network connections ([source](https://github.com/anmolkapil/plexo)).
   Installs the upstream amd64 `.deb` with its matching bundled Electron
   runtime. Requires glibc and `~amd64` keywording.
+- `games-util/dlss-updater`: DLSS, XeSS and FSR DLL updater for Linux games
+  ([source](https://github.com/Recol/DLSS-Updater#linux)). Repackages the
+  upstream amd64 Flatpak executable with its Flet client for native Gentoo
+  use; no Flatpak runtime is installed. Requires glibc and `~amd64`.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
 - `gui-apps/walker`: Walker 2.17.1, the Rust/GTK4 rewrite of the Wayland
@@ -123,6 +127,14 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+- `media-gfx/photon-studio`: Photon Studio 0.1.38, Tenzen Studio's offline image
+  editor with layers, retouching and PSD support
+  ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
+  Linux x64 Flatpak release and launches its bundled Electron application
+  natively. It bundles local AI models for background removal, object and sky
+  selection plus HEIF, JPEG XL and RAW decoders, so it installs to about
+  1.1 GB. Requires glibc, `~amd64` keywording and acceptance of the
+  proprietary app and bundled model licenses.
 - `app-misc/chatgpt-desktop`: OpenAI's ChatGPT desktop app for Linux,
   repackaged from the upstream `.deb`
   ([upstream](https://developers.openai.com/codex/app)). Bundles the Codex
@@ -144,6 +156,15 @@ local machine configuration do not belong in the overlay.
   live in your home directory, outside Portage. AGPL-3.0-or-later (upstream
   also sells a commercial licence), needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-comfy-desktop`).
+- `app-misc/grok-bot`: Grok Bot, SpaceXAI's desktop client for persistent cloud
+  AI agents ([docs](https://docs.x.ai/grok-bot/get-started)). Repackages the
+  immutable-build `amd64`/`arm64` `.deb` from the vendor's release feed into
+  `/opt/grok-bot`. Proprietary: needs `~amd64` keywording, an
+  `all-rights-reserved` licence entry
+  (`metadata/package.accept_keywords/edorp-grok-bot`,
+  `metadata/package.license/edorp-grok-bot`) and an eligible Cursor or SuperGrok
+  account. `USE=suid` installs the setuid Chromium sandbox helper and
+  `USE=apparmor` the vendor's profile.
 - `app-misc/unsloth-desktop`: Unsloth Desktop (beta), a Tauri app for running
   and training LLMs and diffusion models locally
   ([upstream](https://unsloth.ai/docs/desktop)). Only the desktop shell is
@@ -161,6 +182,36 @@ local machine configuration do not belong in the overlay.
   USE flag selects matching FFmpeg 8.1 libraries. The package atom remains
   `wolfcut` for existing installations; the application now launches as
   `concat`, with `wolfcut-desktop` retained as an alias.
+
+### DLSS Updater
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-dlss-updater \
+  /etc/portage/package.accept_keywords/edorp-dlss-updater
+sudo emerge -av games-util/dlss-updater
+```
+
+Run `dlss-updater` or use the desktop entry. The GUI client is installed with
+the package; the game DLL catalogue and selected DLLs are fetched by the app
+into your user cache on first use.
+
+### Photon Studio
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-photon-studio \
+  /etc/portage/package.accept_keywords/edorp-photon-studio
+sudo cp metadata/package.license/edorp-photon-studio \
+  /etc/portage/package.license/edorp-photon-studio
+sudo emerge -av media-gfx/photon-studio
+```
+
+Run `photon-studio` or use the Photon Studio menu entry. This package uses
+host libraries with the upstream Electron application; it does not install a
+Flatpak runtime. Application updates are delivered through Portage. Its
+background-removal model is **Built with DINOv3**; the DINOv3 agreement is
+installed with the package. The other bundled models (SAM 2.1, DETR and
+Depth Anything V2 Small) are Apache-2.0, and HEIF decoding uses LGPL-3 libheif
+and libde265, whose source archives ship inside the app directory.
 
 ### Plexo
 

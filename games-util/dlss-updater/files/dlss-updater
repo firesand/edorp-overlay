@@ -1,0 +1,4 @@
+#!/bin/sh
+export FLET_VIEW_PATH=/opt/dlss-updater/flet
+export PYTHON_GIL=0
+exec /opt/dlss-updater/dlss_updater "$@"
