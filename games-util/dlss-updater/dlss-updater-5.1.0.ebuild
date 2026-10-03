@@ -5,10 +5,14 @@ EAPI=8
 
 inherit desktop xdg
 
-FLET_PV="1.0.0"
+# The client has to match the Flet bundled in the PyInstaller binary exactly.
+# Read it from flet.version in the binary's PYZ archive, not from the tagged
+# pyproject.toml: the tag lags the release (V5.1.0 still pins Flet 1.0.0 and
+# says 5.0.3, but the shipped binary bundles Flet 1.0.2 and reports 5.1.0).
+FLET_PV="1.0.2"
 # The commit stored in the upstream Flatpak bundle. Pinning it also makes an
 # unexpected change to the release asset fail before anything is installed.
-FLATPAK_COMMIT="56e2ac6ab4e2a1a6143da097ba7604b13473d2c31137f6854d06c649575189a3"
+FLATPAK_COMMIT="2b47a8a768b67b15f7e8520a8e87a3cb4f58c3d00019cad4fd23358048f79ae2"
 
 DESCRIPTION="Update DLSS, XeSS and FSR game DLLs with automatic backups"
 HOMEPAGE="https://github.com/Recol/DLSS-Updater"
