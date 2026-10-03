@@ -85,7 +85,7 @@ source = "regex"
 url = "https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand"
 regex = '"version":"([0-9]+(?:\.[0-9]+)+)"'
 policy = "review"
-note = "Recheck the debUrl and commitSha from the release API, bundled licenses, and native GUI before bumping."
+note = "Recheck the debUrl and commitSha from the release API, bundled licenses, and native GUI before bumping. Cross-check each deb against the SHA256 in https://downloads.cursor.com/aptrepo/dists/grok-bot/main/binary-<arch>/Packages, which the release feed itself does not provide."
 
 ["app-misc/unsloth-desktop"]
 source = "github"
@@ -169,7 +169,7 @@ github = "Recol/DLSS-Updater"
 use_latest_release = true
 prefix = "V"
 policy = "review"
-note = "Recheck the Flatpak OSTree commit, Flet client archive, bundled notices and native GUI; V5.0.3 tagged source says 5.0.2 but its release binary displays 5.0.3."
+note = "Recheck the Flatpak OSTree commit, Flet client archive, bundled notices and native GUI. Tagged sources lag the release binary (V5.0.3 says 5.0.2; V5.1.0 says 5.0.3 and pins Flet 1.0.0 although the binary bundles 1.0.2), so read the Flet version from flet.version inside the binary's PYZ archive, not from pyproject.toml."
 
 ["gui-apps/elephant"]
 source = "github"
@@ -202,7 +202,7 @@ source = "regex"
 url = "https://tenzen.studio/api/v1/photon/releases/latest"
 regex = '"version":"([0-9]+(?:\.[0-9]+)+)"'
 policy = "review"
-note = "Recheck the Linux x64 Flatpak URL, OSTree commit, bundled Electron/native modules, licenses and native GUI before bumping."
+note = "Recheck the Linux x64 Flatpak URL, OSTree commit, bundled Electron/native modules, licenses and native GUI before bumping. On every bump list /dist/models and the native *-licenses directories (app.asar and app.asar.unpacked) for new models or libraries, as 0.1.38 added SAM 2.1, DETR, Depth Anything, libheif and libde265, and recheck the glibc floor of photon_raw and photon_jxl."
 
 # Include stable tags as well as the earlier alpha series; upstream now
 # releases Concat under its original name.

@@ -937,6 +937,56 @@ PRs #15 and #17 merged. Work is uncommitted on purpose; nothing is pushed.
   `dobin` ebuilds finish their install phase as a normal user, which retires
   the old "dobin cannot be tested here" caveat.
 
+## Codex package bumps (2026-10-03)
+
+`games-util/dlss-updater`, `media-gfx/photon-studio` and `app-misc/grok-bot` came
+from the unmerged `codex/*` branches (PR #21, stacked on PR #20 because both
+touch README, upstream.toml and upstream-old.json). All three were behind
+upstream and are bumped on that branch: dlss-updater 5.0.3 -> 5.1.0,
+photon-studio 0.1.21 -> 0.1.38, grok-bot 0.59.1 -> 0.66.0. The packaging
+checks that mattered, and how to repeat them:
+
+- Flatpak commit pins (dlss-updater, photon-studio): import the bundle into a
+  private OSTree repo (`ostree --repo=R init --mode=archive-z2`, then
+  `static-delta apply-offline <bundle>`); the commit id is the file name of the
+  single `R/objects/xx/*.commit`. Prove the method first by re-deriving the
+  CURRENT pin from the previous bundle in distfiles; it reproduced both.
+- dlss-updater: the V5.1.0 TAG LAGS THE RELEASE BINARY. Its pyproject.toml still
+  pins Flet 1.0.0 and says 5.0.3, but the shipped PyInstaller binary bundles
+  Flet and flet_desktop 1.0.2 (the release notes say so too) and reports 5.1.0.
+  The Flet desktop client archive has to match the binary exactly, so FLET_PV is
+  1.0.2. To read it from the binary: take the PyInstaller CArchive (cookie
+  `MEI\x0c\x0b\x0a\x0b\x0e`, an 88-byte record at the end of the file that points
+  at the TOC), find the
+  `z` entry (PYZ), `marshal.loads` its table of contents and the module
+  `flet.version`, and read the version constants. Use the same Python minor as
+  the binary (3.14 here). `strings` finds nothing because the names are in the
+  PYZ.
+- photon-studio: the Flatpak grew from 268 MB to 727 MB because `app.asar` now
+  bundles SAM 2.1 Hiera-Tiny, DETR ResNet-50 panoptic (sky selection) and Depth
+  Anything V2 Small beside the withoutBG weights. All three are Apache-2.0 with
+  LICENSE and NOTICE files under `/dist/models`, so they need no new `LICENSE`
+  entry. New native code is what changed `LICENSE`: libheif 1.20.2 and libde265
+  1.0.16 (LGPL-3, sources shipped in `app.asar.unpacked/build/native/linux-x64/
+  heif-licenses`) and an IJG JPEG README in the RAW decoder, so `LGPL-3+` and
+  `IJG` were added (both are in @FREE). libjxl, brotli, highway and skcms are
+  BSD/MIT/Apache. The DINOv3 text shipped by the ebuild is byte-identical to the
+  bundle's. On every bump list `/dist/models` and the `*-licenses` directories.
+  `app.asar` also carries an arm64 `@napi-rs/canvas` module that cannot be
+  stripped without unpacking the archive.
+- glibc floors: `photon_raw` already needed glibc 2.38 in 0.1.21 (and 0.1.38 adds
+  `photon_jxl` at 2.38), so the ebuild's `>=glibc-2.34` was understated; it is
+  corrected to 2.38. dlss-updater's Flet client needs 2.34 (matches) and
+  grok-bot's `cursor_proclist.node` needs 2.38 (matches).
+- grok-bot: the release feed (`api2.cursor.sh/updates/api/download/stable/
+  linux-<arch>/sand`) gives the immutable build id but no checksums. The deb's
+  postinst registers an APT repo at `https://downloads.cursor.com/aptrepo`
+  (suite `grok-bot`), whose `Packages` index carries SHA256 for both
+  architectures; both 0.66.0 debs matched it.
+- Layouts of all three are unchanged, every NEEDED soname is still covered by
+  RDEPEND, `pkgcheck` is clean, each install phase completes without QA notices
+  and each app starts under an isolated HOME.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

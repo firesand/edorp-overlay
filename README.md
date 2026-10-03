@@ -127,11 +127,13 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photon-studio`: Photon Studio 0.1.21, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.38, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
-  natively. Requires glibc, `~amd64` keywording and acceptance of the
+  natively. It bundles local AI models for background removal, object and sky
+  selection plus HEIF, JPEG XL and RAW decoders, so it installs to about
+  1.1 GB. Requires glibc, `~amd64` keywording and acceptance of the
   proprietary app and bundled model licenses.
 - `app-misc/chatgpt-desktop`: OpenAI's ChatGPT desktop app for Linux,
   repackaged from the upstream `.deb`
@@ -154,6 +156,15 @@ local machine configuration do not belong in the overlay.
   live in your home directory, outside Portage. AGPL-3.0-or-later (upstream
   also sells a commercial licence), needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-comfy-desktop`).
+- `app-misc/grok-bot`: Grok Bot, SpaceXAI's desktop client for persistent cloud
+  AI agents ([docs](https://docs.x.ai/grok-bot/get-started)). Repackages the
+  immutable-build `amd64`/`arm64` `.deb` from the vendor's release feed into
+  `/opt/grok-bot`. Proprietary: needs `~amd64` keywording, an
+  `all-rights-reserved` licence entry
+  (`metadata/package.accept_keywords/edorp-grok-bot`,
+  `metadata/package.license/edorp-grok-bot`) and an eligible Cursor or SuperGrok
+  account. `USE=suid` installs the setuid Chromium sandbox helper and
+  `USE=apparmor` the vendor's profile.
 - `app-misc/unsloth-desktop`: Unsloth Desktop (beta), a Tauri app for running
   and training LLMs and diffusion models locally
   ([upstream](https://unsloth.ai/docs/desktop)). Only the desktop shell is
@@ -198,7 +209,9 @@ Run `photon-studio` or use the Photon Studio menu entry. This package uses
 host libraries with the upstream Electron application; it does not install a
 Flatpak runtime. Application updates are delivered through Portage. Its
 background-removal model is **Built with DINOv3**; the DINOv3 agreement is
-installed with the package.
+installed with the package. The other bundled models (SAM 2.1, DETR and
+Depth Anything V2 Small) are Apache-2.0, and HEIF decoding uses LGPL-3 libheif
+and libde265, whose source archives ship inside the app directory.
 
 ### Plexo
 
