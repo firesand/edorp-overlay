@@ -10,7 +10,7 @@ inherit flag-o-matic multiprocessing pax-utils python-any-r1 toolchain-funcs
 DESCRIPTION="HomeBrew MAME command-line emulator"
 HOMEPAGE="https://hbmame.1emulation.com/ https://github.com/Robbbert/hbmame"
 
-_COMMIT="a97bb8bb78b07e114cda57c5e44c08fb5b00ec40"
+_COMMIT="e7d66f9f1504a62f47df09f72e0b0b6bfa3cb6f2"
 SRC_URI="https://github.com/Robbbert/hbmame/archive/${_COMMIT}.tar.gz -> ${P}.tar.gz"
 S="${WORKDIR}/${PN}-${_COMMIT}"
 
