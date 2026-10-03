@@ -8,7 +8,7 @@ inherit desktop pax-utils python-any-r1 unpacker xdg
 
 MY_PV="$(ver_rs 3 - 4 .)"
 # The Electron revision upstream bundles, as pinned in package-lock.json.
-ELECTRON_PV="39.8.10"
+ELECTRON_PV="44.4.4"
 
 DESCRIPTION="Download manager using multiple network connections in parallel"
 HOMEPAGE="https://github.com/anmolkapil/plexo"
