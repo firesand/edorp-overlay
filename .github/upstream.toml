@@ -162,7 +162,7 @@ use_latest_release = true
 prefix = "v"
 policy = "review"
 group = "walker-stack"
-note = "Update with Walker and use the Elephant revision pinned by Walker, not merely the newest tag."
+note = "Update with Walker and use the Elephant revision pinned by Walker, not merely the newest tag. Each bump needs an elephant-vendor-<version> release asset on firesand/edorp-overlay (see memory.md for the recipe) and a Go new enough for go.mod (2.22.1 needs 1.27.1)."
 
 ["gui-apps/walker"]
 source = "github"

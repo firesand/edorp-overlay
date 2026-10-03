@@ -810,6 +810,122 @@ the only conflict was `net-misc/fluxcast` in `.github/upstream-old.json`
   here at ANY version (2.21.0 fails identically). Compile is the meaningful
   local check for it; the install phase needs a root/portage-sandboxed run.
 
+## Comfy Desktop and upstream audit (2026-10-03)
+
+Branch `claude/comfy-desktop-and-updates-2026-10-03`, based on `main` after
+PRs #15 and #17 merged. Work is uncommitted on purpose; nothing is pushed.
+
+- Added `app-misc/comfy-desktop` 1.1.5, Comfy Org's official ComfyUI desktop
+  app (comfy.org/download). Linux is distributed only through ToDesktop, not
+  GitHub release assets: `download.comfy.org/linux/deb/x64` redirects to the
+  newest build and changes in place, so the ebuild pins ToDesktop's immutable
+  `comfyui-desktop-2-<ver>-build-<id>-amd64.deb`. The build id changes every
+  release (`BUILD_ID` in the ebuild); `latest-linux.yml` next to the files lists
+  the current id plus a sha512 per artifact, which matched the downloaded deb.
+  The watcher reads that same feed.
+  - The old `Comfy-Org/desktop` repo is archived (GPL-3.0, "superseded by
+    Comfy-Org/Comfy-Desktop"); the new one is dual AGPL-3.0-or-later /
+    commercial, so `LICENSE` starts with `AGPL-3+` and needs no
+    `package.license` entry. Its README still says "Windows / macOS" in a badge
+    but ships `.deb` and `.AppImage` for Linux.
+  - Installed to `/opt/comfy-desktop` instead of upstream's `/opt/Comfy Desktop`
+    (the space is awkward and no runtime code refers to it: the only hits in
+    app.asar are a unit-test fixture, upstream's after-install script and the
+    AppArmor profile). Launcher stays `comfyui-desktop-2`.
+  - Dropped from the deb: the arm/arm64/ia32/mac `7za` helpers, the AppArmor
+    profile, and the postinst's apt-repository setup. The desktop file's
+    `unshare` shell wrapper is replaced by a plain `Exec` because chrome-sandbox
+    is installed setuid like plexo and claude-desktop.
+  - The app disables its own updater outside an AppImage ("skipping autoUpdater
+    initialization because application is not in AppImage" on stderr), so
+    updates come from bumping the ebuild. The ComfyUI environments it creates
+    (about 5 GB) live in `~/ComfyUI-Installs` and are not tracked by Portage.
+  - Smoke-tested from the staged image with an isolated `HOME`: the window
+    renders on Wayland (onboarding screen), the bundled Python 3.13 imports
+    ssl/sqlite3/pygit2 from the relocated path. One benign QA notice remains:
+    `libpython3.so` has a NEEDED of `$ORIGIN/../lib/libpython3.13.so.1.0` that
+    Portage's soname resolver cannot follow (it resolves at runtime).
+- Bumped: `app-misc/chatgpt-desktop` 26.930.31428, `app-misc/claude-desktop`
+  2.9939.4 (both vendors publish amd64 and arm64 debs; the amd64 and arm64
+  sha256 values matched their APT indexes), `app-misc/unsloth-desktop` 0.1.902_beta (numbering jumped
+  0.1.815 -> 0.1.900 -> 0.1.902, still sorts newer), `net-misc/plexo` 1.0.0_rc11,
+  `dev-python/mammoth` 1.13.0, `net-misc/fluxcast` 0.2.8,
+  `media-video/wolfcut` 0.2.5, `media-gfx/opencadstudio` 2026.39 and
+  `app-emulation/hbmame` 0.289.3. Layouts of the three prebuilt desktop apps
+  are unchanged and every NEEDED soname is still covered by RDEPEND.
+  - ChatGPT republished DURING the session: the first fetch was 26.930.21537,
+    and 26.930.31428 (new build number, same date) appeared in the pool for
+    both architectures a few hours later. Re-run the version check just before
+    finishing an audit, not only at the start. The ebuild strips non-matching
+    `prebuilds` (musl/Android .so files), so scanning a raw unpacked deb shows
+    extra NEEDED entries that the installed tree does not have.
+  - Plexo rc.11 moved from Electron 39.8.10 to 44.4.4. `ELECTRON_PV` has to
+    follow the upstream `package-lock.json`; `verify-resources.py` refuses the
+    install otherwise, which is how a stale pin shows up.
+  - Mammoth: 1.12.2 was REPLACED by 1.13.0 (nothing pinned 1.12.x); 1.11.0
+    stays for MarkItDown's `<1.12` pin. 1.13.0 fixes markdown-writer HTML
+    escaping. The ebuild's smoke assertion passes in a venv.
+  - FluxCast 0.2.7 and 0.2.8 carry security fixes (RTSP session hijack and
+    unbounded-message DoS, DLNA stream server bound to every interface). The
+    portable-fixes patch was regenerated against 0.2.8 (same 33 hunks, no
+    offsets, now `fluxcast-0.2.8-portable-fixes.patch`) and still applies to
+    upstream `main`, so `fluxcast-9999` points at it too. Upstream's suite
+    passes 266/266 unpatched; with the patch `AspectRatioTest.
+    test_generated_pipelines_never_stretch` fails IDENTICALLY at 0.2.6 and
+    0.2.8: the test pins `tx_interface = "lo"` while the patch's TX-traffic
+    probe reads real counters with `sleep` mocked. A test artifact, not a
+    regression. About-window Tk needs `dev-lang/python[tk]`, undeclared since
+    before this bump.
+  - Concat 0.2.5 keeps the identical file list; the bundled FFmpeg went from
+    .102 to .103 with unchanged sonames, so the `0/60.62.62` subslot pin holds.
+    It launches and picks the RTX 4090 via Vulkan.
+  - OpenCADStudio 2026.39 moved its codec/kernel dependencies to new git repos
+    (`opencadcodec`, `opencadkernel`, `opencadgraph`). A full build and install
+    works (about 6 minutes) and every crate licence is already in `LICENSE`.
+  - HBMAME 0.289.3 pins `Files for 289.3` (`e7d66f9f...`); all three downstream
+    patches still apply. Full build, install and `-validate` pass, 9732
+    machines. Note HBMAME has no `pacman` (only hacks such as `puckman` clones).
+- Elephant 2.22.1 and Walker 2.17.1 are ADDED ALONGSIDE 2.22.0 and 2.17.0-r1,
+  not replacing them, because two things needed the user:
+  1. `elephant-2.22.1` fetches `elephant-vendor-2.22.1/elephant-2.22.1-vendor.tar.xz`
+     from a `firesand/edorp-overlay` release. The file was generated here
+     (sha256 `702ce871...bb3`, hashes in the Manifest) and the USER published it
+     as release `elephant-vendor-2.22.1` later the same day, since publishing a
+     release asset is their call. Verified end to end afterwards: a portage
+     `fetch` of the ebuild downloaded it from the release URL and passed the
+     Manifest check, and the sha256 is identical to the generated file.
+  2. Elephant 2.22.1's `go.mod` says `go 1.27.1`; Gentoo's `dev-lang/go-1.27.1`
+     is `~amd64`, and the host has 1.26.7. The ebuild now requires
+     `>=dev-lang/go-1.27.1`. Until the keyword is accepted Portage backtracks to
+     the old pair, so nothing breaks in the meantime.
+  Elephant 2.22.1 was built and tested with Go 1.27.1 (main binary, eight
+  provider plugins, `go test ./...`). Walker 2.17.1 adds one crate, `niri-ipc`
+  26.4.0 (GPL-3.0-or-later, so `GPL-3+` joins `LICENSE`), and compiles and runs
+  (`walker --version` -> 2.17.1). Its compile needs `gui-libs/gtk4-layer-shell`,
+  which this host does not have installed, so the compile was finished by
+  staging that library into `.portage-tmp` and pointing pkg-config at it.
+  Provider directories and `assets/elephant.service` are unchanged in Elephant.
+  Vendor tarball recipe (reproduces the uploaded 2.22.0 asset byte for byte):
+  `go mod vendor` in the extracted source, then
+  `tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf - elephant-$PV/vendor | xz -9e`.
+  Once Go 1.27.1 is accepted (the vendor asset is already up),
+  `elephant-2.21.0`, `elephant-2.22.0` and `walker-2.17.0-r1` can be dropped.
+- NOT bumped: `ci/pkgcheck-image` (0.10.44 -> 0.10.46). It is the digest pinned in
+  `.github/workflows/overlay-qa.yml`, not a package, and the watcher marks it
+  `manual`: a new digest has to be resolved and verified against GHCR first.
+- Also still outside main: `codex/grok-bot-ebuild` carries three unmerged Codex
+  packages (`games-util/dlss-updater` 5.0.3, `media-gfx/photon-studio` 0.1.21,
+  `app-misc/grok-bot` 0.59.1). They were not audited here.
+- Checks: `pkgcheck scan --exit GentooCI,-VisibleVcsPkg` exits 0 over every
+  touched package (the only findings are pre-existing musl/glibc and
+  `PythonCompatUpdate` hits, the expected `RedundantVersion` for the versions
+  deliberately kept side by side, and the fluxcast patch being over 20 KiB as it
+  already was); `.github/tests` passes 6/6.
+- Host tricks that made this possible are recorded in the memory notes and in
+  one line here: `PORTAGE_INST_UID=$(id -u) PORTAGE_INST_GID=$(id -g)` lets
+  `dobin` ebuilds finish their install phase as a normal user, which retires
+  the old "dobin cannot be tested here" caveat.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

@@ -54,11 +54,12 @@ local machine configuration do not belong in the overlay.
   runtime. Requires glibc and `~amd64` keywording.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
-- `gui-apps/walker`: Walker 2.17.0, the Rust/GTK4 rewrite of the Wayland
+- `gui-apps/walker`: Walker 2.17.1, the Rust/GTK4 rewrite of the Wayland
   application launcher. The ebuild builds entirely from pinned Cargo sources
   and replaces the obsolete Go-based package from GURU.
-- `gui-apps/elephant`: Elephant 2.22.0 backend for Walker, built with its Go
+- `gui-apps/elephant`: Elephant 2.22.1 backend for Walker, built with its Go
   provider plugins in one package to preserve Go plugin ABI compatibility.
+  Needs Go >= 1.27.1, currently `~amd64` in ::gentoo.
 - `app-text/markitdown`: Microsoft MarkItDown command-line tool and Python
   library for converting supported documents to Markdown. The base package
   includes HTML, plain text, CSV, JSON, XML/RSS, EPUB, Jupyter notebook, and
@@ -70,14 +71,14 @@ local machine configuration do not belong in the overlay.
 - `dev-python/cobble`, `dev-python/mammoth`, `dev-python/pdfplumber`, and
   `dev-python/python-pptx`: optional MarkItDown dependencies for DOCX, PDF,
   and PPTX conversion. `dev-python/mammoth` is packaged at both `1.11.0` and
-  `1.12.2` for the same reason (MarkItDown pins `mammoth~=1.11.0`).
+  `1.13.0` for the same reason (MarkItDown pins `mammoth~=1.11.0`).
 - `app-emulation/linuxmameui`: imported from the local LinuxMAMEUI Gentoo
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a
   release tarball or Git source URI exists.
 - `app-emulation/mame`: MAME 0.289-r1 ebuild imported from local LinuxMAMEUI
   packaging.
-- `app-emulation/hbmame`: HBMAME 0.289.2-r1 ebuild imported from local LinuxMAMEUI
+- `app-emulation/hbmame`: HBMAME 0.289.3 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
   ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
@@ -114,13 +115,14 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.38, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.39, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
-  from the pinned git tag; Cargo dependencies (crates.io plus the iced/acadrust
-  git patches) are fetched and vendored in `src_unpack` because upstream pins
-  git revisions that the `CRATES` mechanism cannot express. Requires Rust
-  >= 1.92 and `~amd64` keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+  from the pinned git tag; Cargo dependencies (crates.io plus the iced and
+  opencadcodec/opencadkernel/opencadgraph git dependencies) are fetched and
+  vendored in `src_unpack` because upstream pins git revisions that the
+  `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
+  keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
 - `app-misc/chatgpt-desktop`: OpenAI's ChatGPT desktop app for Linux,
   repackaged from the upstream `.deb`
   ([upstream](https://developers.openai.com/codex/app)). Bundles the Codex
@@ -162,10 +164,10 @@ local machine configuration do not belong in the overlay.
 
 ### Plexo
 
-Plexo `1.0.0_rc8` packages upstream `v1.0.0-rc.8`, a release candidate.
+Plexo `1.0.0_rc11` packages upstream `v1.0.0-rc.11`, a release candidate.
 Upstream began publishing native Linux amd64 builds at rc7, so the
 ebuild installs the upstream `amd64` `.deb`, with its own
-bundled Electron `39.8.10`, instead of repacking ARM64 resources onto a
+bundled Electron `44.4.4`, instead of repacking ARM64 resources onto a
 separately downloaded runtime. That repack is no longer possible in any case:
 `rc.7` added the `koffi` native addon, and the ARM64 `.deb` carries only an
 `aarch64` build of it. Requires an amd64/glibc system; musl is not supported.
@@ -306,7 +308,8 @@ resolves the app as `<script dir>/../dist`.
 
 ### Concat (media-video/wolfcut)
 
-Version 0.2.3 replaces WolfCut's Tauri interface with Concat's Slint interface.
+Since version 0.2.3, Concat's Slint interface replaces WolfCut's Tauri
+interface.
 The application is now AGPL-3.0-or-later with an upstream plugin exception;
 its Slint component uses GPL-3.0, the embedded font uses OFL-1.1, and effect
 preview photographs use the Unsplash license. License texts and upstream
@@ -338,8 +341,8 @@ Portage's control.
 ### Walker
 
 Walker 2 is a frontend for the separately released Elephant daemon and its
-provider modules. EDORP pairs Walker 2.17.0 with Elephant 2.22.0, whose
-protocol schemas match; the Walker ebuild pins that packaged Elephant version.
+provider modules. EDORP pairs Walker 2.17.1 with Elephant 2.22.1, which upstream
+released together; the Walker ebuild pins that packaged Elephant version.
 Elephant always includes
 the five providers needed for Walker's normal default query and common
 prefixes: desktop applications, calculator, web search, provider list, and
@@ -359,6 +362,17 @@ echo "gui-apps/walker ~amd64" | doas tee /etc/portage/package.accept_keywords/ed
 echo "gui-apps/elephant ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-walker
 doas emerge -av gui-apps/walker
 ```
+
+Elephant 2.22.1 raised its `go.mod` to Go 1.27.1, so its ebuild needs
+`>=dev-lang/go-1.27.1`, which is still `~amd64` in ::gentoo. Accept it with:
+
+```bash
+echo ">=dev-lang/go-1.27.1 ~amd64" | sudo tee -a \
+  /etc/portage/package.accept_keywords/edorp-walker
+```
+
+Until it is accepted, Portage falls back to the previous Walker 2.17.0-r1 and
+Elephant 2.22.0 pair, which both remain in the tree.
 
 Elephant must run with the graphical session's environment. On systemd, enable
 the installed user unit without root:
