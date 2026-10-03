@@ -59,7 +59,7 @@ local machine configuration do not belong in the overlay.
   and replaces the obsolete Go-based package from GURU.
 - `gui-apps/elephant`: Elephant 2.22.1 backend for Walker, built with its Go
   provider plugins in one package to preserve Go plugin ABI compatibility.
-  Needs Go >= 1.27.1, currently `~amd64` in ::gentoo.
+  Builds with Go >= 1.26 (see the Walker section).
 - `app-text/markitdown`: Microsoft MarkItDown command-line tool and Python
   library for converting supported documents to Markdown. The base package
   includes HTML, plain text, CSV, JSON, XML/RSS, EPUB, Jupyter notebook, and
@@ -363,16 +363,13 @@ echo "gui-apps/elephant ~amd64" | doas tee -a /etc/portage/package.accept_keywor
 doas emerge -av gui-apps/walker
 ```
 
-Elephant 2.22.1 raised its `go.mod` to Go 1.27.1, so its ebuild needs
-`>=dev-lang/go-1.27.1`, which is still `~amd64` in ::gentoo. Accept it with:
-
-```bash
-echo ">=dev-lang/go-1.27.1 ~amd64" | sudo tee -a \
-  /etc/portage/package.accept_keywords/edorp-walker
-```
-
-Until it is accepted, Portage falls back to the previous Walker 2.17.0-r1 and
-Elephant 2.22.0 pair, which both remain in the tree.
+Elephant 2.22.1's `go.mod` asks for Go 1.27.1, which Gentoo only offers as
+`~amd64` and whose upgrade would rebuild every Go package on the system. The
+ebuild relaxes that directive to 1.26.0 instead and builds with Go 1.26: the
+vendored dependencies need nothing newer, and the main binary, all provider
+plugins and the test suite build and pass there. That is not a toolchain
+upstream ships, so each bump re-checks it, and the ebuild stops with an error
+if the directive ever changes.
 
 Elephant must run with the graphical session's environment. On systemd, enable
 the installed user unit without root:

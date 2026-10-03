@@ -895,11 +895,22 @@ PRs #15 and #17 merged. Work is uncommitted on purpose; nothing is pushed.
      `fetch` of the ebuild downloaded it from the release URL and passed the
      Manifest check, and the sha256 is identical to the generated file.
   2. Elephant 2.22.1's `go.mod` says `go 1.27.1`; Gentoo's `dev-lang/go-1.27.1`
-     is `~amd64`, and the host has 1.26.7. The ebuild now requires
-     `>=dev-lang/go-1.27.1`. Until the keyword is accepted Portage backtracks to
-     the old pair, so nothing breaks in the meantime.
-  Elephant 2.22.1 was built and tested with Go 1.27.1 (main binary, eight
-  provider plugins, `go test ./...`). Walker 2.17.1 adds one crate, `niri-ipc`
+     is `~amd64`, and the host has 1.26.7. The first version of the ebuild
+     required `>=dev-lang/go-1.27.1`; the user accepted that keyword and their
+     next `emerge -uDN @world` wanted to upgrade Go AND rebuild ten Go packages
+     (docker, docker-cli, containerd, runc, go-md2man, kitty, tailscale,
+     github-cli, fzf, gocryptfs). A dry run of `emerge -pv gui-apps/walker` had
+     not shown that fan-out. So the ebuild now relaxes the directive instead
+     (`src_prepare` seds `go 1.27.1` to `go 1.26.0`, behind a `grep` guard that
+     dies if go.mod ever says something else) and requires `>=dev-lang/go-1.26.0`.
+     vendor/modules.txt tops out at `go 1.26.0`, so that is the true floor.
+     Verified by a full `ebuild` run against the system Go 1.26.7 (unpack,
+     prepare, compile, test, install: no failures, no QA notices); a hand build
+     of the main binary and all 25 plugins plus `go test` agreed. This is a
+     deviation from upstream's toolchain, so re-check it on every bump.
+  Elephant 2.22.1 was also built and tested with Go 1.27.1 using a checksum-
+  verified toolchain fetched into scratch (main binary, eight provider
+  plugins, `go test ./...`). Walker 2.17.1 adds one crate, `niri-ipc`
   26.4.0 (GPL-3.0-or-later, so `GPL-3+` joins `LICENSE`), and compiles and runs
   (`walker --version` -> 2.17.1). Its compile needs `gui-libs/gtk4-layer-shell`,
   which this host does not have installed, so the compile was finished by
@@ -908,7 +919,7 @@ PRs #15 and #17 merged. Work is uncommitted on purpose; nothing is pushed.
   Vendor tarball recipe (reproduces the uploaded 2.22.0 asset byte for byte):
   `go mod vendor` in the extracted source, then
   `tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf - elephant-$PV/vendor | xz -9e`.
-  Once Go 1.27.1 is accepted (the vendor asset is already up),
+  Both the vendor asset and the Go requirement are now sorted, so
   `elephant-2.21.0`, `elephant-2.22.0` and `walker-2.17.0-r1` can be dropped.
 - NOT bumped: `ci/pkgcheck-image` (0.10.44 -> 0.10.46). It is the digest pinned in
   `.github/workflows/overlay-qa.yml`, not a package, and the watcher marks it
