@@ -77,14 +77,28 @@ RDEPEND="
 		media-video/wireplumber
 	)
 "
-# 2.22.1 raised the go.mod directive to 1.27.1; the toolchain cannot fetch a
-# newer Go itself because the build runs with GOTOOLCHAIN=local.
-BDEPEND+=" >=dev-lang/go-1.27.1:="
+# 2.22.1 raised the go.mod directive to 1.27.1, which Gentoo only offers as
+# ~amd64 and which would rebuild every Go package on the system. The vendored
+# dependencies need Go 1.26.0 at most (see vendor/modules.txt) and the main
+# binary, every provider plugin and the test suite build and pass with Go
+# 1.26.7, so src_prepare relaxes the directive instead.
+BDEPEND+=" >=dev-lang/go-1.26.0:="
 
 DOCS=(
 	BREAKING.md
 	README.md
 )
+
+src_prepare() {
+	default
+
+	# The relaxation is only known to be safe for this exact directive. A
+	# release that changes it must be re-checked against the toolchain, not
+	# relaxed blindly.
+	grep -qx 'go 1.27.1' go.mod ||
+		die "go.mod no longer requires Go 1.27.1; re-check the Go relaxation"
+	sed -i -e 's/^go 1\.27\.1$/go 1.26.0/' go.mod || die
+}
 
 src_compile() {
 	local -x CGO_ENABLED=1
