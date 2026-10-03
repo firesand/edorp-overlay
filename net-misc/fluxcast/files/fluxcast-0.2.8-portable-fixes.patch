@@ -1,6 +1,6 @@
 --- a/src/capture/capture.py
 +++ b/src/capture/capture.py
-@@ -413,6 +413,10 @@
+@@ -418,6 +418,10 @@
          # always-copy=true!! immediately copy PipeWire buffer to CPU memory so
          # x264enc doesn't stall waiting for DMA-buf download mid-pipeline
          "always-copy=true",
@@ -48,7 +48,7 @@
  import time
  import sys
  import termios
-@@ -201,6 +203,10 @@
+@@ -209,6 +211,10 @@
                            "(driver picks the channel).")
      wfd.add_argument("--wfd-monitor", default=None, dest="monitor_name",
                       help="Deprecated alias for --monitor, kept for compatibility")
@@ -59,7 +59,7 @@
      wfd.add_argument("--wfd-p2p-backend", default="nm", dest="wfd_p2p_backend",
                       choices=["nm", "wpas"],
                       help="How to bring up the P2P link: 'nm' uses "
-@@ -330,25 +336,68 @@
+@@ -350,25 +356,68 @@
      ffmpeg_procs = None
      stream_server = None
      tv = None
@@ -146,7 +146,7 @@
  import sys
  import subprocess
  import threading
-@@ -207,7 +208,12 @@
+@@ -209,7 +210,12 @@
      global _proc, _cast_target
      log_fp = open(_LOG_PATH, "ab", buffering=0)
      log_fp.write(f"\n=== {target} :: {' '.join(cmd)} ===\n".encode())
@@ -160,7 +160,7 @@
      log_fp.close()
      with _lock:
          _proc = proc
-@@ -221,18 +227,93 @@
+@@ -223,18 +229,93 @@
      threading.Thread(target=_watch, args=(proc, target), daemon=True).start()
  
  
@@ -257,7 +257,7 @@
  # ── discovery ─────────────────────────────────────────────────────────────────
  
  def _scan_wfd() -> None:
-@@ -628,6 +709,11 @@
+@@ -702,6 +783,11 @@
          items.append(pystray.MenuItem(_l("Rescan Devices"), lambda *_: _rescan_all()))
  
      items.append(pystray.Menu.SEPARATOR)
@@ -269,7 +269,7 @@
      items.append(pystray.MenuItem(_l("About FluxCast"), lambda *_: _show_about()))
      items.append(pystray.MenuItem(_l("Exit"), _on_exit))
  
-@@ -649,6 +735,10 @@
+@@ -723,6 +809,10 @@
  
      def kickoff():
          _log("kickoff: GTK loop is alive, starting scans")
@@ -292,7 +292,7 @@
  
  
  class WFDNotReady(RuntimeError):
-@@ -25,6 +28,8 @@
+@@ -28,6 +31,8 @@
      h264_profile: str = "baseline"
      aosp_pmt_pid: bool = False  # opt-in: PMT on AOSP's 0x0100 instead of the muxer default (#84)
      dump_ts_path: Optional[str] = None
@@ -466,7 +466,7 @@
                  self._portal_pw_fd = session.pw_fd
 --- a/src/wfd/modes.py
 +++ b/src/wfd/modes.py
-@@ -72,6 +72,8 @@
+@@ -79,6 +79,8 @@
      resolution = _parse_resolution(config.output_resolution)
      if resolution is not None:
          return resolution
@@ -475,7 +475,7 @@
      if config.monitor is not None:
          monitor = config.monitor
          return monitor.width, monitor.height
-@@ -90,7 +92,11 @@
+@@ -97,7 +99,11 @@
      max_level = _max_wfd_level(sink_format.level) if sink_format else WFD_LEVEL_42
      resolution = _desired_resolution(config)
      wants_720 = resolution is None or (resolution[0] <= 1280 and resolution[1] <= 720)
@@ -490,7 +490,7 @@
  
 --- a/src/wfd/probe.py
 +++ b/src/wfd/probe.py
-@@ -208,6 +208,8 @@
+@@ -260,6 +260,8 @@
                      elif method == "PLAY":
                          _reply(msg, extra={"Range": "npt=now-"})
                          mode = _choose_cea_mode(media_config, st["sink_vfmt"])
@@ -499,7 +499,7 @@
                          eff_cfg = replace(
                              media_config,
                              source_port=st["src_port"],
-@@ -215,6 +217,7 @@
+@@ -267,6 +269,7 @@
                              fps=mode.fps,
                              no_audio=st["no_audio"],
                              h264_profile=_encoder_h264_profile(st["sink_vfmt"]),
@@ -509,7 +509,7 @@
                              eff_cfg,
 --- a/src/wfd/rtsp/handler.py
 +++ b/src/wfd/rtsp/handler.py
-@@ -409,6 +409,8 @@
+@@ -465,6 +465,8 @@
              raise WFDNotReady("Cannot start media before the TV RTP port is known.")
          if self.media is None:
              mode = self._cea_mode()
@@ -518,7 +518,7 @@
              effective_config = replace(
                  self.media_config,
                  source_port=self.source_rtp_port,
-@@ -416,6 +418,7 @@
+@@ -472,6 +474,7 @@
                  fps=mode.fps,
                  no_audio=self.media_config.no_audio or self.negotiated_no_audio,
                  h264_profile=_encoder_h264_profile(self.sink_video_format),
@@ -538,7 +538,7 @@
  from .config import WFDMediaConfig, WFDNotReady
  from .constants import WFD_RTSP_PORT, WFD_UIBC_PORT
  from .dump import report_ts_dump
-@@ -45,6 +48,7 @@
+@@ -47,6 +50,7 @@
          )
  
      monitor = None
@@ -546,7 +546,7 @@
      if not getattr(args, "wfd_test_pattern", False) and not getattr(args, "wfd_dry_run", False):
          selected_backend = getattr(args, "wfd_capture_backend", "auto")
          portal_mode = selected_backend == "portal" or (
-@@ -87,6 +91,24 @@
+@@ -114,6 +118,24 @@
          )
          return
  
@@ -571,7 +571,7 @@
      no_audio = getattr(args, "wfd_no_audio", False)
      if getattr(args, "wfd_test_pattern", False):
          if no_audio:
-@@ -111,6 +133,8 @@
+@@ -139,6 +161,8 @@
          uibc=getattr(args, "wfd_uibc", False),
          aosp_pmt_pid=getattr(args, "wfd_aosp_pmt_pid", False),
          dump_ts_path=getattr(args, "wfd_dump_ts", None),
@@ -580,7 +580,7 @@
      )
      if media_config.dump_ts_path:
          print(f"[FluxCast WFD] Dumping transmitted MPEG-TS to: {media_config.dump_ts_path}")
-@@ -182,6 +206,9 @@
+@@ -225,6 +249,9 @@
          _cleanup_step("TS dump report",
                        lambda: report_ts_dump(media_config.dump_ts_path))
          _cleanup_step("RTSP server shutdown", rtsp.stop)
