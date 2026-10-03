@@ -183,6 +183,34 @@ local machine configuration do not belong in the overlay.
   `wolfcut` for existing installations; the application now launches as
   `concat`, with `wolfcut-desktop` retained as an alias.
 
+### Packages shared with other overlays
+
+A few EDORP packages use the same category and name as ebuilds in other
+repositories: `app-misc/claude-desktop` and `app-misc/chatgpt-desktop`
+(gentoo-zh), and `gui-apps/walker` (GURU, whose Go-based 0.x releases the Rust
+rewrite in EDORP replaces). That is deliberate and needs no per-version
+pinning, because Portage compares versions across all repositories before it
+looks at priority:
+
+- When EDORP carries the newer version, `emerge -u` moves an existing
+  gentoo-zh or GURU install over to EDORP's ebuild. When the other overlay
+  publishes a newer release, Portage switches back.
+- Priority only breaks ties between identical versions. EDORP's
+  `priority = 70` beats overlays that set none, such as gentoo-zh, so with
+  equal versions EDORP's ebuild is the one installed. Giving the other overlay
+  a higher priority does not let its older version win.
+
+To keep the other overlay's copy instead, mask the EDORP one with a
+repository-qualified atom:
+
+```bash
+echo "app-misc/chatgpt-desktop::edorp" | sudo tee -a \
+  /etc/portage/package.mask/edorp-overlap
+```
+
+Portage then resolves to the other overlay's ebuild, as a downgrade if a newer
+EDORP build is already installed.
+
 ### DLSS Updater
 
 ```bash
@@ -282,7 +310,8 @@ Sourced from the versioned APT pool rather than the advertised
 `linux/deb/latest/chatgpt_amd64.deb`, which changes in place and so cannot be
 pinned by a Manifest. The APT repository and signing key that the upstream
 `.deb` installs for background self-updates are deliberately dropped; bump the
-ebuild to update instead.
+ebuild to update instead. gentoo-zh ships an ebuild with the same name; see
+[Packages shared with other overlays](#packages-shared-with-other-overlays).
 
 ```bash
 doas cp metadata/package.accept_keywords/edorp-chatgpt-desktop \
@@ -544,7 +573,9 @@ with `docx pdf pptx` enabled, on amd64.
 entry, and the hicolor icons. The Debian maintainer-script behaviour (writing
 an AppArmor profile and registering Anthropic's apt repo + unattended-upgrades
 snippet) is intentionally dropped — Portage manages updates. `chrome-sandbox`
-is installed setuid-root for the Chromium sandbox helper.
+is installed setuid-root for the Chromium sandbox helper. gentoo-zh ships an
+ebuild with the same name; see
+[Packages shared with other overlays](#packages-shared-with-other-overlays).
 
 ```bash
 # Accept keywords and install:
