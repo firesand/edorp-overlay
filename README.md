@@ -135,6 +135,13 @@ local machine configuration do not belong in the overlay.
   upstream `amd64`/`arm64` `.deb` into `/opt/claude-desktop`. Proprietary
   (`LICENSE="Anthropic"`), needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-claude-desktop`).
+- `app-misc/comfy-desktop`: Comfy Desktop, Comfy Org's official app for
+  installing and running ComfyUI
+  ([upstream](https://www.comfy.org/download)). Unpacks the upstream amd64
+  `.deb` into `/opt/comfy-desktop`; the ComfyUI environments it provisions
+  live in your home directory, outside Portage. AGPL-3.0-or-later (upstream
+  also sells a commercial licence), needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-comfy-desktop`).
 - `app-misc/unsloth-desktop`: Unsloth Desktop (beta), a Tauri app for running
   and training LLMs and diffusion models locally
   ([upstream](https://unsloth.ai/docs/desktop)). Only the desktop shell is
@@ -255,6 +262,28 @@ environment (uv, PyTorch, the unsloth wheels — several GB) into
 built-in system-dependency installer only drives `apt`, so on Gentoo it asks
 you to install anything missing yourself. Upstream publishes beta releases
 several times a day, so expect frequent bumps.
+
+### Comfy Desktop
+
+Sourced from ToDesktop's immutable per-build URL
+(`comfyui-desktop-<version>-build-<id>-amd64.deb`) rather than the advertised
+`download.comfy.org/linux/deb/x64`, which is a redirect to whatever is newest
+and so cannot be pinned by a Manifest. Each release changes the build id, which
+the ebuild keeps in `BUILD_ID`; `latest-linux.yml` in the same directory lists
+the current one together with a sha512 for the `.deb`.
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-comfy-desktop \
+  /etc/portage/package.accept_keywords/edorp-comfy-desktop
+sudo emerge -av app-misc/comfy-desktop
+```
+
+This installs the desktop shell only. On first launch the app downloads a
+standalone ComfyUI environment (about 5 GB with PyTorch) into
+`~/ComfyUI-Installs`, with settings under `~/.config/comfyui-desktop-2` and
+`~/.local/share/comfyui-desktop-2`; Portage neither tracks nor removes them.
+In-app updating is disabled for non-AppImage installs, so update the shell by
+bumping the ebuild. The launcher is `comfyui-desktop-2`, upstream's name.
 
 ### md2hd
 

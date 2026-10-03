@@ -70,6 +70,15 @@ regex = 'claude-desktop_([0-9][0-9.]+)_amd64\.deb'
 policy = "review"
 note = "Bump amd64 + arm64 debs together and regenerate the Manifest."
 
+# Official Electron .deb hosted by ToDesktop. The electron-updater feed names
+# the newest version and carries the sha512 of each artifact.
+["app-misc/comfy-desktop"]
+source = "regex"
+url = "https://download.todesktop.com/241130tqe9q3y/latest-linux.yml"
+regex = 'version: ([0-9][0-9.]*)'
+policy = "review"
+note = "Each release also changes the build id in the immutable download URL: copy it from the feed's .deb entry into BUILD_ID, then regenerate the Manifest."
+
 ["app-misc/unsloth-desktop"]
 source = "github"
 github = "unslothai/unsloth"
