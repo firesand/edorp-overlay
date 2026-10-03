@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Comfy Desktop is Comfy Org's official desktop application for
+		ComfyUI, the node-based engine for generative AI. It creates and
+		manages self-contained ComfyUI installs (each with its own Python,
+		PyTorch, models and custom nodes), keeps them updated, and takes
+		snapshots for rollback. This package installs the upstream amd64
+		Electron .deb payload under /opt/comfy-desktop; it does not build the
+		application from source. The ComfyUI environments the app provisions
+		are downloaded on first use into the user's home directory and are
+		not managed by Portage.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/Comfy-Org/Comfy-Desktop/issues</bugs-to>
+		<doc lang="en">https://docs.comfy.org/installation/desktop/linux</doc>
+		<remote-id type="github">Comfy-Org/Comfy-Desktop</remote-id>
+	</upstream>
+</pkgmetadata>
