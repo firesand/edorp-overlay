@@ -119,7 +119,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.39, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.40.1, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced and
@@ -127,7 +127,7 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photon-studio`: Photon Studio 0.1.38, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.43, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
@@ -177,7 +177,7 @@ local machine configuration do not belong in the overlay.
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
 - `media-video/wolfcut`: Concat (formerly WolfCut), a multi-track video
-  editor built with Slint ([source](https://github.com/jub0t/Concat)).
+  editor built with Slint ([source](https://github.com/jub0t/concat)).
   Repackaged from the upstream amd64 `.deb`; the default `system-ffmpeg`
   USE flag selects matching FFmpeg 8.1 libraries. The package atom remains
   `wolfcut` for existing installations; the application now launches as
@@ -237,13 +237,15 @@ Run `photon-studio` or use the Photon Studio menu entry. This package uses
 host libraries with the upstream Electron application; it does not install a
 Flatpak runtime. Application updates are delivered through Portage. Its
 background-removal model is **Built with DINOv3**; the DINOv3 agreement is
-installed with the package. The other bundled models (SAM 2.1, DETR and
-Depth Anything V2 Small) are Apache-2.0, and HEIF decoding uses LGPL-3 libheif
-and libde265, whose source archives ship inside the app directory.
+installed with the package. The other bundled models (SAM 2.1, DETR, Depth
+Anything V2 Small and the LaMa inpainting model behind Remove and Content-Aware
+Fill) are Apache-2.0, and HEIF decoding uses LGPL-3 libheif and libde265,
+whose source archives ship inside the app directory. The native RAW decoder
+needs glibc 2.39 or newer.
 
 ### Plexo
 
-Plexo `1.0.0_rc11` packages upstream `v1.0.0-rc.11`, a release candidate.
+Plexo `1.0.0_rc13` packages upstream `v1.0.0-rc.13`, a release candidate.
 Upstream began publishing native Linux amd64 builds at rc7, so the
 ebuild installs the upstream `amd64` `.deb`, with its own
 bundled Electron `44.4.4`, instead of repacking ARM64 resources onto a
@@ -252,7 +254,9 @@ separately downloaded runtime. That repack is no longer possible in any case:
 `aarch64` build of it. Requires an amd64/glibc system; musl is not supported.
 Before installation the ebuild verifies the bundle against the upstream
 lockfile and checks that the runtime and every loadable native addon really
-are x86-64.
+are x86-64. The torrent engine added in `rc.13` ships its native addons
+(`bufferutil`, `utf-8-validate`, `utp-native`, `fs-native-extensions`) for
+every platform; only the glibc `linux-x64` builds are installed.
 
 ```bash
 sudo cp metadata/package.accept_keywords/edorp-plexo \
@@ -585,8 +589,11 @@ sudo emerge -av app-misc/claude-desktop
 ```
 
 Linux support is upstream **beta** and only `amd64`/`arm64` are published.
-Optional: `virtual/secret-service` for keyring storage, and `app-emulation/qemu`
-plus KVM (`/dev/kvm`, hardware virtualization) for Cowork's sandboxed VM. Sign
+Since 2.19675.1 the native addon links `media-video/pipewire` for Wayland
+screen sharing and needs glibc 2.39 or newer. Optional: `virtual/secret-service`
+for keyring storage, `media-libs/libpulse` for microphone capture, and
+`app-emulation/qemu` plus KVM (`/dev/kvm`, hardware virtualization) for
+Cowork's sandboxed VM. Sign
 in with a Claude.ai subscription or organization SSO (no Console API key); the
 app shares `~/.claude` with Claude Code.
 
