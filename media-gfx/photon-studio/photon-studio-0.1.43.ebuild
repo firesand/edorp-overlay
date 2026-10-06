@@ -7,7 +7,7 @@ inherit desktop pax-utils xdg
 
 # Commit embedded in the upstream Flatpak bundle. Reject changed payloads even
 # when the CDN keeps the same versioned URL.
-FLATPAK_COMMIT="15ed7fef86069039352c1eaa8eb0e2fd2cd01f6e4427ecfe04d1cd09d4745a69"
+FLATPAK_COMMIT="b60ad641adaeb4bac66985a52d871ad0c50efd0755281f810bd7e8e7da5659ec"
 
 DESCRIPTION="Offline image editor with layers, retouching and PSD support"
 HOMEPAGE="https://tenzen.studio/photon/"
@@ -15,10 +15,11 @@ SRC_URI="https://downloads.tenzen.studio/photon/stable/linux/${PV}/Photon-Studio
 S="${WORKDIR}/flatpak-app/files/lib/com.tenzen.photon"
 
 # Photon is proprietary. The bundled background-removal model includes DINOv3
-# weights, while SAM 2.1, DETR and Depth Anything V2 Small are Apache-2.0.
-# HEIF decoding uses LGPL-3 libheif and libde265 (their sources ship in the
-# bundle), RAW decoding uses LibRaw (CDDL or LGPL-2.1) with IJG JPEG code, and
-# Electron, Chromium and other libraries carry their own notices.
+# weights, while SAM 2.1, DETR, Depth Anything V2 Small and LaMa are
+# Apache-2.0. HEIF decoding uses LGPL-3 libheif and libde265 (their sources
+# ship in the bundle), RAW decoding uses LibRaw (CDDL or LGPL-2.1) with IJG
+# JPEG code, libjxl and a BSD-3 OpenEXR decoder, and Electron, Chromium and
+# other libraries carry their own notices.
 LICENSE="all-rights-reserved Apache-2.0 BSD BSD-2 CDDL CC-BY-SA-3.0 DINOv3 IJG ISC LGPL-2.1+ LGPL-3+ MIT MPL-2.0 ZLIB"
 SLOT="0"
 KEYWORDS="-* ~amd64"
@@ -53,7 +54,7 @@ RDEPEND="
 	x11-libs/libxkbcommon
 	x11-libs/pango
 	x11-misc/xdg-utils
-	elibc_glibc? ( >=sys-libs/glibc-2.38 )
+	elibc_glibc? ( >=sys-libs/glibc-2.39 )
 "
 
 QA_PREBUILT="opt/${PN}/*"
@@ -86,7 +87,11 @@ src_install() {
 	pax-mark m "${ED}/opt/${PN}/photon-studio"
 	newbin "${FILESDIR}/photon-studio" photon-studio
 
-	sed 's/^Exec=electron-wrapper /Exec=photon-studio /' \
+	# 0.1.43 added the deprecated X-KDE-RunOnDiscreteGpu key next to the
+	# standard PrefersNonDefaultGPU one it duplicates; drop it to keep
+	# desktop-file-validate quiet.
+	sed -e 's/^Exec=electron-wrapper /Exec=photon-studio /' \
+		-e '/^X-KDE-RunOnDiscreteGpu=/d' \
 		"${WORKDIR}/flatpak-app/files/share/applications/com.tenzen.photon.desktop" \
 		> "${T}/photon-studio.desktop" || die
 	grep -q '^Exec=photon-studio %U$' "${T}/photon-studio.desktop" || die
