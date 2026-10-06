@@ -17,6 +17,7 @@ import sys
 
 ELF_MAGIC = b"\x7fELF"
 EM_X86_64 = 0x3E
+LINUX_X64_DIRS = ("linux_x64", "linux-x64")
 
 
 def elf_machine(path):
@@ -65,19 +66,26 @@ def main():
         raise ValueError("Packaged application does not match the source version")
 
     # Upstream ships every architecture's prebuilt addons side by side. Only the
-    # linux_x64 copies are ever loaded here, so those must all be x86-64; a
-    # native addon with no linux_x64 build at all would fail at runtime.
+    # Linux x86-64 copies are ever loaded here, so those must all be x86-64; a
+    # native addon with no such build at all would fail at runtime. Koffi keeps
+    # its builds under build/koffi/linux_x64, the node-gyp-build addons added
+    # by the torrent engine under prebuilds/linux-x64.
     addons = sorted(resources.rglob("*.node"))
     for addon in addons:
         if addon.is_symlink():
             raise ValueError(f"Native addon link requires review: {addon}")
-        if "linux_x64" in addon.parts and elf_machine(addon) != EM_X86_64:
+        if addon.parent.name in LINUX_X64_DIRS and elf_machine(addon) != EM_X86_64:
             raise ValueError(f"Native addon is not x86-64: {addon}")
 
     families = {addon.parent.parent for addon in addons}
     for family in sorted(families):
-        if not any((family / "linux_x64").glob("*.node")):
-            raise ValueError(f"Native addon has no linux_x64 build: {family}")
+        if not any(
+            build
+            for name in LINUX_X64_DIRS
+            for build in (family / name).glob("*.node")
+            if not build.name.endswith(".musl.node")
+        ):
+            raise ValueError(f"Native addon has no Linux x86-64 build: {family}")
 
     print(
         f"Verified Plexo {app_version}: upstream amd64 bundle, "

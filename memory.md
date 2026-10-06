@@ -987,6 +987,86 @@ checks that mattered, and how to repeat them:
   RDEPEND, `pkgcheck` is clean, each install phase completes without QA notices
   and each app starts under an isolated HOME.
 
+## Upstream audit (2026-10-07)
+
+Branch `claude/upstream-updates-2026-10-07`, based on `main` at 5856df5 (PR #22).
+The dashboard issue (#10) listed eight updates on 2026-10-06; a fresh local
+`nvchecker` run (the locked `nvchecker[pypi]==2.20` in a scratch venv, same
+`upstream.toml` and a `[keys]` file holding `gh auth token`) found ten, so the
+issue lags by a day: rerun it locally before starting.
+
+- Bumped: `app-misc/chatgpt-desktop` 26.930.61225, `app-misc/claude-desktop`
+  2.19675.1, `app-misc/comfy-desktop` 1.1.6 (build id `261003uci82pdkd`),
+  `app-misc/grok-bot` 0.68.1 (build `33103062f950...`), `app-misc/unsloth-desktop`
+  0.1.903_beta, `media-gfx/opencadstudio` 2026.40.1, `media-gfx/photon-studio`
+  0.1.43 (OSTree commit `b60ad641adae...`), `media-video/wolfcut` 0.2.6,
+  `net-misc/plexo` 1.0.0_rc13, and the CI pkgcheck image to 0.10.47
+  (`sha256:8e5dd79caae64ad0914650e20326592930fbb1d2b91e656597ff59a8c42ee901`,
+  resolved from GHCR with an anonymous pull token; the 0.10.44 tag resolved to
+  the digest the workflow already pinned, which proves the method, and the
+  config blob's `org.opencontainers.image.version` label says 0.10.47).
+- Every distfile was downloaded into scratch first and checked against upstream
+  before `DISTDIR=<scratch> ebuild ... manifest`: APT `Packages` SHA256 for
+  ChatGPT and Claude (both architectures), the sha512 in ToDesktop's
+  `latest-linux.yml` for Comfy, GitHub release asset digests for Unsloth, Plexo
+  and Concat (plus Concat's `SHA256SUMS`). Grok Bot's APT index STILL LISTED
+  0.66.0, so its 0.68.1 debs rest on the immutable build URL alone; recheck the
+  index on the next bump.
+- Claude Desktop 2.19675.1: `@ant/claude-native/claude-native-binding.node`
+  now links `libpipewire-0.3.so.0` (ashpd + pipewire crates: Wayland
+  screen-sharing/remote-desktop portal for computer use) and calls
+  `pidfd_spawnp`/`pidfd_getpid`, so its floor moved from glibc 2.34 to 2.39.
+  The deb's Depends gained `libpipewire-0.3-0` accordingly. RDEPEND adds
+  `media-video/pipewire` and `elibc_glibc? ( >=sys-libs/glibc-2.39 )`;
+  `media-libs/libpulse` (dlopen'ed `libpulse-simple`) is an optfeature. The
+  file list otherwise only changed in hashed `ion-dist` assets and locales.
+- Plexo rc.13 added a torrent engine (webtorrent) whose node-gyp-build addons
+  (`bufferutil`, `utf-8-validate`, `utp-native`, `fs-native-extensions`) ship
+  `prebuilds/<platform>-<arch>` for every target plus musl and Bare-runtime
+  `.bare` files. The old `verify-resources.py` refused the bundle ("no
+  linux_x64 build") because it only knew Koffi's `linux_x64` naming; it now
+  accepts `linux-x64` too and ignores musl variants. `src_prepare` prunes the
+  foreign prebuilds. Electron stays 44.4.4. All new addons are MIT/Apache-2.0,
+  already in LICENSE.
+- Photon 0.1.43 (828 MB) adds the LaMa big-lama inpainting model (Apache-2.0,
+  LICENSE/NOTICE under `/dist/models`, used by Remove and Content-Aware Fill)
+  and an OpenEXR decoder (BSD-3) with libjxl/brotli/highway/skcms notices now
+  also under `raw-licenses`; no new LICENSE entry. `photon_raw` moved to glibc
+  2.39 (the `build/cli/linux-x64/photon` CLI already needed 2.39 in 0.1.38), so
+  the floor is 2.39. The DINOv3 text is still byte-identical. The desktop file
+  gained a deprecated `X-KDE-RunOnDiscreteGpu` key that failed
+  `desktop-file-validate`; the ebuild's sed now drops it. Electron 44.5.1 as
+  before.
+- Concat: the GitHub repo was RENAMED `jub0t/Concat` -> `jub0t/concat`, so the
+  tag archive unpacks to `concat-0.2.6/` and the old `dodoc Concat-${PV}/...`
+  would die. HOMEPAGE, SRC_URI, metadata.xml, README and `upstream.toml` follow
+  the new name (old URLs still redirect). The deb's file list is identical,
+  FFmpeg stays at .103 with unchanged sonames (`0/60.62.62` pin holds), glibc
+  2.35, THIRD_PARTY_NOTICES unchanged.
+- OpenCADStudio 2026.40.1 is a fix release on 2026.40 (new `build.rs` version
+  scheme `YYYY.WW.N`). Git deps moved (codec fe69506, kernel ae28f66, graph
+  892f942); the crates.io set is unchanged, MSRV 1.92. Full build and install
+  (3.5 min) works, `--version` reports 2026.40.1 at the tag's commit 7d5ee916.
+- ChatGPT, Comfy, Grok Bot and Unsloth: file lists identical to the previous
+  versions, NEEDED sets unchanged, glibc floors unchanged (Grok's
+  `cursor_proclist.node` still 2.38). Electron 40.4.1 (Comfy), 42.1.0 (Grok).
+- Checks: `.github/tests` 6/6; `pkgcheck scan --exit GentooCI,-VisibleVcsPkg`
+  with the CI repos.conf layout exits 0 with no finding on any bumped version;
+  every bumped package passed a real `ebuild ... install` (only the known
+  benign Comfy `$ORIGIN` soname notice remains); every staged ELF resolves its
+  sonames on this host (remaining "unresolved" entries are rpath siblings:
+  pygit2.libs, sharp-libvips, Tcl, and the Qt shims that only load with Qt5).
+  Each staged app was launched from its image directory under an isolated
+  HOME (Electron ones with `--no-sandbox`, since the staged chrome-sandbox is
+  not setuid root): all nine come up with their normal process trees. Concat
+  0.2.6 aborted ONCE with a wgpu "Parent device is lost" panic while three
+  Electron apps were starting their GPU processes at the same time; alone it
+  starts fine on the RTX 4090, as does 0.2.5, so it is a test-concurrency
+  artifact, not a regression. Launch GPU apps one at a time when smoke-testing.
+  A piped `pkgcheck ... | grep` reported exit 139 although the scan was
+  complete; the unpiped run exits 0 with identical findings, so judge the CI
+  gate from an unpiped run.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

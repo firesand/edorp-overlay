@@ -90,6 +90,19 @@ src_prepare() {
 	# The amd64 bundle also carries an unused ARM64 Koffi addon. Keeping it
 	# triggers foreign-architecture soname warnings in the installed image.
 	rm -r opt/Plexo/resources/app.asar.unpacked/node_modules/koffi/build/koffi/linux_arm64 || die
+
+	# rc.13's torrent engine added node-gyp-build addons (bufferutil,
+	# utf-8-validate, utp-native, fs-native-extensions) that ship a
+	# prebuilds/<platform>-<arch> directory for every target, plus musl and
+	# Bare-runtime (.bare) variants that Electron never loads. Keep only the
+	# glibc linux-x64 .node file of each.
+	local dir
+	while IFS= read -r -d '' dir; do
+		find "${dir}" -mindepth 1 -maxdepth 1 -type d ! -name linux-x64 \
+			-exec rm -r {} + || die
+		find "${dir}" -type f \( -name '*.musl.node' -o -name '*.bare' \) \
+			-delete || die
+	done < <(find opt/Plexo/resources/app.asar.unpacked -type d -name prebuilds -print0 || die)
 }
 
 src_install() {

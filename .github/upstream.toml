@@ -68,7 +68,7 @@ source = "regex"
 url = "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages"
 regex = 'claude-desktop_([0-9][0-9.]+)_amd64\.deb'
 policy = "review"
-note = "Bump amd64 + arm64 debs together and regenerate the Manifest."
+note = "Bump amd64 + arm64 debs together and regenerate the Manifest. Re-derive the glibc floor and NEEDED set of resources/app.asar.unpacked/node_modules/@ant/claude-native/claude-native-binding.node: 2.19675.1 started linking libpipewire-0.3 and calling pidfd_spawnp (glibc 2.39)."
 
 # Official Electron .deb hosted by ToDesktop. The electron-updater feed names
 # the newest version and carries the sha512 of each artifact.
@@ -85,7 +85,7 @@ source = "regex"
 url = "https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand"
 regex = '"version":"([0-9]+(?:\.[0-9]+)+)"'
 policy = "review"
-note = "Recheck the debUrl and commitSha from the release API, bundled licenses, and native GUI before bumping. Cross-check each deb against the SHA256 in https://downloads.cursor.com/aptrepo/dists/grok-bot/main/binary-<arch>/Packages, which the release feed itself does not provide."
+note = "Recheck the debUrl and commitSha from the release API, bundled licenses, and native GUI before bumping. Cross-check each deb against the SHA256 in https://downloads.cursor.com/aptrepo/dists/grok-bot/main/binary-<arch>/Packages, which the release feed itself does not provide; that index can lag the feed (it still listed 0.66.0 when 0.68.1 was released), in which case only the immutable build URL vouches for the deb."
 
 ["app-misc/unsloth-desktop"]
 source = "github"
@@ -202,13 +202,13 @@ source = "regex"
 url = "https://tenzen.studio/api/v1/photon/releases/latest"
 regex = '"version":"([0-9]+(?:\.[0-9]+)+)"'
 policy = "review"
-note = "Recheck the Linux x64 Flatpak URL, OSTree commit, bundled Electron/native modules, licenses and native GUI before bumping. On every bump list /dist/models and the native *-licenses directories (app.asar and app.asar.unpacked) for new models or libraries, as 0.1.38 added SAM 2.1, DETR, Depth Anything, libheif and libde265, and recheck the glibc floor of photon_raw and photon_jxl."
+note = "Recheck the Linux x64 Flatpak URL, OSTree commit, bundled Electron/native modules, licenses and native GUI before bumping. On every bump list /dist/models and the native *-licenses directories (app.asar and app.asar.unpacked) for new models or libraries, as 0.1.38 added SAM 2.1, DETR, Depth Anything, libheif and libde265 and 0.1.43 added LaMa and an OpenEXR decoder, and recheck the glibc floor of photon_raw, photon_jxl and build/cli/linux-x64/photon (2.39 since 0.1.43). Validate the generated desktop entry: 0.1.43 added a deprecated X-KDE-RunOnDiscreteGpu key that the ebuild strips."
 
 # Include stable tags as well as the earlier alpha series; upstream now
 # releases Concat under its original name.
 ["media-video/wolfcut"]
 source = "github"
-github = "jub0t/Concat"
+github = "jub0t/concat"
 use_max_tag = true
 include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+(?:-alpha\.[0-9]+)?$'
 prefix = "v"
@@ -248,7 +248,7 @@ prefix = "v"
 from_pattern = '-rc\.'
 to_pattern = '_rc'
 policy = "review"
-note = "Check release architectures, portable ASAR resources, and the exact Electron version in package-lock.json; update all distfiles together."
+note = "Check release architectures, portable ASAR resources, and the exact Electron version in package-lock.json; update all distfiles together. List every *.node under app.asar.unpacked: rc.13 added node-gyp-build addons with prebuilds/<platform>-<arch> directories, which src_prepare prunes to linux-x64 and verify-resources.py must know about."
 
 # Snapshot packages deliberately use full UTC commit timestamps so multiple
 # commits on the same day cannot be hidden.

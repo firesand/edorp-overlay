@@ -23,8 +23,8 @@
 		</flag>
 	</use>
 	<upstream>
-		<bugs-to>https://github.com/jub0t/Concat/issues</bugs-to>
-		<changelog>https://github.com/jub0t/Concat/releases</changelog>
-		<remote-id type="github">jub0t/Concat</remote-id>
+		<bugs-to>https://github.com/jub0t/concat/issues</bugs-to>
+		<changelog>https://github.com/jub0t/concat/releases</changelog>
+		<remote-id type="github">jub0t/concat</remote-id>
 	</upstream>
 </pkgmetadata>

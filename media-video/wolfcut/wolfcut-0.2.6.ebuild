@@ -6,11 +6,13 @@ EAPI=8
 inherit desktop optfeature unpacker xdg
 
 DESCRIPTION="Concat multi-track video editor (formerly WolfCut)"
-HOMEPAGE="https://github.com/jub0t/Concat"
+# Upstream renamed the repository from jub0t/Concat to jub0t/concat, so the
+# tag archive now unpacks to concat-${PV}.
+HOMEPAGE="https://github.com/jub0t/concat"
 SRC_URI="
-	https://github.com/jub0t/Concat/releases/download/v${PV}/Concat-${PV}-linux-x86_64.deb
+	https://github.com/jub0t/concat/releases/download/v${PV}/Concat-${PV}-linux-x86_64.deb
 		-> ${P}.deb
-	https://github.com/jub0t/Concat/archive/refs/tags/v${PV}.tar.gz
+	https://github.com/jub0t/concat/archive/refs/tags/v${PV}.tar.gz
 		-> concat-${PV}.tar.gz
 "
 S="${WORKDIR}"
@@ -72,8 +74,8 @@ src_install() {
 	domenu usr/share/applications/concat.desktop
 	doicon -s 256 usr/share/icons/hicolor/256x256/apps/concat.png
 
-	dodoc Concat-${PV}/{LICENSE,LICENSE-EXCEPTIONS.md,THIRD_PARTY_NOTICES.md}
-	dodoc Concat-${PV}/src/crates/concat-text/fonts/LICENSE-HankenGrotesk.txt
+	dodoc concat-${PV}/{LICENSE,LICENSE-EXCEPTIONS.md,THIRD_PARTY_NOTICES.md}
+	dodoc concat-${PV}/src/crates/concat-text/fonts/LICENSE-HankenGrotesk.txt
 }
 
 pkg_postinst() {
