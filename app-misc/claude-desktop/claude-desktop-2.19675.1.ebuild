@@ -30,6 +30,8 @@ RESTRICT="bindist mirror strip"
 # translation of the .deb's Depends field to their Gentoo providers. systemd
 # (or systemd-utils) supplies the udev/logind bits Chromium expects; the qemu
 # stack used by Cowork is optional and surfaced through optfeature instead.
+# The claude-native addon links libpipewire-0.3 for the Wayland screen-sharing
+# portal and calls pidfd_spawnp(), which sets the glibc floor at 2.39.
 RDEPEND="
 	|| (
 		sys-apps/systemd
@@ -44,6 +46,7 @@ RDEPEND="
 	dev-libs/nss
 	media-libs/alsa-lib
 	media-libs/mesa[gbm(+)]
+	media-video/pipewire
 	net-print/cups
 	sys-apps/dbus
 	sys-apps/xdg-desktop-portal
@@ -64,6 +67,7 @@ RDEPEND="
 	x11-libs/libXtst
 	x11-libs/pango
 	x11-misc/xdg-utils
+	elibc_glibc? ( >=sys-libs/glibc-2.39 )
 "
 
 QA_PREBUILT="*"
@@ -94,5 +98,6 @@ pkg_postinst() {
 	elog "~/.claude is shared with Claude Code, so signing in may update its login state."
 
 	optfeature "secret/keyring storage" virtual/secret-service
+	optfeature "microphone capture for computer use" media-libs/libpulse
 	optfeature "Cowork sandboxed VM support" app-emulation/qemu
 }
