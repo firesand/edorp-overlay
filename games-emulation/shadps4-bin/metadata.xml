@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		The official prebuilt shadPS4 SDL core for x86-64-v3 Linux. This package
+		extracts the upstream AppImage into /opt/shadps4-bin and runs its native
+		executable without FUSE. It includes the Big Picture frontend but no
+		firmware modules or games. The separate Qt launcher can use the
+		shadps4-core command to start this system-managed emulator.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/shadps4-emu/shadPS4/issues</bugs-to>
+		<doc lang="en">https://github.com/shadps4-emu/shadPS4/tree/main/documents</doc>
+		<remote-id type="github">shadps4-emu/shadPS4</remote-id>
+	</upstream>
+</pkgmetadata>

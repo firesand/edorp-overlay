@@ -44,6 +44,11 @@ local machine configuration do not belong in the overlay.
 
 ### General
 
+- `games-emulation/shadps4-bin`: official shadPS4 0.19.0 stable amd64 core.
+- `games-emulation/shadps4-qtlauncher-bin`: official QtLauncher snapshot
+  from 2026-10-05 (`29de8fa`), packaged separately from the emulator core.
+  Both packages extract the verified upstream AppImages under `/opt`, so
+  neither FUSE nor an AppImage runtime is needed. See the shadPS4 section.
 - `net-misc/fluxcast`: imported from the existing FluxCast portable overlay
   bundle.
 - `dev-python/pystray`: Fluxcast dependency.
@@ -619,6 +624,40 @@ echo "=sys-power/asusctl-9999 **" | doas tee /etc/portage/package.accept_keyword
 echo "=sys-power/supergfxctl-9999 **" | doas tee -a /etc/portage/package.accept_keywords/edorp-asus
 echo "sys-power/asusctl gui" | doas tee /etc/portage/package.use/edorp-asus
 ```
+
+### shadPS4
+
+The core package follows stable upstream releases (currently **0.19.0**).
+QtLauncher publishes rolling prerelease snapshots; its ebuild pins the
+2026-10-05 release commit and includes the full UTC commit timestamp in its
+version. Both packages require glibc >= 2.38; the core requires an
+x86-64-v3 (AVX2-era) CPU. A Vulkan-capable GPU
+and driver are required; game compatibility varies.
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-shadps4 /etc/portage/package.accept_keywords/
+# Review licenses/FraunhoferFDK in the Gentoo repository, then accept if appropriate:
+sudo cp metadata/package.license/edorp-shadps4 /etc/portage/package.license/
+sudo emerge -av games-emulation/shadps4-qtlauncher-bin::edorp
+```
+
+The launcher pulls in `games-emulation/shadps4-bin`. Run `shadps4`, open
+**Version Manager**, add a custom version pointing to `/usr/bin/shadps4-core`,
+and select it. `shadps4-core -b` starts the core's Big Picture interface.
+Use Portage to update these packages and disable automatic AppImage update
+checks in the launcher. Versions downloaded separately through Version
+Manager remain outside Portage's control.
+
+Existing games, modules, saves and settings stay in the user's directories.
+No firmware or games are downloaded by the ebuilds. They preserve the upstream
+binary and private runtime, fetch pinned source archives for available notices,
+and disable mirroring/binary-package redistribution; those archives are not a
+complete corresponding-source bundle for all linked libraries.
+
+If migrating from a manual installation, check `command -v shadps4` and
+`command -v shadps4-core`: older `~/.local/bin` wrappers and user desktop
+entries can take precedence over the system package. Keep the previous
+core available until the games you use have been checked on the new version.
 
 ## Validation
 
