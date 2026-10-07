@@ -1,0 +1,7 @@
+#!/bin/sh
+# Run the extracted official bundle without FUSE or changing the working dir.
+appdir="@EPREFIX@/opt/shadps4-qtlauncher-bin"
+export LD_LIBRARY_PATH="${appdir}/usr/lib:${appdir}/usr/optional/libstdc++.so.6:${appdir}/usr/optional/libgcc_s.so.1${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+# Qt plugins must match the bundled Qt, not the desktop's Qt installation.
+unset QT_PLUGIN_PATH QML2_IMPORT_PATH
+exec "${appdir}/usr/bin/shadPS4QtLauncher" "$@"

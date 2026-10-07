@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Official amd64 QtLauncher snapshot for shadPS4, extracted from the
+		upstream AppImage for native execution without FUSE. The emulator
+		core is packaged separately as shadps4-bin. No console firmware,
+		games or user configuration are included.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">shadps4-emu/shadps4-qtlauncher</remote-id>
+		<bugs-to>https://github.com/shadps4-emu/shadps4-qtlauncher/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

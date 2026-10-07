@@ -17,6 +17,41 @@ SPEC.loader.exec_module(dashboard)
 
 
 class RenderDashboardTest(unittest.TestCase):
+    def test_shadps4_watchers_track_stable_core_and_published_launcher(self) -> None:
+        with (REPO_ROOT / ".github/upstream.toml").open("rb") as file:
+            config = tomllib.load(file)
+        core = config["games-emulation/shadps4-bin"]
+        self.assertTrue(core["use_latest_release"])
+        self.assertFalse(core.get("include_prereleases", False))
+        self.assertEqual("v.0.19.0".removeprefix(core["prefix"]), "0.19.0")
+
+        launcher = config["games-emulation/shadps4-qtlauncher-bin"]
+        self.assertEqual(launcher["source"], "regex")
+        self.assertEqual(
+            launcher["url"],
+            "https://api.github.com/repos/shadps4-emu/shadps4-qtlauncher/releases?per_page=100",
+        )
+        # The later release deliberately has a lower SHA. Asset and commit
+        # creation times must not replace the release publication time.
+        feed = json.dumps([
+            {
+                "tag_name": "shadPS4QtLauncher-2026-10-05-" + "1" * 40,
+                "published_at": "2026-10-05T21:00:00Z",
+                "assets": [{"created_at": "2026-10-06T01:00:00Z"}],
+            },
+            {
+                "tag_name": "shadPS4QtLauncher-2026-10-05-" + "f" * 40,
+                "published_at": "2026-10-05T20:51:54Z",
+            },
+            {"sha": "a" * 40, "commit": {"committer": {"date": "2026-10-07T00:00:00Z"}}},
+        ])
+        versions = [
+            re.sub(launcher["from_pattern"], launcher["to_pattern"], stamp)
+            for stamp in re.findall(launcher["regex"], feed)
+        ]
+        self.assertEqual(versions, ["20261005.210000", "20261005.205154"])
+        self.assertGreater(versions[0], versions[1])
+
     def test_unsloth_watcher_normalizes_beta_and_stable_releases(self) -> None:
         with (REPO_ROOT / ".github/upstream.toml").open("rb") as file:
             entry = tomllib.load(file)["app-misc/unsloth-desktop"]

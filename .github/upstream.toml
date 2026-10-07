@@ -163,6 +163,26 @@ source = "pypi"
 pypi = "upnpclient"
 policy = "review"
 
+["games-emulation/shadps4-bin"]
+source = "github"
+github = "shadps4-emu/shadPS4"
+use_latest_release = true
+prefix = "v."
+policy = "review"
+note = "Track stable core releases only. Refresh the pinned Linux SDL archive and source notices, inspect bundled libraries and their ABI floors, and test core startup plus QtLauncher IPC."
+
+# QtLauncher publishes rolling prereleases, so /releases/latest returns 404.
+# Use publication timestamps rather than SHA ordering: two releases on the
+# same day must both be visible to nvcmp --newer with nvchecker 2.20.
+["games-emulation/shadps4-qtlauncher-bin"]
+source = "regex"
+url = "https://api.github.com/repos/shadps4-emu/shadps4-qtlauncher/releases?per_page=100"
+regex = '"published_at":\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)"'
+from_pattern = '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$'
+to_pattern = '\1\2\3.\4\5\6'
+policy = "review"
+note = "The watcher baseline is the release publication time, not the ebuild PV. For each published release pin its full tag, commit, Linux asset and digest; derive PV as 0_pYYYYMMDDHHMMSS from that commit's UTC timestamp. Recheck bundled licenses, libraries, Qt plugins, GUI startup and core IPC; branch commits without a release are not candidates."
+
 ["games-util/dlss-updater"]
 source = "github"
 github = "Recol/DLSS-Updater"

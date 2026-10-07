@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Run the verified native AppImage payload without mounting it through FUSE.
+appdir="@EPREFIX@/opt/shadps4-bin"
+library_path="${appdir}/usr/lib:${appdir}/usr/optional/libstdc++.so.6:${appdir}/usr/optional/libgcc_s.so.1"
+export LD_LIBRARY_PATH="${library_path}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+exec "${appdir}/usr/bin/shadps4" "$@"
