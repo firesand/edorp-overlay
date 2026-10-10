@@ -87,9 +87,14 @@ src_prepare() {
 		"${MY_PV}" "${ELECTRON_PV}" opt/Plexo/plexo ||
 		die "Application resource validation failed"
 
-	# The amd64 bundle also carries an unused ARM64 Koffi addon. Keeping it
-	# triggers foreign-architecture soname warnings in the installed image.
-	rm -r opt/Plexo/resources/app.asar.unpacked/node_modules/koffi/build/koffi/linux_arm64 || die
+	# The amd64 bundle also carries Koffi builds for other targets: an unused
+	# linux_arm64 one, which triggers foreign-architecture soname warnings in
+	# the installed image, and since rc.14 win32_x64 and win32_arm64 DLLs with
+	# their .lib/.exp import libraries, which are simply dead weight here.
+	# Keep only the glibc linux_x64 build, the way the prebuilds prune below
+	# keeps only linux-x64.
+	find opt/Plexo/resources/app.asar.unpacked/node_modules/koffi/build/koffi \
+		-mindepth 1 -maxdepth 1 -type d ! -name linux_x64 -exec rm -r {} + || die
 
 	# rc.13's torrent engine added node-gyp-build addons (bufferutil,
 	# utf-8-validate, utp-native, fs-native-extensions) that ship a
