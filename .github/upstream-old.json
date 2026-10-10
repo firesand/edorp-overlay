@@ -13,7 +13,7 @@
   "app-portage/equery-gui": "0.1.0",
   "app-text/markitdown": "0.1.8",
   "app-text/md2hd": "0.3.0",
-  "ci/pkgcheck-image": "0.10.47",
+  "ci/pkgcheck-image": "0.10.48",
   "dev-python/cobble": "0.1.4",
   "dev-python/magika": "1.0.3",
   "dev-python/mammoth": "1.13.0",
