@@ -315,7 +315,7 @@
          self._lpcm_muxer = None   # WFDLPCMMuxer instance for Microsoft adapter
 --- a/src/wfd/media/portal.py
 +++ b/src/wfd/media/portal.py
-@@ -20,7 +20,17 @@
+@@ -21,7 +21,17 @@
      _pipewiresrc_selector_attempts, _wfd_gst_prog_map,
  )
  from ..modes import _h264_level_for_mode
@@ -334,7 +334,7 @@
  
  
  def _end_session_on_portal_revoke() -> None:
-@@ -37,20 +47,24 @@
+@@ -38,20 +48,24 @@
  
  class PortalMixin:
      def _open_portal_session(self, monitor):
@@ -371,10 +371,10 @@
          # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
          if session.source_type is not None and session.source_type not in (1, 2, 4):
              close_portal_capture(self.portal_session)
-@@ -285,7 +299,11 @@
+@@ -283,7 +297,11 @@
  
          is_lg = "LG" in self.config.peer_name.upper()
-         if is_lg:
+         if is_lg and not self.config.bitrate_explicit:
 -            effective_kbits = min(effective_kbits, 4000)
 +            # 4 Mbps is adequate for 720p but smears desktop text at 1080p.
 +            # Keep the conservative LG cap while allowing enough detail for
@@ -384,7 +384,7 @@
  
          effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
          if effective_kbits > requested_kbits:
-@@ -314,9 +332,13 @@
+@@ -312,9 +330,13 @@
          def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
              # Use more buffers for high-res 1440p capture and move videorate early
              props = _gst_pipewiresrc_properties()
@@ -399,7 +399,7 @@
              if "resend-last" in props:
                  pipewire_args.append("resend-last=true")
              if "min-force-user-latency" in props:
-@@ -379,7 +401,7 @@
+@@ -377,7 +399,7 @@
                      )
              else:
                  if "vbv-buf-capacity" in x264_props:
@@ -408,15 +408,9 @@
                  # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
                  if "option-string" in x264_props:
                      opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
-@@ -395,13 +417,16 @@
-                 f"fd={session.pw_fd}",
-                 *pipewire_args,
-                 "do-timestamp=true",
--                "always-copy=false",
-+                # Copy portal DMA-BUFs immediately. This avoids the
-+                # gst_mini_object_unref/stall seen with PipeWire 1.6 and
-+                # GStreamer 1.24 when the encoder retains imported buffers.
-+                "always-copy=true",
+@@ -401,11 +423,11 @@
+                 # not about their memory type.
+                 "always-copy=true",
                  "keepalive-time=33",
 -                "!", "queue", "max-size-buffers=64", "max-size-time=1000000000", "leaky=downstream",
 +                "!", "queue", f"max-size-buffers={queue_buffers}", "max-size-time=0", "max-size-bytes=0", "leaky=downstream",
@@ -428,7 +422,7 @@
                  "!", video_caps,
                  "!", "videoconvert",
                  "!", "video/x-raw,format=I420",
-@@ -565,6 +590,7 @@
+@@ -569,6 +591,7 @@
                      f"selector={selector_name}, caps={attempt_name}"
                  )
                  gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
@@ -436,7 +430,7 @@
                  gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
                  time.sleep(2.5)
                  if gst_proc.poll() is not None:
-@@ -582,6 +608,27 @@
+@@ -586,6 +609,27 @@
                      )
                      continue
  
@@ -466,7 +460,7 @@
                  self._portal_pw_fd = session.pw_fd
 --- a/src/wfd/modes.py
 +++ b/src/wfd/modes.py
-@@ -79,6 +79,8 @@
+@@ -85,6 +85,8 @@
      resolution = _parse_resolution(config.output_resolution)
      if resolution is not None:
          return resolution
@@ -475,10 +469,10 @@
      if config.monitor is not None:
          monitor = config.monitor
          return monitor.width, monitor.height
-@@ -97,7 +99,11 @@
-     max_level = _max_wfd_level(sink_format.level) if sink_format else WFD_LEVEL_42
-     resolution = _desired_resolution(config)
-     wants_720 = resolution is None or (resolution[0] <= 1280 and resolution[1] <= 720)
+@@ -108,7 +110,11 @@
+     # unknown size should not fall back to 720p outside test-pattern mode.
+     wants_720 = (resolution is None and config.test_pattern) or (
+         resolution is not None and resolution[0] <= 1280 and resolution[1] <= 720)
 -    wants_1200 = resolution is not None and resolution[0] >= 1920 and resolution[1] > 1080
 +    wants_1200 = (
 +        resolution is not None
