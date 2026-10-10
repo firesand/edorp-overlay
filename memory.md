@@ -1067,6 +1067,95 @@ issue lags by a day: rerun it locally before starting.
   complete; the unpiped run exits 0 with identical findings, so judge the CI
   gate from an unpiped run.
 
+## Upstream audit (2026-10-10)
+
+Ten packages pending, all ten bumped. Branch
+`claude/upstream-updates-2026-10-10` off main at bbe80ef (PR #24 / shadPS4
+had landed after the 2026-10-07 audit). The watcher was reproduced locally
+with the nvchecker venv recipe; `nvcmp --newer` is empty afterwards.
+
+HOST PROBLEM FOUND FIRST, unrelated to any bump: `/etc/portage/make.conf`
+(modified 2026-10-10 17:54) has a line-continuation backslash followed by
+TRAILING WHITESPACE on lines 9, 10, 12 and 13 of the COMMON_FLAGS block. A
+backslash is only a continuation when it ends the line, so a literal `\`
+ends up inside COMMON_FLAGS, and line 29 feeds COMMON_FLAGS into LDFLAGS.
+Every link then fails with `ld: cannot find \: No such file or directory`.
+Proved with a two-line C file: linking with the host LDFLAGS verbatim fails,
+and succeeds with the backslashes stripped. Build-info from the 2026-10-07
+opencadstudio build (same -march=alderlake) has clean flags, so this is new.
+Local verification in this session used
+`CFLAGS=$(portageq envvar CFLAGS | tr -d '\\' | tr -s ' ')` and the same for
+LDFLAGS. The real fix is the user's: delete the trailing spaces after those
+four backslashes.
+
+- Mechanical: `app-misc/chatgpt-desktop` 26.1007.21434 (both arch indexes
+  agree), `app-misc/unsloth-desktop` 0.1.905_beta (portage vercmp confirms it
+  sorts above 0.1.903_beta).
+- `app-misc/claude-desktop` 2.31226.1 LOWERED its glibc floor. The addon
+  still references pidfd_spawnp but as an UNTAGGED weak symbol
+  (`w D *UND*`) where 2.19675.1 had `w DF *UND* (GLIBC_2.39)`. Only a
+  version-tagged reference lands in DT_VERNEED, so the bundle maximum is now
+  GLIBC_2.34 and the ebuild floor moved 2.39 -> 2.34. Always compare the OLD
+  binary's symbol line, not just the new one's max version.
+- `gui-apps/walker` 2.17.2 updated its GTK4 bindings (gdk4 0.9.6 -> 0.11.5,
+  CRATES 265 -> 274). The CRATES method was validated by regenerating
+  2.17.1's list and diffing against the committed one (exact match) BEFORE
+  trusting the new list. Dependency floors were re-derived from the crates'
+  own `[package.metadata.system-deps]`: walker still enables gtk4 v4_12 and
+  gtk4-layer-shell-sys 0.6.1 still wants only `>= 1`, so no ebuild dep
+  change. Elephant was deliberately NOT bumped: no elephant release pairs
+  with 2.17.2 (2.22.1 is still newest and predates 2.17.1 by 11 minutes).
+  `gui-libs/gtk4-layer-shell` is NOT installed here, so the build stops in
+  that crate's pkg-config probe at ~240/342 units; everything before it
+  builds. Note the walker/elephant build-info dirs under `.portage-tmp` are
+  from ANOTHER machine (-march=znver4), so walker was never built on this
+  host.
+- `net-misc/fluxcast` 0.2.9 needed a real three-way merge, not a re-anchor.
+  Upstream ADOPTED the downstream `always-copy=true` fix (its issue #147),
+  so that hunk was dropped as redundant; upstream added a
+  `not config.bitrate_explicit` guard around the LG cap, which was kept with
+  the downstream resolution-aware body; and upstream rewrote the wants_720
+  line next to wants_1200, so upstream's version was kept and only the
+  downstream 16:10 aspect test reapplied.
+- `net-misc/plexo` 1.0.0_rc14 keeps Electron 44.4.4, but rc.14 DROPPED
+  koffi's linux_arm64 and ADDED win32_x64 + win32_arm64 DLLs with .lib/.exp
+  import libraries. The old prune only removed linux_arm64, so ~3 MB of
+  Windows artefacts would have shipped. The prune is now
+  `find ... -mindepth 1 -maxdepth 1 -type d ! -name linux_x64 -exec rm -r`,
+  matching the prebuilds prune. Note objdump reports NO architecture for PE
+  files, so an arch check that greps for "i386:x86-64" flags them as empty,
+  not as foreign.
+- `games-util/dlss-updater` 5.1.1: new Flatpak OSTree commit cbf4dd74...;
+  FLET_PV stays 1.0.2 (read from flet.version in the PYZ, which also carries
+  Flutter 3.44.8). The CArchive TOC is PACKED BINARY entries
+  (`!IIII` + cflag + typcd + name, structlen-prefixed), NOT marshalled - only
+  the PYZ's own TOC is marshalled. Working parser saved as the recipe below.
+- `games-emulation/shadps4-qtlauncher-bin` 0_p20261010091252 is a FIX, not
+  just a bump: upstream DELETED the 2026-10-05 release, so the packaged
+  asset 404s. PV comes from the commit timestamp (09:12:52Z), while the
+  watcher baseline is the publication time (09:19:57Z) - they differ, and
+  upstream-old.json takes the publication time. The deleted asset was not in
+  DISTDIR either, so no old-vs-new library comparison was possible.
+- `media-gfx/photon-studio` 0.1.47: new OSTree commit 1e6eb562...; models,
+  the 28 native licence files and the glibc floors (raw 2.39, jxl 2.38, cli
+  2.39) are all unchanged, the X-KDE-RunOnDiscreteGpu strip is still needed,
+  and the only real change is MimeType gaining image/x-exr.
+- `ci/pkgcheck-image` 0.10.48 (sha256:732a539c...), verified by resolving the
+  currently pinned 0.10.47 tag to the digest already in the workflow. The
+  locally installed pkgcheck is also 0.10.48, so local gate runs match CI.
+- Gates: `.github/tests` 4/4, `pkgcheck scan --exit GentooCI,-VisibleVcsPkg`
+  exit 0, `nvcmp --newer` empty.
+
+### PyInstaller PYZ reader (works, 2026-10-10)
+
+Cookie magic `MEI\014\013\012\013\016`, last 88 bytes of the package:
+`!8sIIII64s` gives pkglen/tocpos/toclen/pyvers; package start is
+`cookie + 88 - pkglen`. CArchive TOC entries are packed: `!I` structlen, then
+`!III` pos/len/ulen, 1 byte cflag, 1 byte typecode, then the NUL-padded name
+up to structlen. The `z` entry is the PYZ; inside it, magic `PYZ\0`, then the
+TOC offset as `!I` at offset 8, and `marshal.loads` at that offset gives
+`{module: (type, pos, len)}` with zlib-compressed marshalled code objects.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

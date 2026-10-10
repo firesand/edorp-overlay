@@ -7,7 +7,7 @@ inherit desktop pax-utils xdg
 
 # Commit embedded in the upstream Flatpak bundle. Reject changed payloads even
 # when the CDN keeps the same versioned URL.
-FLATPAK_COMMIT="b60ad641adaeb4bac66985a52d871ad0c50efd0755281f810bd7e8e7da5659ec"
+FLATPAK_COMMIT="1e6eb5626f69d5259af041e779b819a8fe0c49a70db268b2680a93c736e45bfc"
 
 DESCRIPTION="Offline image editor with layers, retouching and PSD support"
 HOMEPAGE="https://tenzen.studio/photon/"

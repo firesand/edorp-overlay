@@ -46,7 +46,7 @@ local machine configuration do not belong in the overlay.
 
 - `games-emulation/shadps4-bin`: official shadPS4 0.19.0 stable amd64 core.
 - `games-emulation/shadps4-qtlauncher-bin`: official QtLauncher snapshot
-  from 2026-10-05 (`29de8fa`), packaged separately from the emulator core.
+  from 2026-10-10 (`df4b6eb`), packaged separately from the emulator core.
   Both packages extract the verified upstream AppImages under `/opt`, so
   neither FUSE nor an AppImage runtime is needed. See the shadPS4 section.
 - `net-misc/fluxcast`: imported from the existing FluxCast portable overlay
@@ -63,7 +63,7 @@ local machine configuration do not belong in the overlay.
   use; no Flatpak runtime is installed. Requires glibc and `~amd64`.
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
-- `gui-apps/walker`: Walker 2.17.1, the Rust/GTK4 rewrite of the Wayland
+- `gui-apps/walker`: Walker 2.17.2, the Rust/GTK4 rewrite of the Wayland
   application launcher. The ebuild builds entirely from pinned Cargo sources
   and replaces the obsolete Go-based package from GURU.
 - `gui-apps/elephant`: Elephant 2.22.1 backend for Walker, built with its Go
@@ -132,7 +132,7 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photon-studio`: Photon Studio 0.1.43, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.47, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
@@ -250,7 +250,7 @@ needs glibc 2.39 or newer.
 
 ### Plexo
 
-Plexo `1.0.0_rc13` packages upstream `v1.0.0-rc.13`, a release candidate.
+Plexo `1.0.0_rc14` packages upstream `v1.0.0-rc.14`, a release candidate.
 Upstream began publishing native Linux amd64 builds at rc7, so the
 ebuild installs the upstream `amd64` `.deb`, with its own
 bundled Electron `44.4.4`, instead of repacking ARM64 resources onto a
@@ -430,7 +430,7 @@ Portage's control.
 ### Walker
 
 Walker 2 is a frontend for the separately released Elephant daemon and its
-provider modules. EDORP pairs Walker 2.17.1 with Elephant 2.22.1, which upstream
+provider modules. EDORP pairs Walker 2.17.2 with Elephant 2.22.1, which upstream
 released together; the Walker ebuild pins that packaged Elephant version.
 Elephant always includes
 the five providers needed for Walker's normal default query and common
