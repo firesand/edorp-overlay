@@ -30,8 +30,13 @@ RESTRICT="bindist mirror strip"
 # translation of the .deb's Depends field to their Gentoo providers. systemd
 # (or systemd-utils) supplies the udev/logind bits Chromium expects; the qemu
 # stack used by Cowork is optional and surfaced through optfeature instead.
-# The claude-native addon links libpipewire-0.3 for the Wayland screen-sharing
-# portal and calls pidfd_spawnp(), which sets the glibc floor at 2.39.
+# The claude-native addon still links libpipewire-0.3 for the Wayland
+# screen-sharing portal. It also still references pidfd_spawnp(), but 2.31226.1
+# changed that reference from a version-tagged weak symbol to an untagged one
+# ("w DF *UND* (GLIBC_2.39)" became "w D *UND*"), so it no longer lands in
+# DT_VERNEED and no longer forces glibc 2.39; it resolves to NULL on older
+# glibc and upstream falls back. The highest versioned symbol across every ELF
+# object in the bundle is now GLIBC_2.34.
 RDEPEND="
 	|| (
 		sys-apps/systemd
@@ -67,7 +72,7 @@ RDEPEND="
 	x11-libs/libXtst
 	x11-libs/pango
 	x11-misc/xdg-utils
-	elibc_glibc? ( >=sys-libs/glibc-2.39 )
+	elibc_glibc? ( >=sys-libs/glibc-2.34 )
 "
 
 QA_PREBUILT="*"
