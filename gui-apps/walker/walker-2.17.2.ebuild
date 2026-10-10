@@ -280,7 +280,9 @@ CRATES="
 	zmij@1.0.12
 "
 
-RUST_MIN_VER="1.88.0"
+# 2.17.2's updated GTK4 bindings (gtk4, gsk4, pango, graphene-rs and
+# glib-unix) all declare rust-version = "1.92".
+RUST_MIN_VER="1.92.0"
 
 inherit cargo
 
