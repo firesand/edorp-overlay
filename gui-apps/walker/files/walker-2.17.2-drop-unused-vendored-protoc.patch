@@ -7,7 +7,7 @@ several platforms into the build dependency graph.
 
 --- a/Cargo.lock
 +++ b/Cargo.lock
-@@ -1634,70 +1634,6 @@
+@@ -1653,70 +1653,6 @@
  ]
  
  [[package]]
@@ -78,7 +78,7 @@ several platforms into the build dependency graph.
  name = "quick-xml"
  version = "0.39.2"
  source = "registry+https://github.com/rust-lang/crates.io-index"
-@@ -2213,7 +2149,6 @@
+@@ -2294,7 +2230,6 @@
   "poppler-rs",
   "protobuf",
   "protobuf-codegen",
@@ -88,7 +88,7 @@ several platforms into the build dependency graph.
   "wayland-client",
 --- a/Cargo.toml
 +++ b/Cargo.toml
-@@ -32,4 +32,3 @@
+@@ -33,4 +33,3 @@
  
  [build-dependencies]
  protobuf-codegen = "3.4"

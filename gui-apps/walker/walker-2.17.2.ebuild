@@ -21,10 +21,10 @@ CRATES="
 	bitflags@2.10.0
 	block-buffer@0.10.4
 	bumpalo@3.19.1
-	cairo-rs@0.20.12
 	cairo-rs@0.21.5
-	cairo-sys-rs@0.20.10
+	cairo-rs@0.22.9
 	cairo-sys-rs@0.21.5
+	cairo-sys-rs@0.22.9
 	cc@1.2.51
 	cfg-expr@0.20.5
 	cfg-if@1.0.4
@@ -67,42 +67,44 @@ CRATES="
 	futures-macro@0.3.31
 	futures-task@0.3.31
 	futures-util@0.3.31
-	gdk-pixbuf-sys@0.20.10
 	gdk-pixbuf-sys@0.21.5
-	gdk-pixbuf@0.20.10
+	gdk-pixbuf-sys@0.22.9
 	gdk-pixbuf@0.21.5
-	gdk4-sys@0.9.6
-	gdk4-wayland-sys@0.9.6
-	gdk4-wayland@0.9.6
-	gdk4@0.9.6
+	gdk-pixbuf@0.22.0
+	gdk4-sys@0.11.5
+	gdk4-wayland-sys@0.11.5
+	gdk4-wayland@0.11.5
+	gdk4@0.11.5
 	generic-array@0.14.7
 	getrandom@0.2.16
 	getrandom@0.3.4
-	gio-sys@0.20.10
 	gio-sys@0.21.5
-	gio@0.20.12
+	gio-sys@0.22.9
 	gio@0.21.5
+	gio@0.22.10
 	gl@0.14.0
 	gl_generator@0.14.0
-	glib-macros@0.20.12
 	glib-macros@0.21.5
-	glib-sys@0.20.10
+	glib-macros@0.22.9
 	glib-sys@0.21.5
-	glib@0.20.12
+	glib-sys@0.22.9
+	glib-unix-sys@0.22.9
+	glib-unix@0.22.8
 	glib@0.21.5
-	gobject-sys@0.20.10
+	glib@0.22.10
 	gobject-sys@0.21.5
-	graphene-rs@0.20.10
-	graphene-sys@0.20.10
+	gobject-sys@0.22.9
+	graphene-rs@0.22.8
+	graphene-sys@0.22.9
 	grass@0.13.4
 	grass_compiler@0.13.4
-	gsk4-sys@0.9.6
-	gsk4@0.9.6
-	gtk4-layer-shell-sys@0.3.0
-	gtk4-layer-shell@0.5.0
-	gtk4-macros@0.9.5
-	gtk4-sys@0.9.6
-	gtk4@0.9.7
+	gsk4-sys@0.11.5
+	gsk4@0.11.5
+	gtk4-layer-shell-sys@0.6.1
+	gtk4-layer-shell@0.8.1
+	gtk4-macros@0.11.5
+	gtk4-sys@0.11.5
+	gtk4@0.11.5
 	hashbrown@0.14.5
 	hashbrown@0.15.5
 	hashbrown@0.16.1
@@ -128,7 +130,7 @@ CRATES="
 	linux-raw-sys@0.11.0
 	linux-raw-sys@0.4.15
 	log@0.4.29
-	memchr@2.7.6
+	memchr@2.8.3
 	memoffset@0.9.1
 	mime@0.3.17
 	mio@1.1.1
@@ -142,8 +144,8 @@ CRATES="
 	once_cell_polyfill@1.70.2
 	option-ext@0.2.0
 	ordered-multimap@0.7.3
-	pango-sys@0.20.10
-	pango@0.20.12
+	pango-sys@0.22.9
+	pango@0.22.9
 	pathdiff@0.2.3
 	pest@2.8.5
 	pest_derive@2.8.5
@@ -155,11 +157,11 @@ CRATES="
 	phf_shared@0.11.3
 	pin-project-lite@0.2.16
 	pin-utils@0.1.0
-	pkg-config@0.3.32
+	pkg-config@0.3.34
 	poppler-rs@0.25.0
 	poppler-sys-rs@0.25.0
 	ppv-lite86@0.2.21
-	proc-macro-crate@3.4.0
+	proc-macro-crate@3.5.0
 	proc-macro2@1.0.105
 	protobuf-codegen@3.7.2
 	protobuf-parse@3.7.2
@@ -197,7 +199,10 @@ CRATES="
 	smallvec@1.15.1
 	strsim@0.11.1
 	syn@2.0.113
+	syn@3.0.6
 	system-deps@7.0.7
+	system-deps@8.0.0
+	system-deps@9.0.0
 	target-lexicon@0.13.3
 	tempfile@3.24.0
 	thiserror-impl@1.0.69
@@ -206,9 +211,11 @@ CRATES="
 	thiserror@2.0.17
 	tiny-keccak@2.0.2
 	toml@0.9.10+spec-1.1.0
+	toml@1.0.6+spec-1.1.0
 	toml_datetime@0.7.5+spec-1.1.0
-	toml_edit@0.23.10+spec-1.0.0
-	toml_parser@1.0.6+spec-1.1.0
+	toml_datetime@1.1.2+spec-1.1.0
+	toml_edit@0.25.6+spec-1.1.0
+	toml_parser@1.1.4+spec-1.1.0
 	toml_writer@1.0.6+spec-1.1.0
 	typeid@1.0.3
 	typenum@1.19.0
@@ -228,6 +235,7 @@ CRATES="
 	wasm-bindgen@0.2.106
 	wayland-backend@0.3.15
 	wayland-client@0.31.14
+	wayland-protocols@0.32.13
 	wayland-scanner@0.31.10
 	wayland-sys@0.31.11
 	which@4.4.2
@@ -261,6 +269,7 @@ CRATES="
 	windows_x86_64_msvc@0.52.6
 	windows_x86_64_msvc@0.53.1
 	winnow@0.7.14
+	winnow@1.0.4
 	winsafe@0.0.19
 	wit-bindgen@0.46.0
 	xdg@3.0.0
