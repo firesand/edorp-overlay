@@ -191,6 +191,14 @@ prefix = "V"
 policy = "review"
 note = "Recheck the Flatpak OSTree commit, Flet client archive, bundled notices and native GUI. Tagged sources lag the release binary (V5.0.3 says 5.0.2; V5.1.0 says 5.0.3 and pins Flet 1.0.0 although the binary bundles 1.0.2), so read the Flet version from flet.version inside the binary's PYZ archive, not from pyproject.toml."
 
+["games-util/goverlay"]
+source = "github"
+github = "benjamimgois/goverlay"
+use_max_tag = true
+include_regex = '^[0-9]+\.[0-9]+(?:\.[0-9]+)?$'
+policy = "review"
+note = "Check Makefile install rules, PasCube/PasVulkan bundled objects and licenses, and run logic_tests before bumping."
+
 ["gui-apps/elephant"]
 source = "github"
 github = "abenz1267/elephant"

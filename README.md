@@ -61,6 +61,13 @@ local machine configuration do not belong in the overlay.
   ([source](https://github.com/Recol/DLSS-Updater#linux)). Repackages the
   upstream amd64 Flatpak executable with its Flet client for native Gentoo
   use; no Flatpak runtime is installed. Requires glibc and `~amd64`.
+- `games-util/goverlay`: Goverlay 1.9.4 Qt6 GUI for configuring MangoHud,
+  vkBasalt, vkSumi, OptiScaler, Lossless Scaling (`lsfg-vk`), per-game `bgmod`
+  wrappers, and the integrated PasCube Vulkan/CPU benchmark with PascubeDB
+  leaderboard uploads ([source](https://github.com/benjamimgois/goverlay)).
+  Built from source with Lazarus/FPC and replaces the older 1.2 package in
+  GURU. Needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-goverlay`).
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
 - `gui-apps/walker`: Walker 2.17.2, the Rust/GTK4 rewrite of the Wayland
@@ -192,8 +199,9 @@ local machine configuration do not belong in the overlay.
 
 A few EDORP packages use the same category and name as ebuilds in other
 repositories: `app-misc/claude-desktop` and `app-misc/chatgpt-desktop`
-(gentoo-zh), and `gui-apps/walker` (GURU, whose Go-based 0.x releases the Rust
-rewrite in EDORP replaces). That is deliberate and needs no per-version
+(gentoo-zh), and `gui-apps/walker` and `games-util/goverlay` (GURU, where GURU
+carries older releases lacking the Rust rewrite or the integrated PasCube
+benchmark and `bgmod` wrapper). That is deliberate and needs no per-version
 pinning, because Portage compares versions across all repositories before it
 looks at priority:
 
@@ -227,6 +235,18 @@ sudo emerge -av games-util/dlss-updater
 Run `dlss-updater` or use the desktop entry. The GUI client is installed with
 the package; the game DLL catalogue and selected DLLs are fetched by the app
 into your user cache on first use.
+
+### Goverlay
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-goverlay \
+  /etc/portage/package.accept_keywords/edorp-goverlay
+sudo emerge -av games-util/goverlay
+```
+
+Run `goverlay` or launch it from the desktop entry. Click **Preview (PasCube)**
+to open the integrated PasCube Vulkan/CPU benchmark and submit scores to
+[PascubeDB](https://benjamimgois.github.io/PascubeDB/).
 
 ### Photon Studio
 

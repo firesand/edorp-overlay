@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Goverlay is a Qt6 graphical user interface for configuring Linux gaming
+		overlays and frame-generation tools, including MangoHud, vkBasalt,
+		vkSumi, OptiScaler, Lossless Scaling (lsfg-vk), and per-game bgmod
+		launch wrappers. It includes the integrated PasCube Vulkan/CPU
+		benchmark with direct leaderboard submission to PascubeDB.
+	</longdescription>
+	<upstream>
+		<bugs-to>https://github.com/benjamimgois/goverlay/issues</bugs-to>
+		<changelog>https://github.com/benjamimgois/goverlay/releases</changelog>
+		<remote-id type="github">benjamimgois/goverlay</remote-id>
+	</upstream>
+</pkgmetadata>
