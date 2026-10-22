@@ -5,9 +5,9 @@ EAPI=8
 
 inherit desktop xdg
 
-# Commit behind upstream's annotated v.0.19.0 tag. The source archive supplies
+# Commit behind upstream's annotated v.0.20.0 tag. The source archive supplies
 # the core and embedded-data notices omitted from the binary release ZIP.
-SOURCE_COMMIT="c7e065d1b415be16c23e260a21f1dd8bbfc4cb57"
+SOURCE_COMMIT="529ceb32f5546b820588f194b903cc39d08015fe"
 
 DESCRIPTION="Experimental PlayStation 4 emulator, official prebuilt SDL core"
 HOMEPAGE="https://shadps4.net/ https://github.com/shadps4-emu/shadPS4"
