@@ -6,19 +6,25 @@ EAPI=8
 inherit desktop optfeature unpacker xdg
 
 DESCRIPTION="Concat multi-track video editor (formerly WolfCut)"
-# Upstream renamed the repository from jub0t/Concat to jub0t/concat, so the
-# tag archive now unpacks to concat-${PV}.
-HOMEPAGE="https://github.com/jub0t/concat"
+# Upstream has renamed this repository twice (Concat -> concat -> Concat), and
+# the capitalisation decides the tag archive's top-level directory. Pin the
+# canonical name rather than relying on GitHub's rename redirect, and keep the
+# unpacked directory in MY_S so a future flip is a one-line change.
+HOMEPAGE="https://github.com/jub0t/Concat"
+MY_S="Concat-${PV}"
 SRC_URI="
-	https://github.com/jub0t/concat/releases/download/v${PV}/Concat-${PV}-linux-x86_64.deb
+	https://github.com/jub0t/Concat/releases/download/v${PV}/Concat-${PV}-linux-x86_64.deb
 		-> ${P}.deb
-	https://github.com/jub0t/concat/archive/refs/tags/v${PV}.tar.gz
+	https://github.com/jub0t/Concat/archive/refs/tags/v${PV}.tar.gz
 		-> concat-${PV}.tar.gz
 "
 S="${WORKDIR}"
 
 # Concat switched from Tauri/MPL to Slint/AGPL. Slint uses its GPL option;
-# the embedded font and effect-preview photograph have separate licenses.
+# the embedded fonts and effect-preview photograph have separate licenses.
+# 0.2.8 grew the bundled font set from one to 37 faces: 35 carry the SIL Open
+# Font License and two the Apache License, both already listed below, so the
+# identifiers are unchanged. 0.2.8 also dropped LICENSE-EXCEPTIONS.md.
 # The new bundled FFmpeg reports GPL-3+, without --enable-nonfree.
 LICENSE="AGPL-3+ Apache-2.0 BSD BSD-2 GPL-3 GPL-3+ ISC MIT OFL-1.1 Unsplash"
 SLOT="0"
@@ -74,8 +80,10 @@ src_install() {
 	domenu usr/share/applications/concat.desktop
 	doicon -s 256 usr/share/icons/hicolor/256x256/apps/concat.png
 
-	dodoc concat-${PV}/{LICENSE,LICENSE-EXCEPTIONS.md,THIRD_PARTY_NOTICES.md}
-	dodoc concat-${PV}/src/crates/concat-text/fonts/LICENSE-HankenGrotesk.txt
+	dodoc "${MY_S}"/{LICENSE,THIRD_PARTY_NOTICES.md}
+	# 0.2.8 bundles 37 font faces; install every face's licence, not just one.
+	docinto fonts
+	dodoc "${MY_S}"/src/crates/concat-text/fonts/LICENSE-*.txt
 }
 
 pkg_postinst() {

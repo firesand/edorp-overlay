@@ -134,13 +134,13 @@ policy = "review"
 source = "pypi"
 pypi = "magika"
 policy = "review"
-note = "MarkItDown 0.1.8 requires Magika below 0.7; retain the old ebuild if needed."
+note = "MarkItDown 0.1.9 widened this to magika<2, so 1.0.3 satisfies it and 0.6.3 is no longer required by anything in the overlay."
 
 ["dev-python/mammoth"]
 source = "pypi"
 pypi = "mammoth"
 policy = "review"
-note = "MarkItDown 0.1.8 requires Mammoth below 1.12; retain the old ebuild if needed."
+note = "MarkItDown 0.1.9 raised this to mammoth>=1.12.2, so 1.11.0 can no longer satisfy any consumer here and was dropped."
 
 ["dev-python/pdfplumber"]
 source = "pypi"
@@ -276,7 +276,7 @@ prefix = "v"
 from_pattern = '-rc\.'
 to_pattern = '_rc'
 policy = "review"
-note = "Check release architectures, portable ASAR resources, and the exact Electron version in package-lock.json; update all distfiles together. List every *.node under app.asar.unpacked: rc.13 added node-gyp-build addons with prebuilds/<platform>-<arch> directories, which src_prepare prunes to linux-x64 and verify-resources.py must know about."
+note = "Check release architectures, portable ASAR resources, and the exact Electron version in package-lock.json; update all distfiles together. List every *.node under app.asar.unpacked: rc.13 added node-gyp-build addons with prebuilds/<platform>-<arch> directories, which src_prepare prunes to linux-x64 and verify-resources.py must know about. rc.15 also ships build/Release copies of bufferutil/utf-8-validate, which node-gyp-build loads before the prebuilds; the validator requires them to be x86-64."
 
 # Snapshot packages deliberately use full UTC commit timestamps so multiple
 # commits on the same day cannot be hidden.

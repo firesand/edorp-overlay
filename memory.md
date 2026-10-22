@@ -1171,6 +1171,59 @@ TOC offset as `!I` at offset 8, and `marshal.loads` at that offset gives
   race and Portage strips/splits debug info cleanly. `src_test` runs the 50
   offline unit tests in `test-logic`.
 
+## Upstream audit (2026-10-23)
+
+Twelve packages pending. Split into two stacked PRs; this entry covers the
+first nine. Branch `claude/upstream-updates-2026-10-23` is based on
+`add-goverlay-1.9.4` (PR #27, the user's own green goverlay PR) rather than
+main, so goverlay is inherited instead of duplicated.
+
+FOUND FIRST: an uncommitted 2026-10-13 audit sitting in the live checkout on
+branch `upstream-updates-2026-10-13` (0 unique commits, but 20 dirty files).
+It was WIP-committed as 0ded40e before anything else, per the standing lesson
+that "0 unique commits" never means disposable. Its memory.md entry documents
+real verification (builds, old-vs-new comparisons), and
+/var/log/portage confirms build phases ran on 10-13 — so it was verified, just
+uncommitted. BUT by 10-23 five of its six bumps were already superseded
+upstream (grok-bot 0.70.2->0.75.2, unsloth 0.1.906->0.1.909,
+shadps4-qtlauncher 20261012->20261018, opencadstudio 2026.41->2026.42,
+photon-studio 0.1.52->0.1.59). Only two things were carried forward: plexo
+rc.15 (still newest) and the plexo watcher note. Every stale package was
+re-bumped from MAIN's version instead of from the WIP, so the WIP's deletions
+did not leak in.
+
+- `app-text/markitdown` 0.1.9 RESOLVED a long-standing carry-over. It widened
+  `magika~=0.6.1` to `<2,>=0.6.1` and RAISED `mammoth~=1.11.0` to
+  `<2,>=1.12.2`. So mammoth 1.11.0 can no longer satisfy any consumer and was
+  dropped (markitdown is its only consumer here and neither master packages
+  it); magika 0.6.3 was KEPT because <2 accepts it and it is the installed
+  version. Both watcher notes were rewritten.
+- `media-video/wolfcut` 0.2.8 hit the documented rename trap for real.
+  Upstream has now renamed TWICE (Concat -> concat -> Concat), so the tag
+  archive unpacks to `Concat-0.2.8/` again and the 0.2.6 ebuild's
+  `dodoc concat-${PV}/...` would have died. Fixed by pinning the canonical
+  name and holding the unpacked dir in MY_S. Also: LICENSE-EXCEPTIONS.md is
+  gone, and the bundled font set grew from 1 to 37 faces (35 OFL-1.1, 2
+  Apache-2.0 — both already in LICENSE=), now all installed under fonts/.
+  Bundled libs went 8 -> 25 families, adding whisper.cpp and GGML (MIT), with
+  nothing removed; compare deb-to-deb, since comparing a deb against an
+  INSTALLED image falsely shows the libav* as removed when system-ffmpeg
+  stripped them. The FFmpeg subslot pin 0/60.62.62 still matches exactly.
+- Checksum cross-checks that worked and are worth repeating: wolfcut's deb
+  against upstream's own SHA256SUMS asset; comfy-desktop's deb against the
+  sha512+size in todesktop's latest-linux.yml (its BUILD_ID also comes from
+  that feed's .deb entry: 26102263fz4azlz); grok-bot's two debs against the
+  SHA256s in the cursor apt index, which had caught up this time.
+- `games-util/dlss-updater` 5.1.2: OSTree commit f53dd274..., Flet still
+  1.0.2/Flutter 3.44.8 read from the PYZ. `media-gfx/opencadstudio` 2026.42:
+  EGIT_COMMIT is "v${PV}" so the rename is the whole pin change, and it has
+  NO Manifest (pure git-r3 with build-time vendoring); full build 884 units
+  in 3m31s, src/bin still only ocs_launcher.rs so the --bin filter stays.
+- DEFERRED to the second PR: `app-misc/claude-desktop` 3.6556.1 (major),
+  `media-gfx/photon-studio` 0.1.59 (1.25 GB flatpak) and the
+  `games-emulation/shadps4-bin` 0.20.0 + `shadps4-qtlauncher-bin` pair, which
+  have to land together.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

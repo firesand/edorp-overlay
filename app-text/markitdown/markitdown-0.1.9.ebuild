@@ -29,12 +29,12 @@ RDEPEND="
 	dev-python/charset-normalizer[${PYTHON_USEDEP}]
 	dev-python/defusedxml[${PYTHON_USEDEP}]
 	>=dev-python/magika-0.6.1[${PYTHON_USEDEP}]
-	<dev-python/magika-0.7[${PYTHON_USEDEP}]
+	<dev-python/magika-2[${PYTHON_USEDEP}]
 	dev-python/markdownify[${PYTHON_USEDEP}]
 	dev-python/requests[${PYTHON_USEDEP}]
 	docx? (
-		>=dev-python/mammoth-1.11[${PYTHON_USEDEP}]
-		<dev-python/mammoth-1.12[${PYTHON_USEDEP}]
+		>=dev-python/mammoth-1.12.2[${PYTHON_USEDEP}]
+		<dev-python/mammoth-2[${PYTHON_USEDEP}]
 		dev-python/lxml[${PYTHON_USEDEP}]
 	)
 	outlook? ( dev-python/olefile[${PYTHON_USEDEP}] )
