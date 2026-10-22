@@ -1156,6 +1156,21 @@ up to structlen. The `z` entry is the PYZ; inside it, magic `PYZ\0`, then the
 TOC offset as `!I` at offset 8, and `marshal.loads` at that offset gives
 `{module: (type, pos, len)}` with zlib-compressed marshalled code objects.
 
+## Goverlay + PasCube addition (2026-10-20)
+
+- `games-util/goverlay` 1.9.4: built from source (`lazbuild` Qt6 + `fpc`),
+  replacing GURU's 1.2 (which predates the integrated `pascube` Vulkan/CPU
+  benchmark and `bgmod` wrapper).
+- Prebuilt `pascube_src/pasvulkan/src/lzma_c/*.o` objects are deleted in
+  `src_prepare` and `lzmadec_linux_x86_64.o` is rebuilt from `LzmaDec.c` with
+  `filter-lto` (`fpc` links via `ld` directly without the GCC LTO plugin).
+- `1.9.4`'s `Makefile` omitted `data/*.png` from `install` (fixed upstream on
+  `main` right after tagging `1.9.4`); backported in `src_prepare`.
+- `lazbuild` runs with `-j1` and an isolated `--primary-config-path` plus an
+  FPC wrapper (`-gw2 -Xs-` + `raw-ldflags`) so concurrent LCL builds do not
+  race and Portage strips/splits debug info cleanly. `src_test` runs the 50
+  offline unit tests in `test-logic`.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
