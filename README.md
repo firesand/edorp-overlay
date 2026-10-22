@@ -82,12 +82,14 @@ local machine configuration do not belong in the overlay.
   recursive ZIP handling; PDF, DOCX, PPTX, Outlook, and Excel support are
   optional USE flags.
 - `dev-python/magika`: AI-based content-type detector required by MarkItDown.
-  Both `0.6.3` and `1.0.3` are packaged: MarkItDown pins `magika~=0.6.1`, so
-  it keeps resolving to `0.6.3`, while `1.0.3` is available on its own.
+  Both `0.6.3` and `1.0.3` are packaged. MarkItDown 0.1.9 widened its pin to
+  `magika<2`, so either satisfies it; `0.6.3` is kept because it is the
+  version in use on existing installs.
 - `dev-python/cobble`, `dev-python/mammoth`, `dev-python/pdfplumber`, and
   `dev-python/python-pptx`: optional MarkItDown dependencies for DOCX, PDF,
-  and PPTX conversion. `dev-python/mammoth` is packaged at both `1.11.0` and
-  `1.13.0` for the same reason (MarkItDown pins `mammoth~=1.11.0`).
+  and PPTX conversion. `dev-python/mammoth` is packaged only at `1.13.0`:
+  MarkItDown 0.1.9 raised its pin to `mammoth>=1.12.2`, so the previously
+  retained `1.11.0` could no longer satisfy anything and was dropped.
 - `app-emulation/linuxmameui`: imported from the local LinuxMAMEUI Gentoo
   packaging. This currently uses a local `linuxmameui-0.1.0.tar.gz` distfile
   with `RESTRICT=fetch`, so it is not fully portable across machines until a
@@ -131,7 +133,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.40.1, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.42, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced and
@@ -189,7 +191,7 @@ local machine configuration do not belong in the overlay.
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
 - `media-video/wolfcut`: Concat (formerly WolfCut), a multi-track video
-  editor built with Slint ([source](https://github.com/jub0t/concat)).
+  editor built with Slint ([source](https://github.com/jub0t/Concat)).
   Repackaged from the upstream amd64 `.deb`; the default `system-ffmpeg`
   USE flag selects matching FFmpeg 8.1 libraries. The package atom remains
   `wolfcut` for existing installations; the application now launches as
@@ -270,7 +272,7 @@ needs glibc 2.39 or newer.
 
 ### Plexo
 
-Plexo `1.0.0_rc14` packages upstream `v1.0.0-rc.14`, a release candidate.
+Plexo `1.0.0_rc15` packages upstream `v1.0.0-rc.15`, a release candidate.
 Upstream began publishing native Linux amd64 builds at rc7, so the
 ebuild installs the upstream `amd64` `.deb`, with its own
 bundled Electron `44.4.4`, instead of repacking ARM64 resources onto a
