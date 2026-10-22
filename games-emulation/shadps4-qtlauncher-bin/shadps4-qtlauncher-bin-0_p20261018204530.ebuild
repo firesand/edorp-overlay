@@ -5,8 +5,8 @@ EAPI=8
 
 inherit desktop xdg
 
-MY_COMMIT="df4b6ebffd4829c3bdbcd765ea44cf5a814970e8"
-MY_DATE="2026-10-10"
+MY_COMMIT="6f6b911f4865a1c8bf2425071ca8d39ec46d9ea9"
+MY_DATE="2026-10-18"
 MY_TAG="shadPS4QtLauncher-${MY_DATE}-${MY_COMMIT}"
 
 DESCRIPTION="Official Qt launcher for the shadPS4 PlayStation 4 emulator"
@@ -30,8 +30,11 @@ RESTRICT="bindist mirror strip"
 
 # NEEDED entries not provided by the extracted bundle, including Qt plugins.
 # Bundled libstdc++/libgcc keep the compiler ABI independent of the host GCC.
+# Upstream declares no minimum core version (the launcher is an auto-generated
+# release of main), so the shadps4-bin floor tracks the pairing this overlay
+# ships and tests together rather than an upstream-stated requirement.
 RDEPEND="
-	>=games-emulation/shadps4-bin-0.19.0
+	>=games-emulation/shadps4-bin-0.20.0
 	dev-libs/expat
 	dev-libs/libgpg-error
 	dev-libs/libpcre2
