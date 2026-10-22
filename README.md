@@ -44,9 +44,9 @@ local machine configuration do not belong in the overlay.
 
 ### General
 
-- `games-emulation/shadps4-bin`: official shadPS4 0.19.0 stable amd64 core.
+- `games-emulation/shadps4-bin`: official shadPS4 0.20.0 stable amd64 core.
 - `games-emulation/shadps4-qtlauncher-bin`: official QtLauncher snapshot
-  from 2026-10-10 (`df4b6eb`), packaged separately from the emulator core.
+  from 2026-10-18 (`6f6b911`), packaged separately from the emulator core.
   Both packages extract the verified upstream AppImages under `/opt`, so
   neither FUSE nor an AppImage runtime is needed. See the shadPS4 section.
 - `net-misc/fluxcast`: imported from the existing FluxCast portable overlay
@@ -141,7 +141,7 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photon-studio`: Photon Studio 0.1.47, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.59, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application

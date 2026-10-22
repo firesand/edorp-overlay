@@ -1224,6 +1224,40 @@ did not leak in.
   `games-emulation/shadps4-bin` 0.20.0 + `shadps4-qtlauncher-bin` pair, which
   have to land together.
 
+## Upstream audit (2026-10-23, part 2: the heavy three)
+
+Second stacked PR, branched off `claude/upstream-updates-2026-10-23`.
+
+- `games-emulation/shadps4-qtlauncher-bin` is a FIX AGAIN: upstream deleted
+  the 2026-10-10 release just as it deleted 2026-10-05, so the packaged asset
+  404s. Only ONE launcher release exists at a time — assume the packaged one
+  is gone at every audit. The hardcoded unsquashfs offset 944632 was
+  RE-VALIDATED, not assumed: walk every "hsqs" hit and check the candidate
+  superblock (v4.0, block_log matching block size, bytes_used fitting the
+  file). The hit at 194183 is a false positive inside the ELF runtime; 944632
+  is the real one and still correct. Core pin raised to shadps4-bin-0.20.0,
+  with the comment noting upstream declares no minimum (the launcher is an
+  auto-generated release of main) so it tracks what the overlay tests.
+- `app-misc/claude-desktop` 3.6556.1 is a major, but the contract held: every
+  path src_install hardcodes still exists, pidfd_spawnp is still an UNTAGGED
+  weak symbol, and the bundle max is still GLIBC_2.34.
+- `media-gfx/photon-studio` 0.1.59: dist/models is now 1134 MB / 46 files,
+  adding SAM 2.1 hiera-base-plus, ViTMatte, MediaPipe Face Mesh, MoGe-2,
+  YuNet and Swin2SR — Apache-2.0 except MoGe-2/YuNet (MIT), all already in
+  LICENSE=. NOTE the glibc inversion: photon_raw and photon_jxl DROPPED to
+  2.35, but build/cli/linux-x64/photon is still 2.39 and remains the bundle
+  max, so always take the max over the WHOLE bundle, not the three binaries
+  the note names. MimeType gained image/x-tga and image/x-targa.
+- CI GOTCHA: `.github/workflows/overlay-qa.yml` filters `pull_request` to
+  `branches: [main]`, so a stacked PR whose base is another branch gets NO
+  checks at all and still reports mergeStateStatus CLEAN. That CLEAN is
+  meaningless. Checks only run once the PR is retargeted to main, and per the
+  existing note changing the base does not fire `pull_request` either, so
+  `gh pr update-branch <n>` is what actually starts CI.
+- An ASAR content reader (header at offset 16, payload at 8+header_size,
+  entry offsets relative to payload) is needed to read dist/models licence
+  files, since the models live INSIDE app.asar and never hit disk.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

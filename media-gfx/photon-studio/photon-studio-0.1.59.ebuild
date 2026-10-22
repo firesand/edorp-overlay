@@ -7,19 +7,23 @@ inherit desktop pax-utils xdg
 
 # Commit embedded in the upstream Flatpak bundle. Reject changed payloads even
 # when the CDN keeps the same versioned URL.
-FLATPAK_COMMIT="1e6eb5626f69d5259af041e779b819a8fe0c49a70db268b2680a93c736e45bfc"
+FLATPAK_COMMIT="af74fba59aaf749e95e11e854597f05edfe5afcdee0524a6feedb23f528b6fc4"
 
 DESCRIPTION="Offline image editor with layers, retouching and PSD support"
 HOMEPAGE="https://tenzen.studio/photon/"
 SRC_URI="https://downloads.tenzen.studio/photon/stable/linux/${PV}/Photon-Studio-${PV}-linux-x64.flatpak -> ${P}.flatpak"
 S="${WORKDIR}/flatpak-app/files/lib/com.tenzen.photon"
 
-# Photon is proprietary. The bundled background-removal model includes DINOv3
-# weights, while SAM 2.1, DETR, Depth Anything V2 Small and LaMa are
-# Apache-2.0. HEIF decoding uses LGPL-3 libheif and libde265 (their sources
-# ship in the bundle), RAW decoding uses LibRaw (CDDL or LGPL-2.1) with IJG
-# JPEG code, libjxl and a BSD-3 OpenEXR decoder, and Electron, Chromium and
-# other libraries carry their own notices.
+# Photon is proprietary. The bundled background-removal model (withoutBG
+# WBGNet, under its own terms) includes DINOv3 weights. The remaining bundled
+# models are Apache-2.0 (SAM 2.1 in both hiera-tiny and hiera-base-plus, DETR,
+# Depth Anything V2 Small, LaMa, ViTMatte, MediaPipe Face Mesh and Swin2SR) or
+# MIT (MoGe-2 and YuNet); every one ships its own LICENSE-*.txt in
+# dist/models, and all of those terms are already covered below. HEIF decoding
+# uses LGPL-3 libheif and libde265 (their sources ship in the bundle), RAW
+# decoding uses LibRaw (CDDL or LGPL-2.1) with IJG JPEG code, libjxl and a
+# BSD-3 OpenEXR decoder, and Electron, Chromium and other libraries carry
+# their own notices.
 LICENSE="all-rights-reserved Apache-2.0 BSD BSD-2 CDDL CC-BY-SA-3.0 DINOv3 IJG ISC LGPL-2.1+ LGPL-3+ MIT MPL-2.0 ZLIB"
 SLOT="0"
 KEYWORDS="-* ~amd64"
