@@ -9,11 +9,11 @@ inherit desktop xdg
 # Read it from flet.version in the binary's PYZ archive, not from the tagged
 # pyproject.toml: the tag lags the release (V5.1.0 still pins Flet 1.0.0 and
 # says 5.0.3, but the shipped binary bundles Flet 1.0.2 and reports 5.1.0).
-# V5.1.1's binary still bundles Flet 1.0.2 (with Flutter 3.44.8).
+# V5.1.2's binary still bundles Flet 1.0.2 (with Flutter 3.44.8).
 FLET_PV="1.0.2"
 # The commit stored in the upstream Flatpak bundle. Pinning it also makes an
 # unexpected change to the release asset fail before anything is installed.
-FLATPAK_COMMIT="cbf4dd744524a5dfdcfcccb892d65194026ff2b13bf39b2ad3917a46d65737a4"
+FLATPAK_COMMIT="f53dd274163575400bb93dd723af128d7b748b49e4af4cb1a31a659639ecd7c9"
 
 DESCRIPTION="Update DLSS, XeSS and FSR game DLLs with automatic backups"
 HOMEPAGE="https://github.com/Recol/DLSS-Updater"
