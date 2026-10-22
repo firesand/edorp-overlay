@@ -10,7 +10,7 @@ inherit desktop optfeature pax-utils unpacker xdg
 # so cannot be pinned by a Manifest. The build id changes with each release;
 # the current one is listed in
 # https://download.todesktop.com/241130tqe9q3y/latest-linux.yml
-BUILD_ID="261003uci82pdkd"
+BUILD_ID="26102263fz4azlz"
 
 DESCRIPTION="Official desktop application for installing and running ComfyUI"
 HOMEPAGE="https://www.comfy.org/download
