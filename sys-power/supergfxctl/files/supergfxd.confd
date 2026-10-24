@@ -1,0 +1,7 @@
+# /etc/conf.d/supergfxd
+
+# Log file of the daemon (stdout and stderr).
+#output_log="/var/log/supergfxd.log"
+
+# Log level, see env_logger. Upstream's systemd unit uses "debug".
+#RUST_LOG="info"

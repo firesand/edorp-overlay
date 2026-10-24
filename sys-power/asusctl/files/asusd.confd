@@ -1,0 +1,8 @@
+# /etc/conf.d/asusd
+
+# Log file of the daemon (stdout and stderr).
+#output_log="/var/log/asusd.log"
+
+# Log level, see env_logger. Use e.g. "info,asusd=debug,rog_platform=debug"
+# when reporting a bug.
+#RUST_LOG="info"
