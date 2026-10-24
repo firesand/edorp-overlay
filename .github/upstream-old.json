@@ -32,6 +32,7 @@
   "media-video/wolfcut": "0.2.8",
   "net-analyzer/bettercap": "2.41.7",
   "net-analyzer/bettercap::caplets": "20260707.141042",
+  "net-im/zapfast": "0.20.0",
   "net-misc/fluxcast": "0.2.9",
   "net-misc/plexo": "1.0.0_rc15",
   "net-wireless/bully": "20260622.011703",
