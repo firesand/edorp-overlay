@@ -190,6 +190,11 @@ local machine configuration do not belong in the overlay.
   edges, served on loopback and read in a browser
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
+- `net-im/zapfast`: ZapFast 0.20.0, an unofficial native WhatsApp client
+  built with Rust and egui ([source](https://github.com/crmne/zapfast)).
+  Built from pinned Cargo and git sources; needs `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-zapfast`). Using an unofficial
+  client may violate WhatsApp's terms and could put the linked account at risk.
 - `media-video/wolfcut`: Concat (formerly WolfCut), a multi-track video
   editor built with Slint ([source](https://github.com/jub0t/Concat)).
   Repackaged from the upstream amd64 `.deb`; the default `system-ffmpeg`

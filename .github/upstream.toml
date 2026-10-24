@@ -261,6 +261,14 @@ branch = "master"
 policy = "snapshot"
 note = "Review caplet changes before moving the pinned commit."
 
+["net-im/zapfast"]
+source = "github"
+github = "crmne/zapfast"
+use_latest_release = true
+prefix = "v"
+policy = "review"
+note = "Regenerate and review the large Cargo dependency list, all six pinned git repositories, native dependencies, and bundled asset licenses."
+
 ["net-misc/fluxcast"]
 source = "pypi"
 pypi = "fluxcast"
