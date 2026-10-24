@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ASUS User Daemon
+Comment=Per-user profiles for ASUS Anime Matrix and Aura (asusd-user)
+Exec=/usr/bin/asusd-user
+Terminal=false
+NoDisplay=true
+# Disabled by default, like upstream's asusd-user.service. To enable it for
+# one user, copy this file to ~/.config/autostart/ and delete the Hidden line.
+Hidden=true

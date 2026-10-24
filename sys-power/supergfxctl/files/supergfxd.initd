@@ -1,0 +1,30 @@
+#!/sbin/openrc-run
+# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+description="Graphics mode switching daemon for hybrid-GPU laptops (supergfxd)"
+
+supervisor="supervise-daemon"
+command="/usr/bin/supergfxd"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="${output_log:-/var/log/supergfxd.log}"
+error_log="${error_log:-${output_log}}"
+
+# Same limits as upstream's supergfxd.service (Restart=always, RestartSec=1).
+respawn_delay=1
+respawn_max=0
+
+depend() {
+	need dbus
+	use logger elogind
+	after udev modules-load
+	# Upstream starts it before the display manager and nvidia-powerd.
+	before display-manager xdm nvidia-powerd
+}
+
+start_pre() {
+	checkpath -f -m 0640 -o root:root "${output_log}" || return 1
+	# Without IS_SERVICE=1 supergfxd prints a warning and exits.
+	export IS_SERVICE=1
+	export RUST_LOG="${RUST_LOG:-info}"
+}

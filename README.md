@@ -629,28 +629,45 @@ Cowork's sandboxed VM. Sign
 in with a Claude.ai subscription or organization SSO (no Console API key); the
 app shares `~/.claude` with Claude Code.
 
-### ASUS laptop (systemd only)
+### ASUS laptop
 
-Imported from the local `asus-gentoo-overlay` bundle. These packages target
-**ASUS ROG / hybrid-GPU laptops running Gentoo with systemd**. They are not
-intended for OpenRC profiles or non-ASUS hardware:
+These packages target **ASUS ROG / TUF / hybrid-GPU laptops**. They are not
+intended for non-ASUS hardware.
 
-- `sys-power/asusctl`: asus-linux daemon, CLI, and optional rog-control-center.
-- `sys-power/supergfxctl`: hybrid-GPU mode switching daemon.
+- `sys-power/asusctl`: asus-linux daemon, CLI, and optional rog-control-center
+  (`gui`, default on). Pinned releases are built from the tarball of the
+  OpenGamingCollective upstream with vendored `CRATES`; the `-9999` live ebuild
+  is systemd only.
+- `sys-power/supergfxctl`: hybrid-GPU mode switching daemon (upstream
+  `gitlab.com/asus-linux/supergfxctl`). The pinned release carries a small
+  patch that uses `rc-service` instead of `systemctl` when systemd is not the
+  running init, so the display manager restart works on OpenRC.
 
-After install, enable the services:
+The pinned releases (`~amd64`) work on both init systems. With `USE=systemd`
+they install the upstream units; without it they install OpenRC init scripts
+(`asusd`, `asus-shutdown`, `supergfxd`) and need `sys-auth/elogind`.
 
 ```bash
+echo "sys-power/asusctl ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-asus
+echo "sys-power/supergfxctl ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-asus
+doas emerge -av sys-power/asusctl sys-power/supergfxctl
+```
+
+Enable the services:
+
+```bash
+# OpenRC
+rc-update add asusd default
+rc-update add supergfxd default
+# systemd
 systemctl enable --now asusd.service asus-shutdown.service supergfxd.service
 ```
 
-Accept keywords for live ebuilds:
+Use only one GPU switcher: supergfxctl conflicts with envycontrol,
+optimus-manager and similar tools.
 
-```bash
-echo "=sys-power/asusctl-9999 **" | doas tee /etc/portage/package.accept_keywords/edorp-asus
-echo "=sys-power/supergfxctl-9999 **" | doas tee -a /etc/portage/package.accept_keywords/edorp-asus
-echo "sys-power/asusctl gui" | doas tee /etc/portage/package.use/edorp-asus
-```
+The live ebuilds (systemd only) need `=sys-power/asusctl-9999 **` and
+`=sys-power/supergfxctl-9999 **` in `package.accept_keywords`.
 
 ### shadPS4
 

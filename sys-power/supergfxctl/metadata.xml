@@ -7,10 +7,13 @@
 	</maintainer>
 	<longdescription lang="en">
 		Target audience: ASUS hybrid-GPU laptops running Gentoo Linux with
-		systemd. Provides supergfxd for graphics mode switching. Requires
-		systemd and is not intended for OpenRC profiles or systems without
-		ASUS hybrid graphics.
+		OpenRC or systemd. Provides supergfxd for graphics mode switching. The
+		OpenRC support is a small downstream patch (rc-service instead of
+		systemctl). Not intended for systems without hybrid graphics.
 	</longdescription>
+	<use>
+		<flag name="systemd">Install the systemd unit instead of the OpenRC init script</flag>
+	</use>
 	<upstream>
 		<remote-id type="gitlab">asus-linux/supergfxctl</remote-id>
 	</upstream>

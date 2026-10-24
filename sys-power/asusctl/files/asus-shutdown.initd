@@ -1,0 +1,28 @@
+#!/sbin/openrc-run
+# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+description="ASUS deferred shutdown handler (applies pending GPU settings on shutdown)"
+
+# asus-shutdown holds a logind shutdown inhibitor and applies the pending
+# settings when logind announces PrepareForShutdown, so it needs elogind
+# (or systemd-logind) and only helps when the shutdown goes through logind.
+supervisor="supervise-daemon"
+command="/usr/bin/asus-shutdown"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="${output_log:-/var/log/asus-shutdown.log}"
+error_log="${error_log:-${output_log}}"
+
+respawn_delay=1
+respawn_max=5
+respawn_period=500
+
+depend() {
+	need dbus asusd elogind
+	use logger
+}
+
+start_pre() {
+	checkpath -f -m 0640 -o root:root "${output_log}" || return 1
+	export IS_SERVICE=1
+}

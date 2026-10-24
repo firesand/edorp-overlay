@@ -6,13 +6,14 @@
 		<name>firesand</name>
 	</maintainer>
 	<longdescription lang="en">
-		Target audience: ASUS ROG laptops running Gentoo Linux with systemd.
-		Provides the asus-linux daemon stack (asusd, asusctl, and optional
-		rog-control-center). Not intended for OpenRC profiles or non-ASUS
-		hardware.
+		Target audience: ASUS ROG, TUF and other ASUS laptops running Gentoo
+		Linux with OpenRC or systemd. Provides the asus-linux daemon stack
+		(asusd, asusctl, asus-shutdown and optional rog-control-center).
+		Not intended for non-ASUS hardware.
 	</longdescription>
 	<use>
 		<flag name="gui">Install the Wayland rog-control-center GUI</flag>
+		<flag name="systemd">Install systemd units instead of OpenRC init scripts</flag>
 	</use>
 	<upstream>
 		<remote-id type="github">OpenGamingCollective/asusctl</remote-id>

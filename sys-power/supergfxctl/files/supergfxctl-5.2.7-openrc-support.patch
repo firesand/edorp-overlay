@@ -1,0 +1,113 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 3d5b365..b6028f5 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -188,19 +188,15 @@ fn do_driver_action(driver: &str, action: DriverAction) -> Result<(), GfxError>
+ 
+ pub fn toggle_nvidia_powerd(run: bool, vendor: GfxVendor) -> Result<(), GfxError> {
+     if vendor == GfxVendor::Nvidia {
+-        let mut cmd = Command::new("systemctl");
+-        if run {
+-            cmd.arg("start");
++        let action = if run {
++            systemd::SystemdUnitAction::Start
+         } else {
+-            cmd.arg("stop");
++            systemd::SystemdUnitAction::Stop
++        };
++        // nvidia-powerd is optional: a missing or failing service must not abort a mode change
++        if let Err(err) = systemd::do_systemd_unit_action(action, "nvidia-powerd.service") {
++            warn!("{run} nvidia-powerd.service failed: {err}");
+         }
+-        cmd.arg("nvidia-powerd.service");
+-
+-        let status = cmd.status()?;
+-        if !status.success() {
+-            warn!("{run} nvidia-powerd.service failed: {:?}", status.code());
+-        }
+-        debug!("Did {:?}", cmd.get_args());
+     }
+     Ok(())
+ }
+diff --git a/src/systemd.rs b/src/systemd.rs
+index 2446456..20d0ce5 100644
+--- a/src/systemd.rs
++++ b/src/systemd.rs
+@@ -1,6 +1,17 @@
+ use crate::error::GfxError;
+ use log::info;
+-use std::process::Command;
++use std::{path::Path, process::Command};
++
++/// True when systemd is the running init system (the same test as `sd_booted()`).
++/// Otherwise OpenRC's `rc-service` is used to control services.
++fn systemd_is_running() -> bool {
++    Path::new("/run/systemd/system").is_dir()
++}
++
++/// OpenRC service names have no `.service` suffix.
++fn openrc_name(unit: &str) -> &str {
++    unit.strip_suffix(".service").unwrap_or(unit)
++}
+ 
+ /// An action for `systemctl`
+ #[derive(Debug, Copy, Clone)]
+@@ -37,9 +48,16 @@ impl From<SystemdUnitState> for &str {
+ 
+ /// Change the state of a systemd unit. Blocks while running command.
+ pub fn do_systemd_unit_action(action: SystemdUnitAction, unit: &str) -> Result<(), GfxError> {
+-    let mut cmd = Command::new("systemctl");
+-    cmd.arg(<&str>::from(action));
+-    cmd.arg(unit);
++    let mut cmd;
++    if systemd_is_running() {
++        cmd = Command::new("systemctl");
++        cmd.arg(<&str>::from(action));
++        cmd.arg(unit);
++    } else {
++        cmd = Command::new("rc-service");
++        cmd.arg(openrc_name(unit));
++        cmd.arg(<&str>::from(action));
++    }
+     info!("Running systemctl command {action:?} on {unit}");
+     let status = cmd
+         .status()
+@@ -53,6 +71,18 @@ pub fn do_systemd_unit_action(action: SystemdUnitAction, unit: &str) -> Result<(
+ 
+ /// Get systemd unit state. Blocks while command is run.
+ pub fn is_systemd_unit_state(state: SystemdUnitState, unit: &str) -> Result<bool, GfxError> {
++    if !systemd_is_running() {
++        let mut cmd = Command::new("rc-service");
++        cmd.arg(openrc_name(unit));
++        cmd.arg("status");
++        let status = cmd
++            .status()
++            .map_err(|err| GfxError::Command(format!("{:?}", cmd), err))?;
++        return Ok(match state {
++            SystemdUnitState::Active => status.success(),
++            SystemdUnitState::Inactive => !status.success(),
++        });
++    }
+     let mut cmd = Command::new("systemctl");
+     cmd.arg("is-active");
+     cmd.arg(unit);
+@@ -68,18 +98,11 @@ pub fn is_systemd_unit_state(state: SystemdUnitState, unit: &str) -> Result<bool
+ 
+ /// Wait for a systemd unit to change to `state`. Checks state every 250ms for 3 seconds. Blocks while running wait.
+ pub fn wait_systemd_unit_state(state: SystemdUnitState, unit: &str) -> Result<(), GfxError> {
+-    let mut cmd = Command::new("systemctl");
+-    cmd.arg("is-active");
+-    cmd.arg(unit);
+-
+     let mut count = 0;
+ 
+     while count <= (4 * 3) {
+         // 3 seconds max
+-        let output = cmd
+-            .output()
+-            .map_err(|err| GfxError::Command(format!("{:?}", cmd), err))?;
+-        if output.stdout.starts_with(<&str>::from(state).as_bytes()) {
++        if is_systemd_unit_state(state, unit)? {
+             return Ok(());
+         }
+         // fine to block here, nobody doing shit now
