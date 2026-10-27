@@ -192,6 +192,7 @@ Actual imported package placement:
 - `net-wireless/bully` (alternative WPS backend)
 - `net-analyzer/bettercap` (modular network and wireless auditing framework)
 - `sys-firmware/ds5dongle` (DualSense Pico 2 W bridge firmware + config helper)
+- `sys-kernel/kernelsmith` (guided custom kernel builder GUI; live ebuild only)
 
 ## DS5Dongle (Jul 2026)
 
@@ -1257,6 +1258,38 @@ Second stacked PR, branched off `claude/upstream-updates-2026-10-23`.
 - An ASAR content reader (header at offset 16, payload at 8+header_size,
   entry offsets relative to payload) is needed to read dist/models licence
   files, since the models live INSIDE app.asar and never hit disk.
+
+## Kernelsmith (2026-10-27)
+
+- Source repo: `/home/edo/Downloads/kernel_custom_gentoo` (Rust workspace:
+  `crates/core` + `crates/app`, binary `kernelsmith`), published 2026-10-27
+  at https://github.com/firesand/kernelsmith (public, branch `main`, no tags
+  yet). The live ebuild's GitHub fetch plus crate vendoring was verified with
+  `ebuild ... clean unpack` the same day.
+- Overlay ebuild: `sys-kernel/kernelsmith/kernelsmith-9999.ebuild` (live:
+  `git-r3` + `cargo_live_src_unpack`, `cargo_src_configure --locked`,
+  `cargo_src_install --path crates/app`). `sys-kernel` was added to
+  `profiles/categories`. Watcher entry is `policy = "live"` with baseline
+  `9999`, like asusctl/supergfxctl.
+- `RUST_MIN_VER` 1.85.0 comes from eframe/egui 0.32; the code itself needs
+  1.82 (`Option::is_none_or`).
+- Installs the binary, desktop entry, scalable icon, and a polkit action
+  (`/usr/share/polkit-1/actions/org.kernelsmith.policy`, exec path
+  `${EPREFIX}/usr/bin/kernelsmith`) so pkexec shows a clear prompt.
+- The project's release profile no longer sets `strip = true` (Gentoo should
+  do the stripping); the project Makefile strips at `make install` instead.
+  The "Pre-stripped files" QA notice still appears on this machine because
+  `/etc/portage/make.conf` sets `RUSTFLAGS="... -C strip=symbols ..."`, which
+  rustc applies after cargo.eclass's `-C strip=none`. That affects every Rust
+  package here, not just this ebuild.
+- Validation without the GitHub repo: point git-r3 at a local snapshot with
+  `EGIT_OVERRIDE_REPO_FIRESAND_KERNELSMITH=file:///path/to/git/repo`, then
+  `PORTAGE_TMPDIR="$PWD/.portage-tmp" DISTDIR="$PWD/.distfiles" ebuild
+  sys-kernel/kernelsmith/kernelsmith-9999.ebuild clean test install`.
+  Passed on 2026-10-27: pkgcheck clean, watcher tests OK, ebuild test phase
+  19/19, image contains bin + desktop + icon + polkit action + README.
+- Next: once a tag exists, add a versioned ebuild with `CRATES` (about 263
+  registry crates per `Cargo.lock`) and switch the watcher to the GitHub source.
 
 ## Future Session Checklist
 

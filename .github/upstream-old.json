@@ -42,6 +42,7 @@
   "net-wireless/pixiewps": "1.4.2",
   "net-wireless/wiflux": "1.0.5",
   "sys-firmware/ds5dongle": "0.7.2",
+  "sys-kernel/kernelsmith": "9999",
   "sys-power/asusctl": "9999",
   "sys-power/supergfxctl": "9999"
 }
