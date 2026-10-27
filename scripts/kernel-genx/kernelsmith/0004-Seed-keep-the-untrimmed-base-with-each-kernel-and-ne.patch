@@ -1,0 +1,530 @@
+From 50061cf835c58c4345902bd511a18c670c14ce7c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 28 Oct 2026 01:01:40 +0700
+Subject: [PATCH 4/4] Seed: keep the untrimmed base with each kernel and never
+ inherit a trim
+
+A plan seeded from "the running kernel" on top of a Kernelsmith build
+inherited that build's trimmed config, so every driver dropped earlier
+stayed dropped whatever keep families were ticked (a second-generation
+build on a Z790 box kept 0 of the 52 USB-serial and 5 of the 314 hwmon
+modules the distribution config has).
+
+- plan::resolve_seed: when the running kernel's config carries the
+  "-ks-" LOCALVERSION, start from <tree>/.kernelsmith/seed.config (the
+  untrimmed base that build began with), else from the newest untrimmed
+  seed.config of any earlier job, else warn. File and tree seeds that are
+  themselves Kernelsmith configs are flagged too.
+- The build script copies the job's seed into the tree only when it is
+  untrimmed, so the stored base stays untrimmed across generations.
+- kernelsmith plan/build --seed FILE | running | tree | defconfig.
+- The Review step shows the resolved base; check() carries the note/warning.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ README.md                    |   9 +-
+ crates/app/src/cli.rs        |  14 ++-
+ crates/app/src/gui/wizard.rs |  13 ++-
+ crates/core/src/job.rs       |  26 ++++--
+ crates/core/src/kconfig.rs   |  13 +++
+ crates/core/src/plan.rs      | 175 ++++++++++++++++++++++++++++++++++-
+ crates/core/src/script.rs    |  29 ++++--
+ 7 files changed, 257 insertions(+), 22 deletions(-)
+
+diff --git a/README.md b/README.md
+index 2a85656..a34c544 100644
+--- a/README.md
++++ b/README.md
+@@ -162,6 +162,13 @@ drops because nothing had loaded them yet.
+   kernelsmith build --preset ~/.config/kernelsmith/presets/gaming.toml --latest
+   ```
+ 
++- **Building on top of a Kernelsmith kernel**: a trimmed kernel's own config is a poor base, because
++  every driver the earlier build dropped would stay dropped whatever you tick. Each build therefore
++  keeps the untrimmed configuration it started from in `/usr/src/linux-<release>/.kernelsmith/seed.config`,
++  and "Your current kernel" uses that stored base automatically when the running kernel is a
++  Kernelsmith build (or, for kernels built before this existed, the newest untrimmed seed of any
++  earlier job). The Review step warns when the base is still a trimmed config; `kernelsmith plan --seed FILE`
++  (or `running` / `tree` / `defconfig`) picks the base from the command line.
+ - **Portage mode** (Install step → *Export to Portage…*): your choices become a config fragment
+   merged by `kernel-build.eclass`, so `gentoo-kernel` / `cachyos-kernel` / `vanilla-kernel` are
+   rebuilt with them on every update. Remove it from Library → *Runtime tuning & Portage*.
+@@ -186,7 +193,7 @@ drops because nothing had loaded them yet.
+ | `~/.local/share/kernelsmith/patches/` | Your own patches (also `/etc/kernelsmith/patches/`) |
+ | `~/.local/share/kernelsmith/autofdo/` | Recorded AutoFDO profiles |
+ | `~/.cache/kernelsmith/` | Downloaded patches and cached patch listings |
+-| `/usr/src/linux-<release>/.kernelsmith/` | The plan, final config, applied patches and logs of that build |
++| `/usr/src/linux-<release>/.kernelsmith/` | The plan, final config, untrimmed seed config, applied patches and logs of that build |
+ | `/var/lib/kernelsmith/kernels/<release>.toml` | Install manifest used for uninstall |
+ | `/etc/sysctl.d/90-kernelsmith.conf`, `/etc/udev/rules.d/60-kernelsmith-ioschedulers.rules` | Runtime tuning pack |
+ | `/etc/kernel/config.d/60-kernelsmith-<name>.config` | Portage mode fragment |
+diff --git a/crates/app/src/cli.rs b/crates/app/src/cli.rs
+index 6602de9..cedae2d 100644
+--- a/crates/app/src/cli.rs
++++ b/crates/app/src/cli.rs
+@@ -4,7 +4,7 @@ use crate::runner::{parse_line, Event};
+ use anyhow::{bail, Context, Result};
+ use kernelsmith_core::hw::{self, SystemInfo};
+ use kernelsmith_core::kconfig::scan_symbols;
+-use kernelsmith_core::plan::{self, BuildPlan, Level};
++use kernelsmith_core::plan::{self, BuildPlan, Level, Seed};
+ use kernelsmith_core::profiles::{self, ProfileId};
+ use kernelsmith_core::slim::SlimMode;
+ use kernelsmith_core::sources::{self, KernelSource};
+@@ -39,6 +39,7 @@ OPTIONS for plan/build:
+     --slim MODE         off | balanced | aggressive
+     --no-install        Only build; don't install
+     --build-root DIR    Put the build tree in DIR instead of /usr/src (build-only)
++    --seed FILE         Base configuration: a .config file, or running | tree | defconfig
+     --afdo FILE         Compile with this AutoFDO profile (kernel.afdo)
+     --no-afdo           Don't reuse a previously recorded profile
+     --print             Print the generated script
+@@ -61,6 +62,7 @@ struct Opts {
+     patch_files: Vec<PathBuf>,
+     afdo: Option<PathBuf>,
+     no_afdo: bool,
++    seed: Option<String>,
+ }
+ 
+ fn parse_opts(args: &[String]) -> Result<Opts> {
+@@ -80,6 +82,7 @@ fn parse_opts(args: &[String]) -> Result<Opts> {
+         patch_files: vec![],
+         afdo: None,
+         no_afdo: false,
++        seed: None,
+     };
+     let mut it = args.iter();
+     while let Some(a) = it.next() {
+@@ -119,6 +122,7 @@ fn parse_opts(args: &[String]) -> Result<Opts> {
+             "--patch-file" => o.patch_files.push(val()?.into()),
+             "--afdo" => o.afdo = Some(val()?.into()),
+             "--no-afdo" => o.no_afdo = true,
++            "--seed" => o.seed = Some(val()?),
+             other => bail!("unknown option {other}\n\n{USAGE}"),
+         }
+     }
+@@ -229,6 +233,14 @@ fn make_plan(o: &Opts, sys: &SystemInfo) -> Result<(BuildPlan, KernelSource)> {
+         plan.install.runtime_tuning = false;
+     }
+     plan.build_root = o.build_root.clone();
++    if let Some(s) = &o.seed {
++        plan.seed = match s.as_str() {
++            "running" => Seed::Running,
++            "tree" => Seed::TreeConfig,
++            "defconfig" => Seed::Defconfig,
++            file => Seed::File(PathBuf::from(file)),
++        };
++    }
+     if o.no_afdo {
+         plan.profile_data = None;
+     }
+diff --git a/crates/app/src/gui/wizard.rs b/crates/app/src/gui/wizard.rs
+index 4f1e186..9c2b4a3 100644
+--- a/crates/app/src/gui/wizard.rs
++++ b/crates/app/src/gui/wizard.rs
+@@ -1023,7 +1023,7 @@ impl App {
+                     kv(ui, "Source", format!("{} ({})", src.display(), src.flavor.label()));
+                     let pr = profiles::get(plan.profile);
+                     kv(ui, "Profile", format!("{} {}", pr.icon, pr.title));
+-                    kv(ui, "Start from", plan.seed.label());
++                    kv(ui, "Start from", plan::resolve_seed(plan, sys, src).label);
+                     kv(ui, "Drivers", format!("{} — keeping {} famil{}", plan.slim.label(), plan.keep.len(), if plan.keep.len() == 1 { "y" } else { "ies" }));
+                     kv(ui, "Compiler", format!("{} · LTO {} · {}", sel("compiler"), sel("lto"), sel("optimize")));
+                     kv(ui, "CPU target", sel("march"));
+@@ -1085,7 +1085,16 @@ impl App {
+         ui.add_space(10.0);
+         ui.horizontal(|ui| {
+             if button(ui, "View build script", Btn::Secondary).clicked() {
+-                let body = script::generate(&ScriptInputs { plan, sys, src, resolved: &resolved, job_dir: &paths::jobs_dir().join("<job>") });
++                let seed = plan::resolve_seed(plan, sys, src);
++                let body = script::generate(&ScriptInputs {
++                    plan,
++                    sys,
++                    src,
++                    resolved: &resolved,
++                    job_dir: &paths::jobs_dir().join("<job>"),
++                    seed_label: &seed.label,
++                    store_seed: seed.untrimmed && plan.seed != Seed::Defconfig,
++                });
+                 self.modal = Some(Modal::Script { title: "Build script (runs as root)".into(), text: body });
+             }
+             if button(ui, "Save as preset…", Btn::Secondary).clicked() {
+diff --git a/crates/core/src/job.rs b/crates/core/src/job.rs
+index fdef0ad..3263d11 100644
+--- a/crates/core/src/job.rs
++++ b/crates/core/src/job.rs
+@@ -62,15 +62,17 @@ pub fn prepare_build(plan: &BuildPlan, sys: &SystemInfo, src: &KernelSource, sym
+     let dir = new_job_dir(&plan.name)?;
+     plan.save(&dir.join("plan.toml"))?;
+ 
+-    match &plan.seed {
+-        Seed::Running => std::fs::write(dir.join("seed.config"), kconfig::running_config_text()?)?,
+-        Seed::TreeConfig => {
+-            std::fs::copy(src.path.join(".config"), dir.join("seed.config")).context("copying the tree's .config")?;
+-        }
+-        Seed::File(p) => {
++    let seed = plan::resolve_seed(plan, sys, src);
++    match (&seed.path, &seed.text) {
++        (Some(p), _) => {
+             std::fs::copy(p, dir.join("seed.config")).with_context(|| format!("copying {}", p.display()))?;
+         }
+-        Seed::Defconfig => {}
++        (None, Some(t)) => std::fs::write(dir.join("seed.config"), t)?,
++        // "Running" without a readable /proc/config.gz: surface that error here.
++        (None, None) if plan.seed != Seed::Defconfig => {
++            std::fs::write(dir.join("seed.config"), kconfig::running_config_text()?)?;
++        }
++        _ => {}
+     }
+     if plan.slim != SlimMode::Off {
+         let mut list = module_list(sys, plan.use_modprobed_db).join("\n");
+@@ -87,7 +89,15 @@ pub fn prepare_build(plan: &BuildPlan, sys: &SystemInfo, src: &KernelSource, sym
+     }
+ 
+     let resolved = plan::resolve(plan, sys, src, symbols);
+-    let body = script::generate(&ScriptInputs { plan, sys, src, resolved: &resolved, job_dir: &dir });
++    let body = script::generate(&ScriptInputs {
++        plan,
++        sys,
++        src,
++        resolved: &resolved,
++        job_dir: &dir,
++        seed_label: &seed.label,
++        store_seed: seed.untrimmed && plan.seed != Seed::Defconfig,
++    });
+     let script = dir.join("build.sh");
+     write_script(&script, &body)?;
+     Ok(PreparedJob {
+diff --git a/crates/core/src/kconfig.rs b/crates/core/src/kconfig.rs
+index f62d580..93c2725 100644
+--- a/crates/core/src/kconfig.rs
++++ b/crates/core/src/kconfig.rs
+@@ -104,6 +104,12 @@ impl KConfig {
+     }
+ }
+ 
++/// Kernelsmith stamps every kernel it builds with `LOCALVERSION="-ks-<name>"`,
++/// so a config carrying that is already trimmed to one machine.
++pub fn is_kernelsmith_config(text: &str) -> bool {
++    KConfig::parse(text).str_val("LOCALVERSION").is_some_and(|v| v.starts_with("-ks-"))
++}
++
+ /// Decompress `/proc/config.gz`.
+ pub fn running_config_text() -> Result<String> {
+     let raw = std::fs::read("/proc/config.gz").context("the running kernel does not expose /proc/config.gz")?;
+@@ -188,4 +194,11 @@ mod tests {
+         assert_eq!(c.str_val("LOCALVERSION"), Some("-x"));
+         assert_eq!(c.counts(), (1, 1));
+     }
++
++    #[test]
++    fn kernelsmith_configs_are_recognised() {
++        assert!(is_kernelsmith_config("CONFIG_LOCALVERSION=\"-ks-max\"\n"));
++        assert!(!is_kernelsmith_config("CONFIG_LOCALVERSION=\"-cachyos-dist\"\n"));
++        assert!(!is_kernelsmith_config("CONFIG_X=y\n"));
++    }
+ }
+diff --git a/crates/core/src/plan.rs b/crates/core/src/plan.rs
+index 94f0934..d5245d5 100644
+--- a/crates/core/src/plan.rs
++++ b/crates/core/src/plan.rs
+@@ -4,7 +4,9 @@
+ 
+ use crate::autofdo;
+ use crate::hw::{Bootloader, Initramfs, InitSystem, SystemInfo};
+-use crate::kconfig::{KConfig, SymbolIndex};
++use crate::kconfig::{self, KConfig, SymbolIndex};
++use crate::library;
++use crate::paths;
+ use crate::patches::{self, PlannedPatch};
+ use crate::profiles::{self, ProfileId};
+ use crate::requirements;
+@@ -186,6 +188,123 @@ impl BuildPlan {
+     }
+ }
+ 
++/// Where the base configuration really comes from once Kernelsmith-built
++/// kernels are taken into account.
++///
++/// A kernel built on top of a Kernelsmith kernel would inherit every driver
++/// the earlier build trimmed away, and the keep families can only protect
++/// what the seed still has. So each build stores the untrimmed configuration
++/// it started from in `<tree>/.kernelsmith/seed.config`, and a plan seeded
++/// from "the running kernel" uses that stored base instead of
++/// `/proc/config.gz` when the running kernel is one of ours.
++#[derive(Debug, Clone)]
++pub struct SeedSource {
++    /// File to copy as the job's seed.config.
++    pub path: Option<PathBuf>,
++    /// Seed text already read (`/proc/config.gz`).
++    pub text: Option<String>,
++    /// Shown in the Review step and in the build script.
++    pub label: String,
++    pub note: Option<String>,
++    pub warning: Option<String>,
++    /// False when the seed is itself a Kernelsmith-trimmed configuration.
++    pub untrimmed: bool,
++}
++
++fn file_is_trimmed(p: &Path) -> bool {
++    std::fs::read_to_string(p).map(|t| kconfig::is_kernelsmith_config(&t)).unwrap_or(false)
++}
++
++const TRIMMED_HINT: &str = "drivers dropped by that earlier build cannot come back. Start from the source tree's \
++                            .config, a distribution config file (Hardware fit step, or --seed FILE), and the keep \
++                            families will apply to the full driver set.";
++
++/// Newest `seed.config` of any previous job that is not itself a trimmed
++/// Kernelsmith config (job directories sort chronologically by their stamp).
++fn newest_untrimmed_job_seed() -> Option<PathBuf> {
++    let mut dirs: Vec<PathBuf> = std::fs::read_dir(paths::jobs_dir())
++        .into_iter()
++        .flatten()
++        .flatten()
++        .map(|e| e.path())
++        .filter(|p| p.is_dir())
++        .collect();
++    dirs.sort();
++    dirs.reverse();
++    dirs.into_iter().map(|d| d.join("seed.config")).find(|p| p.is_file() && !file_is_trimmed(p))
++}
++
++pub fn resolve_seed(plan: &BuildPlan, sys: &SystemInfo, src: &KernelSource) -> SeedSource {
++    let plain = |path: Option<PathBuf>, text: Option<String>, untrimmed: bool| SeedSource {
++        path,
++        text,
++        label: plan.seed.label(),
++        note: None,
++        warning: None,
++        untrimmed,
++    };
++    let from_file = |p: PathBuf, what: &str| {
++        let trimmed = file_is_trimmed(&p);
++        let mut s = plain(Some(p), None, !trimmed);
++        if trimmed {
++            s.warning = Some(format!("{what} is a configuration trimmed by Kernelsmith: {TRIMMED_HINT}"));
++        }
++        s
++    };
++    match &plan.seed {
++        Seed::Defconfig => plain(None, None, true),
++        Seed::TreeConfig => from_file(src.path.join(".config"), "The source tree's .config"),
++        Seed::File(p) => from_file(p.clone(), &format!("{}", p.display())),
++        Seed::Running => {
++            // An unreadable /proc/config.gz is reported by `check`; nothing to resolve here.
++            let Ok(text) = kconfig::running_config_text() else { return plain(None, None, true) };
++            if !kconfig::is_kernelsmith_config(&text) {
++                return plain(None, Some(text), true);
++            }
++            let rel = sys.running_kernel.clone();
++            let tree = library::load_manifests()
++                .get(&rel)
++                .map(|m| m.tree.clone())
++                .unwrap_or_else(|| PathBuf::from(crate::sources::SRC_ROOT).join(format!("linux-{rel}")));
++            let stored = tree.join(".kernelsmith/seed.config");
++            if stored.is_file() && !file_is_trimmed(&stored) {
++                return SeedSource {
++                    path: Some(stored.clone()),
++                    text: None,
++                    label: format!("The untrimmed base configuration stored with {rel}"),
++                    note: Some(format!(
++                        "{rel} is a Kernelsmith kernel; starting from the untrimmed configuration it was built from ({}), so every keep family applies to the full driver set.",
++                        stored.display()
++                    )),
++                    warning: None,
++                    untrimmed: true,
++                };
++            }
++            if let Some(p) = newest_untrimmed_job_seed() {
++                return SeedSource {
++                    path: Some(p.clone()),
++                    text: None,
++                    label: "The untrimmed base configuration Kernelsmith last used".into(),
++                    note: Some(format!(
++                        "{rel} is a Kernelsmith kernel without a stored base; starting from the untrimmed configuration of an earlier job ({}).",
++                        p.display()
++                    )),
++                    warning: None,
++                    untrimmed: true,
++                };
++            }
++            SeedSource {
++                path: None,
++                text: Some(text),
++                label: plan.seed.label(),
++                note: None,
++                warning: Some(format!("{rel} was trimmed by Kernelsmith and no untrimmed base is stored: {TRIMMED_HINT}")),
++                untrimmed: false,
++            }
++        }
++    }
++}
++
+ /// With AutoFDO on and no profile chosen, use the newest recorded one.
+ pub fn with_recorded_profile(mut plan: BuildPlan) -> BuildPlan {
+     if plan.profile_data.is_none() && plan.tweaks.get("autofdo").is_some_and(|v| v != "off") {
+@@ -338,6 +457,13 @@ pub fn check(plan: &BuildPlan, sys: &SystemInfo, src: Option<&KernelSource>) ->
+         Seed::File(p) if !p.is_file() => out.push(f(Level::Error, format!("Config file {} not found.", p.display()))),
+         _ => {}
+     }
++    let seed = resolve_seed(plan, sys, src);
++    if let Some(w) = seed.warning {
++        out.push(f(Level::Warn, w));
++    }
++    if let Some(n) = seed.note {
++        out.push(f(Level::Info, n));
++    }
+     if !src.buildable {
+         out.push(f(Level::Error, format!(
+             "{} only contains headers for building modules, not the full kernel source. Install sys-kernel/gentoo-sources or sys-kernel/cachyos-sources.",
+@@ -462,6 +588,53 @@ pub struct Estimate {
+     pub disk_bytes: u64,
+ }
+ 
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::hw;
++    use crate::sources::Flavor;
++
++    fn source(dir: &Path) -> KernelSource {
++        KernelSource {
++            path: dir.to_path_buf(),
++            dir_name: "linux-7.3.0-gentoo".into(),
++            version: "7.3.0".into(),
++            extraversion: "-gentoo".into(),
++            flavor: Flavor::Gentoo,
++            is_current_symlink: false,
++            is_built: false,
++            has_config: true,
++            buildable: true,
++        }
++    }
++
++    #[test]
++    fn trimmed_seed_files_are_flagged() {
++        let sys = hw::sample();
++        let dir = std::env::temp_dir().join(format!("ks-seed-test-{}", std::process::id()));
++        std::fs::create_dir_all(&dir).unwrap();
++        let trimmed = dir.join("trimmed.config");
++        let full = dir.join("full.config");
++        std::fs::write(&trimmed, "CONFIG_LOCALVERSION=\"-ks-max\"\nCONFIG_A=y\n").unwrap();
++        std::fs::write(&full, "CONFIG_LOCALVERSION=\"-cachyos-dist\"\nCONFIG_A=y\n").unwrap();
++        let src = source(&dir);
++        let mut plan = BuildPlan::new(&sys, ProfileId::Gaming, &src);
++
++        plan.seed = Seed::File(trimmed.clone());
++        let s = resolve_seed(&plan, &sys, &src);
++        assert!(!s.untrimmed && s.warning.is_some() && s.path.as_deref() == Some(trimmed.as_path()));
++        assert!(check(&plan, &sys, Some(&src)).iter().any(|f| f.level == Level::Warn && f.text.contains("trimmed by Kernelsmith")));
++
++        plan.seed = Seed::File(full.clone());
++        let s = resolve_seed(&plan, &sys, &src);
++        assert!(s.untrimmed && s.warning.is_none());
++
++        plan.seed = Seed::Defconfig;
++        assert!(resolve_seed(&plan, &sys, &src).untrimmed);
++        let _ = std::fs::remove_dir_all(&dir);
++    }
++}
++
+ /// Rough build-time and disk estimates for the review screen.
+ pub fn estimate(plan: &BuildPlan, sys: &SystemInfo) -> Estimate {
+     let objects: u64 = match plan.slim {
+diff --git a/crates/core/src/script.rs b/crates/core/src/script.rs
+index b7d9aae..a49fb8f 100644
+--- a/crates/core/src/script.rs
++++ b/crates/core/src/script.rs
+@@ -66,6 +66,10 @@ pub struct ScriptInputs<'a> {
+     pub resolved: &'a Resolved,
+     /// Directory holding seed.config, modules.lst, patches/, plan.toml.
+     pub job_dir: &'a Path,
++    /// What the seed really is (see `plan::resolve_seed`).
++    pub seed_label: &'a str,
++    /// Keep the (untrimmed) seed with the kernel for builds on top of it.
++    pub store_seed: bool,
+ }
+ 
+ fn expect_token(op: &Op) -> String {
+@@ -103,7 +107,7 @@ fn config_calls(ops: &[Op]) -> String {
+ }
+ 
+ pub fn generate(inp: &ScriptInputs) -> String {
+-    let ScriptInputs { plan, sys, src, resolved, job_dir } = inp;
++    let ScriptInputs { plan, sys, src, resolved, job_dir, seed_label, store_seed } = inp;
+     let job = job_dir.display().to_string();
+     let profile = profiles::get(plan.profile);
+     let clang = plan.tweaks.get("compiler").map(String::as_str) == Some("clang");
+@@ -248,10 +252,15 @@ note "Copying the source to $TREE (instant on btrfs/xfs thanks to reflinks)"
+ TREE_CREATED=1
+ cp -a --reflink=auto "$SRC" "$TREE"
+ mkdir -p "$TREE/.kernelsmith"
+-cp "$JOB/plan.toml" "$TREE/.kernelsmith/plan.toml"
++cp "$JOB/plan.toml" "$TREE/.kernelsmith/plan.toml"{store_seed}
+ note "Cleaning the copy (make mrproper)"
+ "${{MAKE[@]}}" -s mrproper
+-rm -f "$TREE"/localversion*"#
++rm -f "$TREE"/localversion*"#,
++        store_seed = if *store_seed {
++            "\n# The untrimmed base configuration: a kernel built on top of this one starts from it,\n# not from this kernel's trimmed config.\ncp \"$JOB/seed.config\" \"$TREE/.kernelsmith/seed.config\""
++        } else {
++            ""
++        },
+     );
+ 
+     // ── Patches ──
+@@ -281,9 +290,9 @@ apply_patch() {{
+         Seed::Defconfig => r#"note "Starting from upstream defaults (make defconfig)"
+ "${MAKE[@]}" -s defconfig"#
+             .to_string(),
+-        other => format!(
++        _ => format!(
+             "note {}\ncp \"$JOB/seed.config\" \"$TREE/.config\"",
+-            q(&format!("Starting from: {}", other.label()))
++            q(&format!("Starting from: {seed_label}"))
+         ),
+     };
+     let mut apply = String::from("apply_choices() {\n");
+@@ -829,8 +838,9 @@ mod tests {
+         let plan = full_plan(&sys);
+         let resolved = plan::resolve(&plan, &sys, &src, None);
+         assert_eq!(resolved.release, "7.3.0-gentoo-ks-gaming");
+-        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job") });
++        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job"), seed_label: "Your current kernel's configuration", store_seed: true });
+         bash_ok(&s);
++        assert!(s.contains("cp \"$JOB/seed.config\" \"$TREE/.kernelsmith/seed.config\""));
+         for needle in [
+             "set -Eeuo pipefail",
+             "LLVM=1",
+@@ -886,7 +896,7 @@ KS_EOF
+         let src = source();
+         let plan = full_plan(&sys);
+         let resolved = plan::resolve(&plan, &sys, &src, None);
+-        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job") });
++        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job"), seed_label: "x", store_seed: false });
+         let start = s.find("boot_snapshot() {").expect("snapshot function");
+         let end = start + s[start..].find("\n}\n").expect("function end") + 3;
+         let func = &s[start..end];
+@@ -907,8 +917,9 @@ KS_EOF
+         plan.install.install = false;
+         plan.build_root = Some(PathBuf::from("/tmp/ks-builds"));
+         let resolved = plan::resolve(&plan, &sys, &src, None);
+-        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job") });
++        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job"), seed_label: "x", store_seed: false });
+         bash_ok(&s);
++        assert!(!s.contains(".kernelsmith/seed.config"));
+         assert!(!s.contains("modules_install"));
+         assert!(!s.contains("EUID -eq 0 ]] || fail"));
+         assert!(s.contains("TREE=/tmp/ks-builds/linux-7.3.0-gentoo-ks-server"));
+@@ -925,7 +936,7 @@ KS_EOF
+         plan.tweaks.insert("signing".into(), "off".into());
+         plan.tweaks.insert("anticheat".into(), "off".into());
+         let resolved = plan::resolve(&plan, &sys, &src, None);
+-        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job") });
++        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job"), seed_label: "x", store_seed: false });
+         bash_ok(&s);
+         for needle in ["SIGN_KEY=", "sign_modules", "kernelsmith-modules-sign", "41_kernelsmith-eac"] {
+             assert!(!s.contains(needle), "script should not contain {needle}");
+-- 
+2.55.0
+

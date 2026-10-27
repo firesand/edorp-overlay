@@ -1,7 +1,7 @@
 From a0592dcc1af1c28e88d789a962697715aebed9d6 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 28 Oct 2026 00:33:25 +0700
-Subject: [PATCH 3/3] Keep lists: name the gates the dock NICs and vhost-vsock
+Subject: [PATCH 3/4] Keep lists: name the gates the dock NICs and vhost-vsock
  depend on
 
 A real build showed USB_RTL8152, USB_NET_AX88179_178A and USB_NET_CDC_NCM

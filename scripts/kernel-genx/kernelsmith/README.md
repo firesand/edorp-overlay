@@ -1,6 +1,6 @@
 # KernelSmith changes derived from the GenX build check
 
-The three patches apply, in order, on top of KernelSmith commit `71d2703` (the initial
+The four patches apply, in order, on top of KernelSmith commit `71d2703` (the initial
 release, what `sys-kernel/kernelsmith-9999` built on 2026-10-27):
 
 ```bash
@@ -15,6 +15,10 @@ wizard turned AutoFDO on), lets a build reuse a `MODULES_SIGN_KEY` Portage alrea
 per machine), and records the Portage signing files where the Library can remove them. The third
 names the Kconfig gates (`USB_USBNET`, `VSOCKETS`) that the dock-NIC and vhost-vsock keep requests
 depend on; a real build (`7.3.0-ks-max2`, 2026-10-28) had reported those five as verify misses.
+The fourth keeps the untrimmed base configuration with each kernel and resolves "your current
+kernel" to it when the running kernel is a KernelSmith build (the `max2` build had inherited the
+`max` trim: 0 of 52 USB-serial and 5 of 314 hwmon modules), flags trimmed bases, and adds
+`--seed FILE | running | tree | defconfig` to the CLI.
 These patches are also open as https://github.com/firesand/kernelsmith/pull/1.
 
 What it adds, each a direct answer to a gap found in the `7.3.0-ks-max` build:
