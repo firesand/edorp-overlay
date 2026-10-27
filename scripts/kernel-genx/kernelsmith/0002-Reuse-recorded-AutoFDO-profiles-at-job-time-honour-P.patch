@@ -1,7 +1,7 @@
 From 333043bbd0170d3e6d51b546eee466e87dc9a561 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 28 Oct 2026 00:13:08 +0700
-Subject: [PATCH 2/2] Reuse recorded AutoFDO profiles at job time, honour
+Subject: [PATCH 2/3] Reuse recorded AutoFDO profiles at job time, honour
  Portage's signing key
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

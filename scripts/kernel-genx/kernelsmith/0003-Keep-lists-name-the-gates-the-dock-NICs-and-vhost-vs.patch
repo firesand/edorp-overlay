@@ -1,0 +1,47 @@
+From a0592dcc1af1c28e88d789a962697715aebed9d6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 28 Oct 2026 00:33:25 +0700
+Subject: [PATCH 3/3] Keep lists: name the gates the dock NICs and vhost-vsock
+ depend on
+
+A real build showed USB_RTL8152, USB_NET_AX88179_178A and USB_NET_CDC_NCM
+ending up off because USB_USBNET had been dropped by localmodconfig, and
+VHOST_VSOCK off because VSOCKETS was never requested. Ask for the gates too.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ crates/core/src/slim.rs | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/crates/core/src/slim.rs b/crates/core/src/slim.rs
+index d470606..af9d96b 100644
+--- a/crates/core/src/slim.rs
++++ b/crates/core/src/slim.rs
+@@ -176,7 +176,7 @@ pub fn categories() -> Vec<KeepCategory> {
+             ],
+             ops: |s| {
+                 let mut v = vec![
+-                    atm("KVM"), atm("VFIO"), atm("VFIO_PCI"), atm("VHOST_NET"), atm("VHOST_VSOCK"), atm("TUN"), atm("BRIDGE"),
++                    atm("KVM"), atm("VFIO"), atm("VFIO_PCI"), atm("VHOST_NET"), atm("VSOCKETS"), atm("VHOST_VSOCK"), atm("TUN"), atm("BRIDGE"),
+                     atm("VETH"), atm("OVERLAY_FS"), atm("BRIDGE_NETFILTER"), atm("MACVLAN"), atm("MACVTAP"), atm("IPVLAN"),
+                     atm("VXLAN"), atm("TAP"),
+                 ];
+@@ -191,7 +191,14 @@ pub fn categories() -> Vec<KeepCategory> {
+             title: "Docks, Thunderbolt & USB-C",
+             desc: "Thunderbolt/USB4 docks, USB-C displays and dock network adapters.",
+             lmc_paths: &["drivers/thunderbolt", "drivers/usb/typec"],
+-            ops: |_| vec![atm("USB4"), atm("TYPEC"), atm("USB_RTL8152"), atm("USB_NET_AX88179_178A"), atm("USB_NET_CDC_NCM")],
++            // USB_NET_DRIVERS/USB_USBNET are the gates the dock NIC drivers depend on;
++            // without them localmodconfig leaves the three requests unsatisfiable.
++            ops: |_| {
++                vec![
++                    atm("USB4"), atm("TYPEC"), atm("USB_NET_DRIVERS"), atm("USB_USBNET"), atm("USB_RTL8152"),
++                    atm("USB_NET_AX88179_178A"), atm("USB_NET_CDC_NCM"),
++                ]
++            },
+             default_on: |s, p| s.is_laptop() || p == ProfileId::Laptop || s.loaded_modules.iter().any(|m| m == "thunderbolt"),
+         },
+         KeepCategory {
+-- 
+2.55.0
+

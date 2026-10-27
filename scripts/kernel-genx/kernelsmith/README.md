@@ -1,6 +1,6 @@
 # KernelSmith changes derived from the GenX build check
 
-The two patches apply, in order, on top of KernelSmith commit `71d2703` (the initial
+The three patches apply, in order, on top of KernelSmith commit `71d2703` (the initial
 release, what `sys-kernel/kernelsmith-9999` built on 2026-10-27):
 
 ```bash
@@ -12,7 +12,10 @@ cargo test -p kernelsmith-core && cargo check --workspace && cargo clippy -p ker
 
 The second patch makes the AutoFDO profile reuse happen when the job is prepared (after the
 wizard turned AutoFDO on), lets a build reuse a `MODULES_SIGN_KEY` Portage already has (one key
-per machine), and records the Portage signing files where the Library can remove them.
+per machine), and records the Portage signing files where the Library can remove them. The third
+names the Kconfig gates (`USB_USBNET`, `VSOCKETS`) that the dock-NIC and vhost-vsock keep requests
+depend on; a real build (`7.3.0-ks-max2`, 2026-10-28) had reported those five as verify misses.
+These patches are also open as https://github.com/firesand/kernelsmith/pull/1.
 
 What it adds, each a direct answer to a gap found in the `7.3.0-ks-max` build:
 
