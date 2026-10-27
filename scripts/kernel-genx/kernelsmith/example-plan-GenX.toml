@@ -1,0 +1,66 @@
+format = 1
+name = "genx-ks"
+profile = "gaming"
+source = "/usr/src/linux-7.3.0-cachyos-r3"
+seed = "running"
+slim = "balanced"
+keep = [
+    "usb_storage",
+    "external_fs",
+    "more_fs",
+    "block_dm",
+    "input",
+    "bluetooth",
+    "usb_audio",
+    "webcam",
+    "network_extra",
+    "virtualization",
+    "docks",
+    "sensors",
+    "serial_optical",
+]
+use_modprobed_db = false
+inits = ["OpenRc"]
+patches = []
+jobs = 32
+
+[tweaks]
+anticheat = "ready"
+autofdo = "off"
+cmdline = "desktop"
+compiler = "clang"
+compression = "zstd"
+cpu_trim = "this_pc"
+debug = "btf"
+debug_checks = "off"
+gaming_input = "on"
+governor = "performance"
+guest_trim = "bare_metal"
+hardening = "fast"
+hz = "1000"
+iosched = "all"
+lsm_trim = "unused_off"
+lto = "thin"
+march = "native"
+mglru = "on"
+mitigations = "on"
+ntsync = "on"
+optimize = "o3"
+platform_trim = "this_pc"
+preempt = "full"
+rust = "off"
+sched_ext = "on"
+scheduler = "bore"
+signing = "enforce"
+tcp = "bbr3"
+thp = "always"
+tick = "idle"
+zswap = "on"
+
+[install]
+install = true
+module_rebuild = true
+preserve_old_modules = true
+set_symlink = true
+clean_after = true
+runtime_tuning = false

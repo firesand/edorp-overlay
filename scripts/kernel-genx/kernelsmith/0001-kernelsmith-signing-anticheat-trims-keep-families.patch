@@ -1,0 +1,1420 @@
+From b7e20fadee74063c0618f00eeaa7d9b8ced63b93 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 28 Oct 2026 00:05:35 +0700
+Subject: [PATCH] Module signing, anti-cheat readiness, this-PC trims, broader
+ keep families
+
+Lessons from a real build on a Z790/i9-14900K/RTX 4090 box (job "max"):
+the kernel booted fine but nothing was signed, several on-demand modules
+were gone, i915/xe survived without an Intel GPU, and AutoFDO ran without
+a profile.
+
+Security tweaks:
+- signing: off / sign / enforce. The build script creates one persistent
+  RSA-4096 key (/etc/kernelsmith/keys, root:portage 0640) and sets
+  MODULE_SIG_KEY to it; MODULE_SIG_ALL signs in-tree modules, and after
+  @module-rebuild a sign_modules helper signs every out-of-tree module that
+  lacks the signature trailer (compressed ones included). Portage gets an
+  env/package.env/package.use trio so later driver rebuilds stay signed.
+- anticheat: everything EAC Linux v2 checks locally (lockdown LSM early,
+  BPF LSM, lsm= order, no MOK keyring, IOMMU translating, TPM, kexec via
+  sysctl) plus a GRUB "Gentoo (EAC) <release>" entry with the CachyOS EAC
+  command line; the normal entry stays unlocked. Requires signing=enforce.
+  Removed with the kernel (uninstall now covers /etc/grub.d).
+- lsm_trim, hardening (expert).
+
+This-PC trims (expert): cpu_trim (NR_CPUS next power of two, NUMA off on
+one node), guest_trim (no paravirt/Xen/Hyper-V guest code on bare metal),
+platform_trim (other vendor's IOMMU/SME/pstate, LA57/SGX/TDX by CPU flag,
+EFI_MIXED, x32, GPU drivers of absent vendors; mei_hdcp/mei_pxp are what
+kept i915/xe alive). ACPI_DEBUG joins the developer self-checks.
+
+Keep families: block_dm (loop, dm-crypt, LVM, zram, nbd + all ciphers),
+more_fs (xfs/f2fs/btrfs/squashfs/erofs/hfs+/smb/nfs), sensors,
+serial_optical; network_extra and virtualization gain br_netfilter,
+macvlan/ipvlan/vxlan/tap, VLAN, TLS, cake and BPF classifiers; usb_audio
+gains snd-aloop/virmidi; webcams keep all of drivers/media/usb; docks
+default on when thunderbolt is loaded.
+
+Requirements: VMD built in when a VMD controller is present.
+
+AutoFDO: BuildPlan::new reuses the newest recorded profile automatically,
+the CLI accepts --afdo FILE / --no-afdo, the build warns when the compile
+commands show no -fprofile-sample-use, and the manifest records the
+profile and key paths.
+
+Hardware detection adds numa_nodes, active_lsms, efi_bits and vmd.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ README.md                       |  32 +++
+ crates/app/src/cli.rs           |  14 ++
+ crates/app/src/gui/wizard.rs    |  10 +-
+ crates/core/src/autofdo.rs      |  20 ++
+ crates/core/src/hw.rs           |  43 ++++
+ crates/core/src/library.rs      |   2 +-
+ crates/core/src/paths.rs        |   8 +
+ crates/core/src/plan.rs         |  36 +++-
+ crates/core/src/portage.rs      |   2 +
+ crates/core/src/profiles.rs     |  12 ++
+ crates/core/src/requirements.rs |   8 +-
+ crates/core/src/script.rs       | 260 ++++++++++++++++++++++-
+ crates/core/src/slim.rs         | 102 +++++++++-
+ crates/core/src/tweaks.rs       | 351 +++++++++++++++++++++++++++++++-
+ 14 files changed, 877 insertions(+), 23 deletions(-)
+
+diff --git a/README.md b/README.md
+index 72de3d7..2dcb5d4 100644
+--- a/README.md
++++ b/README.md
+@@ -121,6 +121,35 @@ emerge --ask sys-kernel/cachyos-sources
+ After a successful build: reboot and choose the new kernel in your boot menu (GRUB usually makes
+ the newest kernel the default). Your previous kernel stays installed as a fallback.
+ 
++## Module signing & anti-cheat readiness
++
++*Optimizations → Security* has three related options:
++
++- **Module signing** — *Sign* makes the build sign every in-tree module and, after
++  `emerge @module-rebuild`, Kernelsmith signs the out-of-tree ones (NVIDIA, xpadneo, …) with the
++  same key. The key is created once in `/etc/kernelsmith/keys/modules-signing.pem` (root, readable
++  by the `portage` group) and reused by every build; `/etc/portage/env/kernelsmith-modules-sign.conf`
++  plus a `package.env`/`package.use` entry per driver package keep Portage signing them on later
++  rebuilds. *Sign and enforce* additionally sets `MODULE_SIG_FORCE`, so unsigned modules never load.
++  (`modinfo -F signer` only shows the signer when `sys-apps/kmod` has `USE=pkcs7`.)
++- **Anti-cheat readiness** — builds in what Easy Anti-Cheat Linux v2 checks on the machine
++  (lockdown LSM armed early, BPF LSM, `lsm=` order, IOMMU with DMA translation, TPM 2.0 drivers,
++  no MOK keyring trust) and, with GRUB, adds a second menu entry *Gentoo (EAC) <release>* that
++  boots the same kernel with `lockdown=integrity lsm=landlock,lockdown,yama,integrity,bpf
++  iommu.passthrough=0 module.sig_enforce=1 sysctl.kernel.kexec_load_disabled=1` (plus
++  `intel_iommu=on` on Intel). Your normal entry stays unlocked. Epic additionally requires a kernel
++  signed by a key on its well-known list, which no self-built kernel satisfies — this option gets
++  everything else out of the way.
++- **This PC only** trims (expert options): CPU count and single-node memory (`cpu_trim`), no
++  VM-guest code (`guest_trim`), the other CPU vendor's extras, absent CPU features and absent GPU
++  drivers (`platform_trim`), unused LSMs (`lsm_trim`), and the three hardening defaults with a
++  runtime cost (`hardening`, off by default).
++
++The *Hardware fit* step also gained families for encrypted/loop/zram disks with their ciphers,
++more filesystems, Docker/VM networking (br_netfilter, macvlan, vxlan, …), sensors/RGB
++controllers and optical drives/USB serial adapters — the modules that a plain `localmodconfig`
++drops because nothing had loaded them yet.
++
+ ## Keeping it up to date
+ 
+ - **Presets** remember every choice. Library → *Rebuild with newest sources* (or a saved preset)
+@@ -159,6 +188,9 @@ the newest kernel the default). Your previous kernel stays installed as a fallba
+ | `/var/lib/kernelsmith/kernels/<release>.toml` | Install manifest used for uninstall |
+ | `/etc/sysctl.d/90-kernelsmith.conf`, `/etc/udev/rules.d/60-kernelsmith-ioschedulers.rules` | Runtime tuning pack |
+ | `/etc/kernel/config.d/60-kernelsmith-<name>.config` | Portage mode fragment |
++| `/etc/kernelsmith/keys/modules-signing.pem` (+ `.crt`) | Module signing key, created on first signed build |
++| `/etc/portage/env/kernelsmith-modules-sign.conf`, `package.env/kernelsmith-modules-sign`, `package.use/kernelsmith-modules-sign` | Portage keeps rebuilt drivers signed |
++| `/etc/grub.d/41_kernelsmith-eac-<release>` | Anti-cheat GRUB entry (removed with the kernel) |
+ 
+ ## Command line
+ 
+diff --git a/crates/app/src/cli.rs b/crates/app/src/cli.rs
+index 506c2ae..6602de9 100644
+--- a/crates/app/src/cli.rs
++++ b/crates/app/src/cli.rs
+@@ -39,6 +39,8 @@ OPTIONS for plan/build:
+     --slim MODE         off | balanced | aggressive
+     --no-install        Only build; don't install
+     --build-root DIR    Put the build tree in DIR instead of /usr/src (build-only)
++    --afdo FILE         Compile with this AutoFDO profile (kernel.afdo)
++    --no-afdo           Don't reuse a previously recorded profile
+     --print             Print the generated script
+     --save FILE         Save the resulting plan as a preset
+ ";
+@@ -57,6 +59,8 @@ struct Opts {
+     save: Option<PathBuf>,
+     patches: Vec<String>,
+     patch_files: Vec<PathBuf>,
++    afdo: Option<PathBuf>,
++    no_afdo: bool,
+ }
+ 
+ fn parse_opts(args: &[String]) -> Result<Opts> {
+@@ -74,6 +78,8 @@ fn parse_opts(args: &[String]) -> Result<Opts> {
+         save: None,
+         patches: vec![],
+         patch_files: vec![],
++        afdo: None,
++        no_afdo: false,
+     };
+     let mut it = args.iter();
+     while let Some(a) = it.next() {
+@@ -111,6 +117,8 @@ fn parse_opts(args: &[String]) -> Result<Opts> {
+             "--save" => o.save = Some(val()?.into()),
+             "--patch" => o.patches.push(val()?),
+             "--patch-file" => o.patch_files.push(val()?.into()),
++            "--afdo" => o.afdo = Some(val()?.into()),
++            "--no-afdo" => o.no_afdo = true,
+             other => bail!("unknown option {other}\n\n{USAGE}"),
+         }
+     }
+@@ -221,6 +229,12 @@ fn make_plan(o: &Opts, sys: &SystemInfo) -> Result<(BuildPlan, KernelSource)> {
+         plan.install.runtime_tuning = false;
+     }
+     plan.build_root = o.build_root.clone();
++    if o.no_afdo {
++        plan.profile_data = None;
++    }
++    if let Some(afdo) = &o.afdo {
++        plan.profile_data = Some(kernelsmith_core::plan::ProfileData { afdo: afdo.clone(), propeller_prefix: None });
++    }
+     let fetcher = Fetcher::default();
+     for id in &o.patches {
+         let info = patches::find(id).with_context(|| format!("unknown patch '{id}'"))?;
+diff --git a/crates/app/src/gui/wizard.rs b/crates/app/src/gui/wizard.rs
+index 0ac01c1..4f1e186 100644
+--- a/crates/app/src/gui/wizard.rs
++++ b/crates/app/src/gui/wizard.rs
+@@ -1030,7 +1030,15 @@ impl App {
+                     kv(ui, "Scheduler", format!("{} · sched_ext {}", sel("scheduler"), sel("sched_ext")));
+                     kv(ui, "Timer", format!("{} · {} preemption", sel("hz"), sel("preempt")));
+                     kv(ui, "Gaming", format!("NTSYNC {} · controllers {}", sel("ntsync"), sel("gaming_input")));
+-                    kv(ui, "AutoFDO", if plan.profile_data.is_some() { "Rebuilding with your recorded profile".to_string() } else { sel("autofdo") });
++                    kv(
++                        ui,
++                        "AutoFDO",
++                        match &plan.profile_data {
++                            Some(pd) => format!("Compiling with profile {}", pd.afdo.display()),
++                            None => sel("autofdo"),
++                        },
++                    );
++                    kv(ui, "Security", format!("signing {} · anti-cheat {}", sel("signing"), sel("anticheat")));
+                     let patch_names: Vec<&str> = plan.patches.iter().map(|p| p.title.as_str()).collect();
+                     kv(ui, "Patches", if patch_names.is_empty() { "None".into() } else { patch_names.join(", ") });
+                     kv(
+diff --git a/crates/core/src/autofdo.rs b/crates/core/src/autofdo.rs
+index 9bc6593..16394b3 100644
+--- a/crates/core/src/autofdo.rs
++++ b/crates/core/src/autofdo.rs
+@@ -121,6 +121,26 @@ pub fn rebuild_plan(m: &Manifest, afdo: PathBuf) -> Result<BuildPlan> {
+     Ok(plan)
+ }
+ 
++/// The most recently recorded profile for any release. A profile from an older
++/// kernel still applies: AutoFDO matches by function name and simply ignores
++/// code that changed, so reusing it beats building "profile-ready" with no
++/// profile at all.
++pub fn latest_profile() -> Option<PathBuf> {
++    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
++    for e in std::fs::read_dir(paths::profiles_dir()).into_iter().flatten().flatten() {
++        let p = e.path().join("kernel.afdo");
++        let Ok(md) = std::fs::metadata(&p) else { continue };
++        if md.len() == 0 {
++            continue;
++        }
++        let t = md.modified().unwrap_or(std::time::UNIX_EPOCH);
++        if best.as_ref().is_none_or(|(bt, _)| t > *bt) {
++            best = Some((t, p));
++        }
++    }
++    best.map(|(_, p)| p)
++}
++
+ /// Previously recorded profiles for a release, newest first.
+ pub fn profiles_for(release: &str) -> Vec<PathBuf> {
+     let mut v: Vec<PathBuf> = std::fs::read_dir(paths::profiles_dir())
+diff --git a/crates/core/src/hw.rs b/crates/core/src/hw.rs
+index a4dc7b8..0b59a55 100644
+--- a/crates/core/src/hw.rs
++++ b/crates/core/src/hw.rs
+@@ -278,6 +278,22 @@ pub struct SystemInfo {
+     pub dist_kernels: Vec<InstalledPkg>,
+     pub source_packages: Vec<InstalledPkg>,
+     pub gentoo: bool,
++    /// NUMA nodes the firmware exposes (1 on every desktop and laptop).
++    #[serde(default = "one")]
++    pub numa_nodes: usize,
++    /// Security modules active on the running kernel (`/sys/kernel/security/lsm`).
++    #[serde(default)]
++    pub active_lsms: Vec<String>,
++    /// Firmware word size (`/sys/firmware/efi/fw_platform_size`); 64 on any modern PC.
++    #[serde(default)]
++    pub efi_bits: Option<u32>,
++    /// An Intel VMD controller fronts the NVMe drives, so the root disk may sit behind it.
++    #[serde(default)]
++    pub vmd: bool,
++}
++
++fn one() -> usize {
++    1
+ }
+ 
+ impl SystemInfo {
+@@ -391,6 +407,10 @@ pub fn sample() -> SystemInfo {
+         dist_kernels: vec![],
+         source_packages: vec![],
+         gentoo: true,
++        numa_nodes: 1,
++        active_lsms: ["capability", "landlock", "lockdown", "yama", "bpf"].iter().map(|s| s.to_string()).collect(),
++        efi_bits: Some(64),
++        vmd: true,
+     }
+ }
+ 
+@@ -461,6 +481,13 @@ pub fn detect() -> SystemInfo {
+             .cloned()
+             .collect(),
+         gentoo: Path::new("/etc/gentoo-release").exists(),
++        numa_nodes: numa_nodes(),
++        active_lsms: read_trim("/sys/kernel/security/lsm")
++            .map(|s| s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect())
++            .unwrap_or_default(),
++        efi_bits: read_trim("/sys/firmware/efi/fw_platform_size").and_then(|s| s.parse().ok()),
++        // Driver bound, or an unbound Intel "RAID bus controller" (VMD shows up as class 0x0104).
++        vmd: pci.iter().any(|d| d.driver.as_deref() == Some("vmd") || (d.vendor_id == 0x8086 && d.class >> 8 == 0x0104)),
+         gpus,
+         cpu,
+         boot,
+@@ -468,6 +495,22 @@ pub fn detect() -> SystemInfo {
+     }
+ }
+ 
++/// Memory nodes under /sys/devices/system/node (node0, node1, …).
++fn numa_nodes() -> usize {
++    std::fs::read_dir("/sys/devices/system/node")
++        .map(|d| {
++            d.flatten()
++                .filter(|e| {
++                    let n = e.file_name();
++                    let n = n.to_string_lossy();
++                    n.len() > 4 && n.starts_with("node") && n[4..].chars().all(|c| c.is_ascii_digit())
++                })
++                .count()
++        })
++        .unwrap_or(1)
++        .max(1)
++}
++
+ fn detect_cpu() -> CpuInfo {
+     let text = std::fs::read_to_string("/proc/cpuinfo").unwrap_or_default();
+     let mut vendor = CpuVendor::Other;
+diff --git a/crates/core/src/library.rs b/crates/core/src/library.rs
+index 2e6272a..86c5c65 100644
+--- a/crates/core/src/library.rs
++++ b/crates/core/src/library.rs
+@@ -182,7 +182,7 @@ for f in \
+ {files}    ; do
+     # Only ever touch boot files that carry this kernel's exact name.
+     case "$f" in
+-        /boot/*|/efi/*)
++        /boot/*|/efi/*|/etc/grub.d/*)
+             if [[ $f == *"$REL"* && ( -f $f || -L $f ) ]]; then
+                 rm -f -- "$f"
+                 note "Removed $f"
+diff --git a/crates/core/src/paths.rs b/crates/core/src/paths.rs
+index cf1c155..47bba91 100644
+--- a/crates/core/src/paths.rs
++++ b/crates/core/src/paths.rs
+@@ -11,6 +11,14 @@ pub const APP: &str = "kernelsmith";
+ /// integration records.
+ pub const SYSTEM_STATE: &str = "/var/lib/kernelsmith";
+ pub const SYSTEM_PATCH_DIR: &str = "/etc/kernelsmith/patches";
++/// Persistent module signing key: one PEM holding the private key followed by
++/// its certificate (the layout `scripts/sign-file` and Portage's
++/// MODULES_SIGN_KEY both accept). Created by the build script on first use.
++pub const SIGNING_KEY: &str = "/etc/kernelsmith/keys/modules-signing.pem";
++/// Portage pieces that keep rebuilt out-of-tree drivers signed with that key.
++pub const PORTAGE_SIGN_ENV: &str = "/etc/portage/env/kernelsmith-modules-sign.conf";
++pub const PORTAGE_SIGN_PKGENV: &str = "/etc/portage/package.env/kernelsmith-modules-sign";
++pub const PORTAGE_SIGN_USE: &str = "/etc/portage/package.use/kernelsmith-modules-sign";
+ 
+ pub fn system_state() -> PathBuf {
+     PathBuf::from(SYSTEM_STATE)
+diff --git a/crates/core/src/plan.rs b/crates/core/src/plan.rs
+index 2e13485..1690bb8 100644
+--- a/crates/core/src/plan.rs
++++ b/crates/core/src/plan.rs
+@@ -2,7 +2,8 @@
+ //! preset, validated, turned into a script, and re-used for the next kernel
+ //! version.
+ 
+-use crate::hw::{Initramfs, InitSystem, SystemInfo};
++use crate::autofdo;
++use crate::hw::{Bootloader, Initramfs, InitSystem, SystemInfo};
+ use crate::kconfig::{KConfig, SymbolIndex};
+ use crate::patches::{self, PlannedPatch};
+ use crate::profiles::{self, ProfileId};
+@@ -105,6 +106,13 @@ impl BuildPlan {
+     pub fn new(sys: &SystemInfo, profile: ProfileId, source: &KernelSource) -> Self {
+         let p = profiles::get(profile);
+         let has_modules = !sys.external_modules.is_empty();
++        let tweaks = profiles::defaults(profile, sys);
++        // A profile recorded earlier is worth more than a fresh "profile-ready" build.
++        let profile_data = if tweaks.get("autofdo").is_some_and(|v| v != "off") {
++            autofdo::latest_profile().map(|afdo| ProfileData { afdo, propeller_prefix: None })
++        } else {
++            None
++        };
+         BuildPlan {
+             format: PLAN_FORMAT,
+             name: default_name(profile),
+@@ -115,10 +123,10 @@ impl BuildPlan {
+             keep: slim::default_keep(sys, profile, p.slim),
+             use_modprobed_db: sys.modprobed_db.is_some(),
+             inits: vec![sys.init],
+-            tweaks: profiles::defaults(profile, sys),
++            tweaks,
+             patches: vec![],
+             install: InstallOpts { module_rebuild: has_modules, preserve_old_modules: has_modules, ..Default::default() },
+-            profile_data: None,
++            profile_data,
+             jobs: sys.cpu.threads,
+             build_root: None,
+         }
+@@ -395,6 +403,28 @@ pub fn check(plan: &BuildPlan, sys: &SystemInfo, src: Option<&KernelSource>) ->
+     if let Some(pd) = &plan.profile_data {
+         if !pd.afdo.is_file() {
+             out.push(f(Level::Error, format!("AutoFDO profile {} not found.", pd.afdo.display())));
++        } else if plan.tweaks.get("autofdo").map(String::as_str) == Some("off") {
++            out.push(f(Level::Warn, "An AutoFDO profile is set but the AutoFDO option is off; the profile will not be used."));
++        } else {
++            out.push(f(Level::Info, format!("AutoFDO: compiling with the profile {}.", pd.afdo.display())));
++        }
++    } else if plan.tweaks.get("autofdo").is_some_and(|v| v != "off") {
++        out.push(f(Level::Info, "AutoFDO: no recorded profile yet, so this build only prepares for profiling (Library → Record a profile, then rebuild)."));
++    }
++    let signing = plan.tweaks.get("signing").map(String::as_str).unwrap_or("off");
++    if signing != "off" && plan.install.install && !plan.install.module_rebuild && !sys.external_modules.is_empty() {
++        out.push(f(Level::Warn, "Module signing is on but 'Rebuild driver modules' is off: existing out-of-tree modules stay unsigned."));
++    }
++    if plan.tweaks.get("anticheat").map(String::as_str) == Some("ready") {
++        if sys.boot.bootloader != Bootloader::Grub {
++            out.push(f(Level::Warn, format!(
++                "The anti-cheat boot entry is only generated for GRUB. Add an entry for this kernel by hand with these options: {}",
++                tweaks::eac_cmdline(sys)
++            )));
++        }
++        out.push(f(Level::Info, "Anti-cheat readiness covers everything EAC checks on the machine; Epic additionally requires a kernel signed by a key on its well-known list, which a self-built kernel never is."));
++        if sys.boot.secure_boot != Some(true) {
++            out.push(f(Level::Info, "Secure Boot is off; EAC v2 also needs it enabled (with the kernel signed for it)."));
+         }
+     }
+     let est = estimate(plan, sys);
+diff --git a/crates/core/src/portage.rs b/crates/core/src/portage.rs
+index db1d62f..6c62827 100644
+--- a/crates/core/src/portage.rs
++++ b/crates/core/src/portage.rs
+@@ -102,6 +102,8 @@ pub fn cachyos_use(plan: &BuildPlan) -> String {
+     let fdo = sel("autofdo");
+     flags.push(if fdo != "off" { "autofdo".into() } else { "-autofdo".into() });
+     flags.push(if fdo == "propeller" { "propeller".into() } else { "-propeller".into() });
++    // kernel-build.eclass signs with MODULES_SIGN_KEY (or a generated key) when USE=modules-sign.
++    flags.push(if sel("signing") != "off" { "modules-sign".into() } else { "-modules-sign".into() });
+     format!("sys-kernel/cachyos-kernel {}", flags.join(" "))
+ }
+ 
+diff --git a/crates/core/src/profiles.rs b/crates/core/src/profiles.rs
+index 9c56d29..cf40169 100644
+--- a/crates/core/src/profiles.rs
++++ b/crates/core/src/profiles.rs
+@@ -156,6 +156,13 @@ pub fn defaults(id: ProfileId, sys: &SystemInfo) -> Selection {
+     set("rust", "off");
+     set("cmdline", "desktop");
+     set("mitigations", "on");
++    set("signing", "sign");
++    set("anticheat", "off");
++    set("lsm_trim", "unused_off");
++    set("hardening", "keep");
++    set("cpu_trim", "this_pc");
++    set("guest_trim", "bare_metal");
++    set("platform_trim", "this_pc");
+ 
+     match id {
+         ProfileId::Gaming => {
+@@ -196,6 +203,11 @@ pub fn defaults(id: ProfileId, sys: &SystemInfo) -> Selection {
+             set("cmdline", "off");
+             set("tcp", "bbr");
+             set("optimize", "o2");
++            // Servers get cloned, migrated and virtualised: keep the generic layout.
++            set("cpu_trim", "keep");
++            set("guest_trim", "keep");
++            set("platform_trim", "keep");
++            set("lsm_trim", "keep");
+         }
+     }
+     s
+diff --git a/crates/core/src/requirements.rs b/crates/core/src/requirements.rs
+index 9f08b28..b62a27e 100644
+--- a/crates/core/src/requirements.rs
++++ b/crates/core/src/requirements.rs
+@@ -75,6 +75,11 @@ pub fn groups(sys: &SystemInfo, inits: &[InitSystem]) -> Vec<ReqGroup> {
+     if sys.storage.iter().any(|d| d.kind == DiskKind::Nvme) {
+         root.extend([y("BLK_DEV_NVME")]);
+     }
++    if sys.vmd {
++        // Intel VMD hides the NVMe drives behind its own controller; built in, the root
++        // disk is reachable even if the initramfs forgets the module.
++        root.push(y("VMD"));
++    }
+     if sys.storage.iter().any(|d| matches!(d.kind, DiskKind::Ssd | DiskKind::Hdd)) {
+         root.extend([y("SCSI"), y("BLK_DEV_SD"), y("ATA"), y("SATA_AHCI")]);
+     }
+@@ -155,7 +160,8 @@ pub fn groups(sys: &SystemInfo, inits: &[InitSystem]) -> Vec<ReqGroup> {
+         out.push(group(
+             "NVIDIA driver requirements",
+             "x11-drivers/nvidia-drivers refuses to build without these. DRM_QXL is a tiny virtual-GPU \
+-             driver kept only because it provides the TTM helper NVIDIA needs.",
++             driver kept only because it selects DRM_TTM and DRM_TTM_HELPER, promptless symbols that \
++             nvidia_drm links against and that vanish once no in-tree GPU driver selects them.",
+             sys.needs_nvidia_support(),
+             vec![
+                 y("PROC_FS"), y("SYSVIPC"), y("X86_PAT"), y("MODULES"), y("DRM"), y("DRM_SIMPLEDRM"),
+diff --git a/crates/core/src/script.rs b/crates/core/src/script.rs
+index 14872c0..a5a93e4 100644
+--- a/crates/core/src/script.rs
++++ b/crates/core/src/script.rs
+@@ -11,8 +11,9 @@ use crate::plan::{BuildPlan, Resolved, Seed};
+ use crate::profiles::{self, ProfileId};
+ use crate::slim::SlimMode;
+ use crate::sources::KernelSource;
++use crate::paths;
+ use crate::tuning;
+-use crate::tweaks::Op;
++use crate::tweaks::{self, Op};
+ use crate::util::{format_epoch, now_epoch, shell_quote as q};
+ use std::fmt::Write as _;
+ use std::path::Path;
+@@ -107,6 +108,8 @@ pub fn generate(inp: &ScriptInputs) -> String {
+     let profile = profiles::get(plan.profile);
+     let clang = plan.tweaks.get("compiler").map(String::as_str) == Some("clang");
+     let autofdo_ready = plan.tweaks.get("autofdo").is_some_and(|v| v != "off");
++    let signing = plan.tweaks.get("signing").is_some_and(|v| v != "off");
++    let anticheat = plan.tweaks.get("anticheat").map(String::as_str) == Some("ready");
+     let stages = stages_for(plan);
+ 
+     let mut path = String::new();
+@@ -211,6 +214,9 @@ echo "::plan::{stages}""#,
+     if plan.tweaks.get("debug").map(String::as_str) == Some("btf") || plan.tweaks.get("sched_ext").map(String::as_str) == Some("on") {
+         tools.push("pahole");
+     }
++    if signing {
++        tools.push("openssl");
++    }
+     let _ = writeln!(
+         s,
+         r#"
+@@ -299,6 +305,38 @@ apply_patch() {{
+         )
+     };
+ 
++    let signing_setup = if signing {
++        let key = if plan.needs_root() { paths::SIGNING_KEY.to_string() } else { format!("{job}/keys/modules-signing.pem") };
++        format!(
++            r#"
++# ── Module signing key (created once, reused by every build) ─────────────────
++SIGN_KEY={key}
++if [[ ! -s $SIGN_KEY ]]; then
++    note "Creating the module signing key $SIGN_KEY"
++    mkdir -p "$(dirname "$SIGN_KEY")"
++    (
++        umask 077
++        openssl req -new -x509 -newkey rsa:4096 -sha512 -days 36500 -nodes -batch             -subj "/CN=Kernelsmith module signing key ($(cat /proc/sys/kernel/hostname 2>/dev/null || echo pc))/"             -keyout "$SIGN_KEY.tmp" -out "${{SIGN_KEY%.pem}}.crt" >/dev/null 2>&1
++        # One PEM with key + certificate: what scripts/sign-file and Portage's MODULES_SIGN_KEY expect.
++        cat "${{SIGN_KEY%.pem}}.crt" >> "$SIGN_KEY.tmp"
++        mv "$SIGN_KEY.tmp" "$SIGN_KEY"
++    )
++    # Portage signs rebuilt drivers as the portage user, so the group may read the key.
++    if getent group portage >/dev/null; then
++        chgrp portage "$SIGN_KEY" "${{SIGN_KEY%.pem}}.crt" && chmod 0640 "$SIGN_KEY" && chmod 0644 "${{SIGN_KEY%.pem}}.crt"
++    fi
++fi
++[[ -s ${{SIGN_KEY%.pem}}.crt ]] || openssl x509 -in "$SIGN_KEY" -out "${{SIGN_KEY%.pem}}.crt"
++kconf --set-str MODULE_SIG_KEY "$SIGN_KEY"
++"${{MAKE[@]}}" -s olddefconfig
++SIGN_HASH=$(sed -n 's/^CONFIG_MODULE_SIG_HASH="\(.*\)"/\1/p' "$TREE/.config")
++SIGN_HASH=${{SIGN_HASH:-sha512}}"#,
++            key = q(&key),
++        )
++    } else {
++        String::new()
++    };
++
+     let _ = writeln!(
+         s,
+         r#"
+@@ -314,7 +352,7 @@ apply_choices
+ "${{MAKE[@]}}" -s olddefconfig
+ # Second pass: some options only become selectable once others are on.
+ apply_choices
+-"${{MAKE[@]}}" -s olddefconfig"#
++"${{MAKE[@]}}" -s olddefconfig{signing_setup}"#
+     );
+ 
+     // ── Verify ──
+@@ -363,13 +401,24 @@ cp "$TREE/.config" "$TREE/.kernelsmith/config""#
+     );
+ 
+     // ── Build ──
++    let afdo_check = if plan.profile_data.is_some() {
++        r#"
++# The profile only helps if the compiler actually used it.
++if grep -qs -- '-fprofile-sample-use' "$TREE/init/.main.o.cmd"; then
++    note "AutoFDO profile applied to the build"
++else
++    warn "The AutoFDO profile was NOT applied (no -fprofile-sample-use in the compile commands)"
++fi"#
++    } else {
++        ""
++    };
+     let _ = writeln!(
+         s,
+         r#"
+ # ── 6. Compile ───────────────────────────────────────────────────────────────
+ stage build "Compiling the kernel"
+ "${{MAKE[@]}}"
+-note "Kernel image: $("${{MAKE[@]}}" -s image_name)""#
++note "Kernel image: $("${{MAKE[@]}}" -s image_name)"{afdo_check}"#
+     );
+ 
+     if plan.install.install {
+@@ -397,6 +446,8 @@ write_manifest() {{
+         echo "modules_dir = \"/lib/modules/$REL\""
+         echo "previous_symlink = \"$PREV_LINK\""
+         echo "autofdo_ready = {autofdo}"
++        echo "autofdo_profile = {afdo_profile}"
++        echo "signing_key = {signing_key}"
+         echo "files = ["
+         if [[ -f $TREE/.kernelsmith/boot.files ]]; then
+             while read -r f; do printf '  "%s",\n' "$f"; done < "$TREE/.kernelsmith/boot.files"
+@@ -419,9 +470,10 @@ stage modules "Installing modules"
+ INSTALL_STARTED=1
+ write_manifest installing
+ "${{MAKE[@]}}" INSTALL_MOD_STRIP=1 modules_install
+-
++{sign_funcs}
+ stage kernel "Installing kernel & updating bootloader"
+ boot_snapshot > "$TREE/.kernelsmith/boot.before"
++{eac_entry}
+ # Call Gentoo's installkernel directly (runs dracut/ugrd and updates GRUB or
+ # systemd-boot per its USE flags); `make install` is only the fallback.
+ if command -v installkernel >/dev/null; then
+@@ -432,6 +484,10 @@ fi"##,
+             name = q(&format!("\"{}\"", plan.name.replace('"', ""))),
+             profile = q(&format!("\"{}\"", profile_slug(plan.profile))),
+             autofdo = autofdo_ready,
++            afdo_profile = q(&format!("\"{}\"", plan.profile_data.as_ref().map(|p| p.afdo.display().to_string()).unwrap_or_default().replace('"', ""))),
++            signing_key = if signing { r#"\"$SIGN_KEY\""# } else { r#""""# },
++            sign_funcs = if signing { SIGN_FUNCS } else { "" },
++            eac_entry = if anticheat { eac_entry_snippet(sys) } else { String::new() },
+         );
+         if sys.boot.installkernel.is_none() {
+             let _ = writeln!(
+@@ -450,6 +506,7 @@ fi"#
+ # Only files that are new AND carry this kernel's name belong to it.
+ comm -13 "$TREE/.kernelsmith/boot.before" "$TREE/.kernelsmith/boot.after" \
+     | grep -F -- "$REL" > "$TREE/.kernelsmith/boot.files" || true
++if [[ -f $TREE/.kernelsmith/extra.files ]]; then cat "$TREE/.kernelsmith/extra.files" >> "$TREE/.kernelsmith/boot.files"; fi
+ note "Installed: $(tr '\n' ' ' < "$TREE/.kernelsmith/boot.files")"
+ write_manifest installed"#
+         );
+@@ -478,17 +535,20 @@ done"#
+             } else {
+                 "PRESERVE="
+             };
++            let portage_sign = if signing { portage_sign_snippet(sys) } else { String::new() };
+             let _ = writeln!(
+                 s,
+                 r#"
+ stage modrebuild "Rebuilding driver modules"
+ {preserve}
++{portage_sign}
+ MODREBUILD_OK=1
+ note "Running: emerge @module-rebuild for the new kernel"
+ if ! KERNEL_DIR="$TREE" emerge --ask=n --oneshot --quiet-build=y --color=n --nospinner @module-rebuild; then
+     MODREBUILD_OK=0
+     warn "Some driver modules failed to rebuild. The kernel is installed; fix the error above and run: KERNEL_DIR=$TREE emerge @module-rebuild"
+ fi
++{sign_call}
+ if [[ -n $PRESERVE && -d $PRESERVE ]]; then
+     restored=0
+     while read -r f; do
+@@ -507,7 +567,8 @@ if [[ -n $PRESERVE && -d $PRESERVE ]]; then
+     fi
+     rm -rf "$PRESERVE"
+ fi
+-echo "::modrebuild::$MODREBUILD_OK""#
++echo "::modrebuild::$MODREBUILD_OK""#,
++                sign_call = if signing { "sign_modules \"/lib/modules/$REL\"" } else { "" },
+             );
+         }
+     }
+@@ -544,6 +605,153 @@ echo "::done::$REL""#
+     s
+ }
+ 
++/// Shell functions for signing modules after the fact: every `.ko` under a
++/// directory that lacks the kernel's signature trailer gets one, compressed
++/// modules included. In-tree modules are already signed by `modules_install`.
++const SIGN_FUNCS: &str = r#"
++# ── Module signing helpers ────────────────────────────────────────────────────
++has_sig() {
++    # $1: module file, possibly compressed. The trailer is the last 28 bytes.
++    case $1 in
++        *.zst) zstd -dcq "$1" | tail -c 28 | grep -aq 'Module signature appended' ;;
++        *.xz)  xz -dc "$1" | tail -c 28 | grep -aq 'Module signature appended' ;;
++        *.gz)  gzip -dc "$1" | tail -c 28 | grep -aq 'Module signature appended' ;;
++        *)     tail -c 28 "$1" | grep -aq 'Module signature appended' ;;
++    esac
++}
++sign_modules() {
++    local dir=$1 ko plain signed=0 total=0
++    [[ -x $TREE/scripts/sign-file ]] || { warn "$TREE/scripts/sign-file is missing; out-of-tree modules were not signed"; return 0; }
++    while IFS= read -r -d '' ko; do
++        total=$((total + 1))
++        has_sig "$ko" && continue
++        plain=$ko
++        case $ko in
++            *.zst) plain=${ko%.zst}; zstd -dq --rm "$ko" -o "$plain" ;;
++            *.xz)  plain=${ko%.xz};  xz -d "$ko" ;;
++            *.gz)  plain=${ko%.gz};  gzip -d "$ko" ;;
++        esac
++        "$TREE/scripts/sign-file" "$SIGN_HASH" "$SIGN_KEY" "$SIGN_KEY" "$plain"
++        signed=$((signed + 1))
++        case $ko in
++            *.zst) zstd -q --rm -19 "$plain" ;;
++            *.xz)  xz "$plain" ;;
++            *.gz)  gzip -9 "$plain" ;;
++        esac
++    done < <(find "$dir" -type f \( -name '*.ko' -o -name '*.ko.zst' -o -name '*.ko.xz' -o -name '*.ko.gz' \) -print0)
++    note "Signed $signed of $total modules in $dir (the others already carried a signature)"
++}
++sign_modules "/lib/modules/$REL"
++"#;
++
++/// Portage configuration so that drivers rebuilt later (a new NVIDIA release,
++/// `emerge @module-rebuild`) are signed with the same key by linux-mod-r1.
++fn portage_sign_snippet(sys: &SystemInfo) -> String {
++    let atoms: Vec<&str> = sys.external_modules.iter().map(|p| p.atom.as_str()).collect();
++    if atoms.is_empty() {
++        return String::new();
++    }
++    let pkgenv: Vec<String> = atoms.iter().map(|a| format!("{a} kernelsmith-modules-sign.conf")).collect();
++    let pkguse: Vec<String> = atoms.iter().map(|a| format!("{a} modules-sign")).collect();
++    format!(
++        r#"# ── Keep Portage signing rebuilt drivers with the Kernelsmith key ──────────
++if [[ -d /etc/portage && ( -d /etc/portage/package.use || ! -e /etc/portage/package.use ) ]]; then
++    mkdir -p /etc/portage/env /etc/portage/package.env /etc/portage/package.use "$STATE"
++    cat > {env} <<KS_EOF
++# Written by Kernelsmith: sign out-of-tree modules with the Kernelsmith key (linux-mod-r1).
++MODULES_SIGN_KEY="$SIGN_KEY"
++MODULES_SIGN_CERT="${{SIGN_KEY%.pem}}.crt"
++MODULES_SIGN_HASH="$SIGN_HASH"
++KS_EOF
++    printf '%s\n' {pkgenv} > {pkgenv_file}
++    printf '%s\n' {pkguse} > {pkguse_file}
++    printf '%s\n' {env} {pkgenv_file} {pkguse_file} > "$STATE/signing.list"
++    note "Portage will sign {n} driver package(s) with $SIGN_KEY on every rebuild"
++else
++    warn "/etc/portage/package.use is a file; not adding USE=modules-sign for your driver packages"
++fi"#,
++        env = q(paths::PORTAGE_SIGN_ENV),
++        pkgenv = pkgenv.iter().map(|l| q(l)).collect::<Vec<_>>().join(" "),
++        pkgenv_file = q(paths::PORTAGE_SIGN_PKGENV),
++        pkguse = pkguse.iter().map(|l| q(l)).collect::<Vec<_>>().join(" "),
++        pkguse_file = q(paths::PORTAGE_SIGN_USE),
++        n = atoms.len(),
++    )
++}
++
++/// A GRUB script that adds a "(EAC)" entry booting this kernel with the
++/// command line Easy Anti-Cheat Linux v2 checks. Root device, subvolume and
++/// early microcode are derived the way 10_linux does it.
++fn eac_entry_snippet(sys: &SystemInfo) -> String {
++    let cmdline = tweaks::eac_cmdline(sys);
++    format!(
++        r##"# ── Anti-cheat boot entry (same kernel, EAC command line) ──────────────────
++if [[ -d /etc/grub.d ]] && command -v grub-mkconfig >/dev/null; then
++    EAC_SCRIPT="/etc/grub.d/41_kernelsmith-eac-$REL"
++    cat > "$EAC_SCRIPT" <<'KS_EOF'
++#!/bin/sh
++# Written by Kernelsmith: boots __REL__ with the options Easy Anti-Cheat Linux v2
++# checks on the measured command line. The normal entry stays unlocked.
++set -e
++prefix="/usr"
++exec_prefix="/usr"
++datarootdir="/usr/share"
++. "${{datarootdir}}/grub/grub-mkconfig_lib"
++REL=__REL__
++EAC_REQ="{cmdline}"
++kernel=/boot/vmlinuz-$REL
++[ -e "$kernel" ] || exit 0
++initrd=
++for i in /boot/initramfs-$REL.img /boot/initrd-$REL /boot/initrd.img-$REL; do
++    [ -e "$i" ] && initrd=$i && break
++done
++case x"$GRUB_DEVICE_UUID" in
++    x) LINUX_ROOT_DEVICE=${{GRUB_DEVICE}} ;;
++    *) LINUX_ROOT_DEVICE=UUID=${{GRUB_DEVICE_UUID}} ;;
++esac
++case x"$GRUB_FS" in
++    xbtrfs)
++        rootsubvol="`make_system_path_relative_to_its_root /`"
++        rootsubvol="${{rootsubvol#/}}"
++        [ "x${{rootsubvol}}" != x ] && GRUB_CMDLINE_LINUX="rootflags=subvol=${{rootsubvol}} ${{GRUB_CMDLINE_LINUX}}"
++        ;;
++esac
++early=
++for i in ${{GRUB_EARLY_INITRD_LINUX_STOCK}} ${{GRUB_EARLY_INITRD_LINUX_CUSTOM}}; do
++    [ -e "/boot/${{i}}" ] && early="$early $(make_system_path_relative_to_its_root "/boot/${{i}}")"
++done
++gettext_printf "Found anti-cheat entry kernel: %s\n" "$kernel" >&2
++cat <<ENTRY
++menuentry 'Gentoo (EAC) $REL' --class gentoo --class gnu-linux --class gnu --class os \$menuentry_id_option 'kernelsmith-eac-$REL' {{
++	load_video
++	insmod gzio
++	insmod part_gpt
++	insmod btrfs
++ENTRY
++[ x"$GRUB_DEVICE_BOOT" != x ] && prepare_grub_to_access_device "${{GRUB_DEVICE_BOOT}}" | grub_add_tab
++cat <<ENTRY
++	echo 'Loading Linux $REL (anti-cheat: lockdown=integrity, signed modules only, IOMMU on)'
++	linux $(make_system_path_relative_to_its_root "$kernel") root=${{LINUX_ROOT_DEVICE}} ro ${{GRUB_CMDLINE_LINUX}} ${{GRUB_CMDLINE_LINUX_DEFAULT}} ${{EAC_REQ}}
++ENTRY
++if [ -n "$initrd" ]; then
++    cat <<ENTRY
++	echo 'Loading initial ramdisk ...'
++	initrd${{early}} $(make_system_path_relative_to_its_root "$initrd")
++ENTRY
++fi
++echo '}}'
++KS_EOF
++    sed -i "s|__REL__|$REL|g" "$EAC_SCRIPT"
++    chmod 0755 "$EAC_SCRIPT"
++    echo "$EAC_SCRIPT" >> "$TREE/.kernelsmith/extra.files"
++    note "Added the anti-cheat GRUB entry script $EAC_SCRIPT"
++else
++    warn "No GRUB: add a boot entry for $REL yourself with these options: {cmdline}"
++fi"##,
++        cmdline = cmdline,
++    )
++}
++
+ pub fn profile_slug(p: ProfileId) -> &'static str {
+     match p {
+         ProfileId::Gaming => "gaming",
+@@ -596,6 +804,8 @@ mod tests {
+         p.patches.push(PlannedPatch { id: "bore".into(), title: "BORE scheduler".into(), file: PathBuf::from("/tmp/x/0001-bore.patch"), url: None });
+         p.profile_data = Some(ProfileData { afdo: PathBuf::from("/home/u/kernel.afdo"), propeller_prefix: None });
+         p.tweaks.insert("autofdo".into(), "autofdo".into());
++        p.tweaks.insert("signing".into(), "enforce".into());
++        p.tweaks.insert("anticheat".into(), "ready".into());
+         p
+     }
+ 
+@@ -624,11 +834,33 @@ mod tests {
+             "verify GENTOO_LINUX_INIT_SCRIPT y 1",
+             "verify BTRFS_FS y 1",
+             "verify DRM_FBDEV_EMULATION y 1",
++            "verify VMD y 1",
++            "verify MODULE_SIG_FORCE y 0",
++            "verify SECURITY_LOCKDOWN_LSM_EARLY y 0",
++            "verify NR_CPUS 16 0",
++            "openssl req -new -x509",
++            "kconf --set-str MODULE_SIG_KEY",
++            "scripts/sign-file",
++            "sign_modules \"/lib/modules/$REL\"",
++            "/etc/portage/env/kernelsmith-modules-sign.conf",
++            "x11-drivers/nvidia-drivers modules-sign",
++            "41_kernelsmith-eac-$REL",
++            "lockdown=integrity lsm=landlock,lockdown,yama,integrity,bpf",
++            "intel_iommu=on",
++            "-fprofile-sample-use",
+             "/etc/sysctl.d/90-kernelsmith.conf",
+             "::done::$REL",
+         ] {
+             assert!(s.contains(needle), "script lacks: {needle}");
+         }
++        // The embedded GRUB script must itself be valid POSIX sh.
++        let start = s.find("#!/bin/sh
++# Written by Kernelsmith").expect("grub script");
++        let end = start + s[start..].find("
++KS_EOF
++").expect("heredoc end");
++        let grub = s[start..end].replace("__REL__", "7.3.0-gentoo-ks-gaming");
++        bash_ok(&grub);
+         // The cleanup trap must only ever delete a tree this run created.
+         assert!(s.contains("$TREE_CREATED -eq 1 && $INSTALL_STARTED -eq 0"));
+     }
+@@ -665,6 +897,24 @@ mod tests {
+         assert!(!s.contains("modules_install"));
+         assert!(!s.contains("EUID -eq 0 ]] || fail"));
+         assert!(s.contains("TREE=/tmp/ks-builds/linux-7.3.0-gentoo-ks-server"));
++        // Signing is on by default; without root the key lives in the job directory.
++        assert!(s.contains("SIGN_KEY=/tmp/job/keys/modules-signing.pem"));
++        assert!(!s.contains("41_kernelsmith-eac"));
++    }
++
++    #[test]
++    fn signing_off_leaves_no_trace() {
++        let sys = hw::sample();
++        let src = source();
++        let mut plan = BuildPlan::new(&sys, ProfileId::Gaming, &src);
++        plan.tweaks.insert("signing".into(), "off".into());
++        plan.tweaks.insert("anticheat".into(), "off".into());
++        let resolved = plan::resolve(&plan, &sys, &src, None);
++        let s = generate(&ScriptInputs { plan: &plan, sys: &sys, src: &src, resolved: &resolved, job_dir: Path::new("/tmp/job") });
++        bash_ok(&s);
++        for needle in ["SIGN_KEY=", "sign_modules", "kernelsmith-modules-sign", "41_kernelsmith-eac"] {
++            assert!(!s.contains(needle), "script should not contain {needle}");
++        }
+     }
+ 
+     #[test]
+diff --git a/crates/core/src/slim.rs b/crates/core/src/slim.rs
+index 51b50fc..d470606 100644
+--- a/crates/core/src/slim.rs
++++ b/crates/core/src/slim.rs
+@@ -80,6 +80,39 @@ pub fn categories() -> Vec<KeepCategory> {
+             },
+             default_on: |_, _| true,
+         },
++        KeepCategory {
++            id: "more_fs",
++            icon: "🗂",
++            title: "More filesystems",
++            desc: "ext4/XFS/F2FS/Btrfs disks, squashfs & erofs (Flatpak, AppImage, Steam), HFS+, Windows (SMB) and NFS shares.",
++            lmc_paths: &[
++                "fs/ext4", "fs/xfs", "fs/f2fs", "fs/btrfs", "fs/squashfs", "fs/erofs", "fs/hfsplus", "fs/hfs",
++                "fs/smb", "fs/nfs", "fs/nfsd", "fs/nfs_common", "fs/netfs", "fs/cachefiles", "fs/autofs", "net/sunrpc",
++            ],
++            ops: |_| {
++                ["EXT4_FS", "XFS_FS", "F2FS_FS", "BTRFS_FS", "SQUASHFS", "EROFS_FS", "HFSPLUS_FS", "CIFS", "NFS_FS", "NFSD", "AUTOFS_FS"]
++                    .iter()
++                    .map(|s| atm(s))
++                    .collect()
++            },
++            default_on: |_, _| true,
++        },
++        KeepCategory {
++            id: "block_dm",
++            icon: "🔒",
++            title: "Encrypted, virtual & RAM disks",
++            desc: "LUKS (dm-crypt), LVM, software RAID, loop devices for ISO images, zram, network block devices, and the ciphers they need.",
++            // crypto/ and lib/crypto/ are kept whole: a LUKS volume opened next month needs
++            // ciphers that are not loaded today.
++            lmc_paths: &["drivers/md", "drivers/block", "crypto", "arch/x86/crypto", "lib/crypto"],
++            ops: |_| {
++                ["BLK_DEV_LOOP", "BLK_DEV_DM", "DM_CRYPT", "DM_SNAPSHOT", "BLK_DEV_NBD", "ZRAM", "CRYPTO_XTS", "CRYPTO_AES_NI_INTEL"]
++                    .iter()
++                    .map(|s| atm(s))
++                    .collect()
++            },
++            default_on: |_, _| true,
++        },
+         KeepCategory {
+             id: "input",
+             icon: "⌨",
+@@ -103,8 +136,8 @@ pub fn categories() -> Vec<KeepCategory> {
+             icon: "🎧",
+             title: "USB headsets, audio interfaces & MIDI",
+             desc: "USB DACs, gaming headsets, audio interfaces, MIDI keyboards.",
+-            lmc_paths: &["sound/usb", "sound/core"],
+-            ops: |_| vec![atm("SND_USB_AUDIO"), atm("SND_SEQ"), atm("SND_RAWMIDI"), atm("SND_HRTIMER")],
++            lmc_paths: &["sound/usb", "sound/core", "sound/drivers"],
++            ops: |_| vec![atm("SND_USB_AUDIO"), atm("SND_SEQ"), atm("SND_RAWMIDI"), atm("SND_HRTIMER"), atm("SND_ALOOP"), atm("SND_VIRMIDI")],
+             default_on: |_, p| p != ProfileId::Server,
+         },
+         KeepCategory {
+@@ -112,7 +145,7 @@ pub fn categories() -> Vec<KeepCategory> {
+             icon: "📷",
+             title: "Webcams & capture cards",
+             desc: "USB webcams (UVC) and video capture devices.",
+-            lmc_paths: &["drivers/media/usb/uvc", "drivers/media/v4l2-core", "drivers/media/mc", "drivers/media/common"],
++            lmc_paths: &["drivers/media/usb", "drivers/media/v4l2-core", "drivers/media/mc", "drivers/media/common"],
+             ops: |_| vec![atm("MEDIA_SUPPORT"), y("MEDIA_USB_SUPPORT"), y("MEDIA_CAMERA_SUPPORT"), atm("USB_VIDEO_CLASS")],
+             default_on: |_, p| p != ProfileId::Server,
+         },
+@@ -120,9 +153,16 @@ pub fn categories() -> Vec<KeepCategory> {
+             id: "network_extra",
+             icon: "🔐",
+             title: "VPN & virtual networking",
+-            desc: "WireGuard, OpenVPN (TUN), bridges — used by VPN apps and Steam Link.",
+-            lmc_paths: &["drivers/net/wireguard", "net/bridge"],
+-            ops: |_| vec![atm("WIREGUARD"), atm("TUN"), atm("BRIDGE"), atm("VETH")],
++            desc: "WireGuard, OpenVPN (TUN), bridges, VLANs, traffic shaping — used by VPN apps, Tailscale and Steam Link.",
++            // WIREGUARD lives in drivers/net/Kconfig and BRIDGE_NETFILTER in net/Kconfig, which
++            // LMC_KEEP's per-Kconfig-file matching cannot single out: they are explicit ops.
++            lmc_paths: &["drivers/net/wireguard", "net/bridge", "net/8021q", "net/sched", "net/tls", "net/xfrm", "net/key"],
++            ops: |_| {
++                vec![
++                    atm("WIREGUARD"), atm("TUN"), atm("BRIDGE"), atm("VETH"), atm("BRIDGE_NETFILTER"), atm("VLAN_8021Q"),
++                    atm("TLS"), atm("IFB"), atm("DUMMY"), atm("NET_SCH_CAKE"), atm("NET_CLS_BPF"), atm("NET_ACT_BPF"),
++                ]
++            },
+             default_on: |_, _| true,
+         },
+         KeepCategory {
+@@ -132,10 +172,14 @@ pub fn categories() -> Vec<KeepCategory> {
+             desc: "KVM/QEMU, VFIO passthrough, Docker, Podman, Flatpak sandboxes.",
+             lmc_paths: &[
+                 "arch/x86/kvm", "virt", "drivers/vfio", "drivers/vhost", "net/netfilter",
+-                "net/ipv4/netfilter", "net/ipv6/netfilter", "fs/overlayfs", "net/bridge",
++                "net/ipv4/netfilter", "net/ipv6/netfilter", "fs/overlayfs", "net/bridge", "net/vmw_vsock",
+             ],
+             ops: |s| {
+-                let mut v = vec![atm("KVM"), atm("VFIO"), atm("VFIO_PCI"), atm("VHOST_NET"), atm("TUN"), atm("BRIDGE"), atm("VETH"), atm("OVERLAY_FS")];
++                let mut v = vec![
++                    atm("KVM"), atm("VFIO"), atm("VFIO_PCI"), atm("VHOST_NET"), atm("VHOST_VSOCK"), atm("TUN"), atm("BRIDGE"),
++                    atm("VETH"), atm("OVERLAY_FS"), atm("BRIDGE_NETFILTER"), atm("MACVLAN"), atm("MACVTAP"), atm("IPVLAN"),
++                    atm("VXLAN"), atm("TAP"),
++                ];
+                 v.push(atm(if s.cpu.vendor == CpuVendor::Amd { "KVM_AMD" } else { "KVM_INTEL" }));
+                 v
+             },
+@@ -148,7 +192,7 @@ pub fn categories() -> Vec<KeepCategory> {
+             desc: "Thunderbolt/USB4 docks, USB-C displays and dock network adapters.",
+             lmc_paths: &["drivers/thunderbolt", "drivers/usb/typec"],
+             ops: |_| vec![atm("USB4"), atm("TYPEC"), atm("USB_RTL8152"), atm("USB_NET_AX88179_178A"), atm("USB_NET_CDC_NCM")],
+-            default_on: |s, p| s.is_laptop() || p == ProfileId::Laptop,
++            default_on: |s, p| s.is_laptop() || p == ProfileId::Laptop || s.loaded_modules.iter().any(|m| m == "thunderbolt"),
+         },
+         KeepCategory {
+             id: "phones",
+@@ -159,6 +203,24 @@ pub fn categories() -> Vec<KeepCategory> {
+             ops: |_| vec![atm("USB_USBNET"), atm("USB_NET_CDCETHER"), atm("USB_NET_RNDIS_HOST"), atm("USB_IPHETH")],
+             default_on: |s, _| s.is_laptop(),
+         },
++        KeepCategory {
++            id: "sensors",
++            icon: "🌡",
++            title: "Sensors, fans & RGB controllers",
++            desc: "Motherboard sensors, AIO coolers, PSU monitoring and LED controllers (lm-sensors, liquidctl, OpenRGB).",
++            lmc_paths: &["drivers/hwmon", "drivers/leds", "drivers/i2c"],
++            ops: |_| vec![atm("I2C_CHARDEV")],
++            default_on: |s, p| !s.is_laptop() && p != ProfileId::Server,
++        },
++        KeepCategory {
++            id: "serial_optical",
++            icon: "💿",
++            title: "Optical drives & USB serial adapters",
++            desc: "DVD/Blu-ray drives, Arduino and ESP boards, serial consoles, USB modems.",
++            lmc_paths: &["drivers/usb/serial", "drivers/cdrom", "drivers/usb/class"],
++            ops: |_| vec![atm("BLK_DEV_SR"), atm("CDROM"), atm("CHR_DEV_SG"), atm("USB_SERIAL"), atm("USB_ACM")],
++            default_on: |_, p| p != ProfileId::Server,
++        },
+         KeepCategory {
+             id: "printers",
+             icon: "🖶",
+@@ -181,3 +243,25 @@ pub fn default_keep(sys: &SystemInfo, profile: ProfileId, mode: SlimMode) -> Vec
+         .map(|c| c.id.to_string())
+         .collect()
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::hw;
++
++    #[test]
++    fn categories_are_unique_and_complete() {
++        let cats = categories();
++        let mut ids = std::collections::HashSet::new();
++        for c in &cats {
++            assert!(ids.insert(c.id), "duplicate keep category {}", c.id);
++            assert!(!c.lmc_paths.is_empty(), "{} keeps nothing", c.id);
++        }
++        let sys = hw::sample();
++        let keep = default_keep(&sys, ProfileId::Gaming, SlimMode::Balanced);
++        for wanted in ["block_dm", "more_fs", "network_extra", "sensors", "serial_optical"] {
++            assert!(keep.iter().any(|k| k == wanted), "gaming default lacks {wanted}");
++        }
++        assert_eq!(default_keep(&sys, ProfileId::Gaming, SlimMode::Aggressive).len(), 2);
++    }
++}
+diff --git a/crates/core/src/tweaks.rs b/crates/core/src/tweaks.rs
+index 7c4d80c..bd08edc 100644
+--- a/crates/core/src/tweaks.rs
++++ b/crates/core/src/tweaks.rs
+@@ -10,7 +10,7 @@
+ //! script is generated, and every requested value is verified after
+ //! `make olddefconfig`, so the catalog can be generous.
+ 
+-use crate::hw::{BranchSampling, CpuVendor, SystemInfo};
++use crate::hw::{BranchSampling, CpuVendor, GpuVendor, SystemInfo};
+ use crate::kconfig::SymbolIndex;
+ use serde::{Deserialize, Serialize};
+ use std::collections::{BTreeMap, HashSet};
+@@ -238,13 +238,37 @@ const GOV: [&str; 6] = [
+ ];
+ 
+ /// Kernel-side debugging aids that cost speed and memory on a normal system.
+-pub const DEBUG_CHECKS: [&str; 22] = [
++pub const DEBUG_CHECKS: [&str; 23] = [
+     "KASAN", "KCSAN", "KMSAN", "UBSAN", "LOCKDEP", "PROVE_LOCKING", "LOCK_STAT", "DEBUG_ATOMIC_SLEEP",
+     "DEBUG_PREEMPT", "DEBUG_MUTEXES", "DEBUG_RT_MUTEXES", "DEBUG_SPINLOCK", "DEBUG_LIST", "DEBUG_SG",
+     "DEBUG_NOTIFIERS", "DEBUG_KMEMLEAK", "DEBUG_PAGEALLOC", "PAGE_OWNER", "SLUB_DEBUG_ON", "DEBUG_VM",
+-    "DEBUG_OBJECTS", "LATENCYTOP",
++    "DEBUG_OBJECTS", "LATENCYTOP", "ACPI_DEBUG",
+ ];
+ 
++/// Hash choices of the module signing menu; the selected one defines MODULE_SIG_HASH.
++const SIG_HASH: [&str; 8] = [
++    "MODULE_SIG_SHA1", "MODULE_SIG_SHA224", "MODULE_SIG_SHA256", "MODULE_SIG_SHA384", "MODULE_SIG_SHA512",
++    "MODULE_SIG_SHA3_256", "MODULE_SIG_SHA3_384", "MODULE_SIG_SHA3_512",
++];
++
++/// The command line Easy Anti-Cheat Linux v2 checks for (the list CachyOS uses on its EAC entry).
++/// `intel_iommu=on` is added on Intel systems; AMD-Vi is on by default.
++pub const EAC_CMDLINE: &str = "lockdown=integrity lsm=landlock,lockdown,yama,integrity,bpf iommu.passthrough=0 module.sig_enforce=1 sysctl.kernel.kexec_load_disabled=1";
++
++pub fn eac_cmdline(sys: &SystemInfo) -> String {
++    if sys.cpu.vendor == CpuVendor::Intel {
++        format!("{EAC_CMDLINE} intel_iommu=on")
++    } else {
++        EAC_CMDLINE.to_string()
++    }
++}
++
++/// NR_CPUS for a machine with `threads` logical CPUs: the next power of two,
++/// so a CPU upgrade on the same board still fits, never below 8.
++pub fn nr_cpus_for(threads: usize) -> usize {
++    threads.max(8).next_power_of_two().min(512)
++}
++
+ // Each choice needs its own non-capturing closures, hence a macro.
+ macro_rules! hz_choice {
+     ($hz:literal, $label:literal, $desc:literal) => {
+@@ -1143,9 +1167,291 @@ fn build_catalog() -> Vec<Tweak> {
+                     ops: |_| vec![n("CPU_MITIGATIONS")], avail: ok },
+             ],
+         },
++        Tweak {
++            id: "signing",
++            category: Category::Security,
++            title: "Module signing",
++            summary: "Sign every kernel module with a key kept on this PC.",
++            explain: "With signing on, the build signs all in-tree modules and, after \
++                      `emerge @module-rebuild`, Kernelsmith signs the out-of-tree ones (NVIDIA, \
++                      xpadneo, …) with the same key, so the kernel can tell its own modules from \
++                      anything else. The key is created once in /etc/kernelsmith/keys and reused by \
++                      every build; Portage is set up to keep signing those drivers when it rebuilds \
++                      them later. 'Sign' only records signatures. 'Sign and enforce' makes the kernel \
++                      refuse unsigned modules — required for anti-cheat readiness and for \
++                      lockdown=integrity.",
++            advanced: false,
++            choices: vec![
++                Choice { id: "off", label: "Leave as is", desc: "Whatever the base config does (usually unsigned).", risk: Risk::Safe,
++                    ops: none, avail: ok },
++                Choice { id: "sign", label: "Sign", desc: "Signed; unsigned modules still load.", risk: Risk::Safe,
++                    ops: |_| signing_ops(), avail: signing_avail },
++                Choice {
++                    id: "enforce",
++                    label: "Sign and enforce",
++                    desc: "Only signed modules load. Needed for anti-cheat.",
++                    risk: Risk::Moderate,
++                    ops: |_| {
++                        let mut v = signing_ops();
++                        v.extend([y("MODULE_SIG_FORCE"), n("MODULE_FORCE_LOAD")]);
++                        v
++                    },
++                    avail: signing_avail,
++                },
++            ],
++        },
++        Tweak {
++            id: "anticheat",
++            category: Category::Security,
++            title: "Anti-cheat readiness (Easy Anti-Cheat Linux v2)",
++            summary: "Lockdown, BPF LSM, IOMMU and TPM support the way EAC v2 checks them, on a separate boot entry.",
++            explain: "Epic's EAC Linux v2 inspects how the system booted: lockdown in integrity \
++                      mode, only signed modules, the BPF LSM active, the IOMMU translating DMA, a \
++                      TPM 2.0 and kexec disabled — all passed on the kernel command line, which \
++                      measured boot records. This builds in everything EAC can check locally and, \
++                      with GRUB, adds a second menu entry \"(EAC)\" that boots the same kernel with \
++                      those options. Your normal entry stays unlocked, so MSR tools and hibernation \
++                      keep working there. It cannot satisfy EAC's last rule: the kernel has to be \
++                      signed with a key on Epic's well-known list, which no self-built kernel is.",
++            advanced: false,
++            choices: vec![
++                Choice { id: "off", label: "Off", desc: "No anti-cheat preparation.", risk: Risk::Safe, ops: none, avail: ok },
++                Choice {
++                    id: "ready",
++                    label: "Ready",
++                    desc: "EAC-style lockdown entry next to the normal one.",
++                    risk: Risk::Moderate,
++                    ops: anticheat_ops,
++                    avail: anticheat_avail,
++                },
++            ],
++        },
++        Tweak {
++            id: "lsm_trim",
++            category: Category::Security,
++            title: "Unused security modules",
++            summary: "Leave out SELinux, AppArmor and friends when nothing on this PC uses them.",
++            explain: "Distribution configs compile every Linux Security Module so any distro can \
++                      enable it at boot. 'Only what's active' keeps the ones listed in the running \
++                      kernel's /sys/kernel/security/lsm and drops the rest. Landlock, Yama, lockdown \
++                      and the BPF LSM — what Flatpak, browsers, sandboxes and anti-cheat rely on — \
++                      are never touched.",
++            advanced: true,
++            choices: vec![
++                Choice { id: "keep", label: "Leave as is", desc: "Compile all of them.", risk: Risk::Safe, ops: none, avail: ok },
++                Choice {
++                    id: "unused_off",
++                    label: "Only what's active",
++                    desc: "Drops the modules this PC never loads.",
++                    risk: Risk::Safe,
++                    ops: |c| {
++                        let active = |name: &str| c.sys.active_lsms.iter().any(|l| l == name);
++                        [
++                            ("SECURITY_SELINUX", "selinux"), ("SECURITY_SMACK", "smack"), ("SECURITY_TOMOYO", "tomoyo"),
++                            ("SECURITY_APPARMOR", "apparmor"), ("SECURITY_IPE", "ipe"), ("SECURITY_LOADPIN", "loadpin"),
++                            ("SECURITY_SAFESETID", "safesetid"),
++                        ]
++                        .iter()
++                        .filter(|(_, l)| !active(l))
++                        .map(|(s, _)| n(s))
++                        .collect()
++                    },
++                    avail: |c| {
++                        if c.sys.active_lsms.is_empty() {
++                            Err("Could not read the active LSM list (/sys/kernel/security/lsm)".into())
++                        } else {
++                            Ok(())
++                        }
++                    },
++                },
++            ],
++        },
++        Tweak {
++            id: "hardening",
++            category: Category::Security,
++            title: "Hardening defaults with a runtime cost",
++            summary: "Zeroing every allocation, random stack offsets and usercopy bounds checks.",
++            explain: "Three defaults inherited from Arch/Fedora-style configs protect against \
++                      certain kernel bugs but cost a little on every allocation and system call: \
++                      init_on_alloc, randomize_kstack_offset and hardened usercopy. 'Fast' turns \
++                      their defaults off; the code stays in the kernel, so each can be switched back \
++                      on from the boot command line (init_on_alloc=1, randomize_kstack_offset=on, \
++                      hardened_usercopy=on).",
++            advanced: true,
++            choices: vec![
++                Choice { id: "keep", label: "Keep on", desc: "Recommended unless you chase every last frame.", risk: Risk::Safe,
++                    ops: none, avail: ok },
++                Choice { id: "fast", label: "Fast", desc: "Off by default; re-enable at boot if needed.", risk: Risk::Moderate,
++                    ops: |_| vec![n("INIT_ON_ALLOC_DEFAULT_ON"), n("RANDOMIZE_KSTACK_OFFSET_DEFAULT"), n("HARDENED_USERCOPY_DEFAULT_ON")],
++                    avail: ok },
++            ],
++        },
++        // ───────────────────────────── This PC only ─────────────────────────────
++        Tweak {
++            id: "cpu_trim",
++            category: Category::Cpu,
++            title: "CPU count & memory topology",
++            summary: "Size the kernel for this many cores instead of 8192.",
++            explain: "Distribution kernels are built for up to 8192 CPUs and many memory nodes, so \
++                      every CPU mask lives on the heap and NUMA bookkeeping runs even on a \
++                      single-node desktop. 'This PC' sizes the kernel for its core count (rounded up \
++                      to a power of two, so a CPU upgrade on the same board still fits) and drops \
++                      NUMA when there is only one memory node. Rebuild if the disk ever moves to a \
++                      much bigger machine.",
++            advanced: true,
++            choices: vec![
++                Choice { id: "keep", label: "Leave as is", desc: "Generic layout for any machine.", risk: Risk::Safe, ops: none, avail: ok },
++                Choice {
++                    id: "this_pc",
++                    label: "This PC",
++                    desc: "Exact core count, single-node memory.",
++                    risk: Risk::Safe,
++                    ops: |c| {
++                        let mut v = vec![n("MAXSMP"), val("NR_CPUS", &nr_cpus_for(c.sys.cpu.threads).to_string())];
++                        if c.sys.numa_nodes <= 1 {
++                            v.push(n("NUMA"));
++                        }
++                        v
++                    },
++                    avail: ok,
++                },
++            ],
++        },
++        Tweak {
++            id: "guest_trim",
++            category: Category::Size,
++            title: "Virtual-machine guest support",
++            summary: "Drop the code for running *inside* Xen, Hyper-V, VMware or KVM.",
++            explain: "A kernel that may boot as a VM guest carries paravirtualised operations and \
++                      guest drivers for every hypervisor. On bare metal they are patched out at boot \
++                      but still cost code size and build time. Running VMs on this PC (KVM, QEMU, \
++                      VirtualBox) is unaffected: that is host support, which stays.",
++            advanced: true,
++            choices: vec![
++                Choice { id: "keep", label: "Leave as is", desc: "Can still boot as a VM guest.", risk: Risk::Safe, ops: none, avail: ok },
++                Choice {
++                    id: "bare_metal",
++                    label: "Bare metal only",
++                    desc: "No guest support. Smaller and leaner.",
++                    risk: Risk::Moderate,
++                    ops: |_| {
++                        ["HYPERVISOR_GUEST", "PARAVIRT", "KVM_GUEST", "XEN", "HYPERV", "INTEL_TDX_GUEST", "VMWARE_VMCI", "VIRTIO_MENU"]
++                            .iter()
++                            .map(|s| n(s))
++                            .collect()
++                    },
++                    avail: |c| {
++                        if c.sys.vm_guest.is_some() {
++                            Err("This system is running inside a virtual machine".into())
++                        } else {
++                            Ok(())
++                        }
++                    },
++                },
++            ],
++        },
++        Tweak {
++            id: "platform_trim",
++            category: Category::Size,
++            title: "Platform features this PC doesn't have",
++            summary: "Leave out the other CPU vendor's extras, absent CPU features and absent GPUs.",
++            explain: "Based on what was detected: AMD-only or Intel-only pieces (IOMMU, memory \
++                      encryption, P-state driver), 5-level paging, SGX and TDX when the CPU lacks \
++                      them, 32-bit UEFI support on 64-bit firmware, the unused x32 ABI, and graphics \
++                      drivers for GPU vendors that are not in this machine. Detection runs again at \
++                      the next build, so a new GPU only needs a rebuild.",
++            advanced: true,
++            choices: vec![
++                Choice { id: "keep", label: "Leave as is", desc: "Keep the distribution's generic set.", risk: Risk::Safe, ops: none, avail: ok },
++                Choice { id: "this_pc", label: "This PC", desc: "Only what the detected hardware can use.", risk: Risk::Safe,
++                    ops: platform_trim_ops, avail: ok },
++            ],
++        },
+     ]
+ }
+ 
++fn signing_ops() -> Vec<Op> {
++    let mut v = vec![y("MODULE_SIG"), y("MODULE_SIG_ALL"), n("MODULE_SIG_FORCE")];
++    v.extend(pick("MODULE_SIG_SHA512", &SIG_HASH));
++    v
++}
++
++fn signing_avail(c: &Ctx) -> Result<(), String> {
++    if !c.sys.toolchain.openssl_headers {
++        return Err("Install dev-libs/openssl (needed to create the key and sign modules)".into());
++    }
++    c.need("MODULE_SIG", "This source tree has no module signing support")
++}
++
++fn anticheat_avail(c: &Ctx) -> Result<(), String> {
++    if c.sel("signing") != "enforce" {
++        return Err("Set 'Module signing' to 'Sign and enforce' first".into());
++    }
++    c.need("SECURITY_LOCKDOWN_LSM", "Needs kernel lockdown support")?;
++    c.need("BPF_LSM", "Needs the BPF LSM (Linux 5.7+)")
++}
++
++fn anticheat_ops(c: &Ctx) -> Vec<Op> {
++    let mut v = vec![
++        y("SECURITY"), y("SECURITYFS"), y("SECURITY_LOCKDOWN_LSM"), y("SECURITY_LOCKDOWN_LSM_EARLY"),
++        y("LOCK_DOWN_KERNEL_FORCE_NONE"), n("LOCK_DOWN_KERNEL_FORCE_INTEGRITY"), n("LOCK_DOWN_KERNEL_FORCE_CONFIDENTIALITY"),
++        y("BPF_SYSCALL"), y("BPF_LSM"), y("SECURITY_LANDLOCK"), y("SECURITY_YAMA"), y("INTEGRITY"),
++        sv("LSM", "landlock,lockdown,yama,integrity,bpf"),
++        y("SYSTEM_TRUSTED_KEYRING"), y("SECONDARY_TRUSTED_KEYRING"), y("SECONDARY_TRUSTED_KEYRING_SIGNED_BY_BUILTIN"),
++        n("INTEGRITY_MACHINE_KEYRING"), n("MODULE_FORCE_LOAD"),
++        y("IOMMU_SUPPORT"), y("IRQ_REMAP"), n("IOMMU_DEFAULT_PASSTHROUGH"), y("IOMMU_DEFAULT_DMA_LAZY"),
++        y("TCG_TPM"), y("TCG_TIS"), y("TCG_CRB"), y("TCG_TPM2_HMAC"),
++        y("KEXEC"), y("KEXEC_FILE"), y("KEXEC_SIG"),
++    ];
++    match c.sys.cpu.vendor {
++        CpuVendor::Amd => v.push(y("AMD_IOMMU")),
++        _ => v.extend([y("INTEL_IOMMU"), y("INTEL_IOMMU_SVM")]),
++    }
++    if c.sys.boot.uefi {
++        v.extend([y("EFI_STUB"), y("EFI_HANDOVER_PROTOCOL")]);
++    }
++    v
++}
++
++fn platform_trim_ops(c: &Ctx) -> Vec<Op> {
++    let sys = c.sys;
++    let flag = |f: &str| sys.cpu.flags.contains(f);
++    let mut v = vec![n("X86_X32_ABI")];
++    match sys.cpu.vendor {
++        CpuVendor::Intel => {
++            v.extend(["AMD_IOMMU", "AMD_MEM_ENCRYPT", "X86_AMD_PSTATE", "X86_AMD_PLATFORM_DEVICE", "KVM_AMD"].iter().map(|s| n(s)));
++        }
++        CpuVendor::Amd => {
++            v.extend(["INTEL_IOMMU", "INTEL_TDX_HOST", "X86_INTEL_PSTATE", "INTEL_IDLE", "KVM_INTEL"].iter().map(|s| n(s)));
++        }
++        CpuVendor::Other => {}
++    }
++    if !flag("la57") {
++        v.push(n("X86_5LEVEL"));
++    }
++    if !flag("sgx") {
++        v.push(n("X86_SGX"));
++    }
++    if !flag("tdx_host_platform") {
++        v.push(n("INTEL_TDX_HOST"));
++    }
++    if sys.efi_bits == Some(64) {
++        v.push(n("EFI_MIXED"));
++    }
++    if !sys.has_gpu(GpuVendor::Intel) {
++        // mei_hdcp/mei_pxp autoload on any Intel ME and *depend on* i915/xe, which is
++        // what keeps both GPU drivers alive through localmodconfig on GPU-less boards.
++        v.extend(["DRM_I915", "DRM_XE", "INTEL_MEI_HDCP", "INTEL_MEI_PXP"].iter().map(|s| n(s)));
++    }
++    if !sys.has_gpu(GpuVendor::Amd) {
++        v.extend(["DRM_AMDGPU", "DRM_RADEON"].iter().map(|s| n(s)));
++    }
++    if !sys.has_gpu(GpuVendor::Nvidia) {
++        v.push(n("DRM_NOUVEAU"));
++    }
++    v
++}
++
+ fn autofdo_avail(c: &Ctx) -> Result<(), String> {
+     if !c.clang() {
+         return Err("Needs the Clang compiler".into());
+@@ -1235,4 +1541,43 @@ mod tests {
+         assert!(ops.contains(&n("HZ_300")));
+         assert!(!ops.contains(&n("HZ_1000")));
+     }
++
++    #[test]
++    fn anticheat_requires_enforced_signing() {
++        let sys = crate::hw::sample();
++        let provided = HashSet::new();
++        let mut sel: Selection = crate::profiles::defaults(crate::profiles::ProfileId::Gaming, &sys);
++        sel.insert("anticheat".into(), "ready".into());
++        let notes = normalize(&mut sel, &sys, None, &provided);
++        assert_eq!(sel.get("anticheat").map(String::as_str), Some("off"), "{notes:?}");
++        sel.insert("signing".into(), "enforce".into());
++        sel.insert("anticheat".into(), "ready".into());
++        let notes = normalize(&mut sel, &sys, None, &provided);
++        assert_eq!(sel.get("anticheat").map(String::as_str), Some("ready"), "{notes:?}");
++        let ops: Vec<(String, Vec<Op>)> = ops_for(&sel, &sys, None, &provided);
++        let flat: Vec<&Op> = ops.iter().flat_map(|(_, o)| o.iter()).collect();
++        assert!(flat.contains(&&y("MODULE_SIG_FORCE")));
++        assert!(flat.contains(&&y("SECURITY_LOCKDOWN_LSM_EARLY")));
++        assert!(flat.contains(&&n("INTEGRITY_MACHINE_KEYRING")));
++        assert!(flat.contains(&&y("INTEL_IOMMU")));
++        assert!(eac_cmdline(&sys).contains("intel_iommu=on"));
++    }
++
++    #[test]
++    fn this_pc_trims_follow_detection() {
++        let sys = crate::hw::sample();
++        let provided = HashSet::new();
++        let mut sel: Selection = crate::profiles::defaults(crate::profiles::ProfileId::Gaming, &sys);
++        normalize(&mut sel, &sys, None, &provided);
++        let ops: Vec<(String, Vec<Op>)> = ops_for(&sel, &sys, None, &provided);
++        let flat: Vec<&Op> = ops.iter().flat_map(|(_, o)| o.iter()).collect();
++        assert!(flat.contains(&&val("NR_CPUS", "16")), "16 threads -> NR_CPUS=16");
++        assert!(flat.contains(&&n("NUMA")));
++        assert!(flat.contains(&&n("HYPERVISOR_GUEST")));
++        assert!(flat.contains(&&n("AMD_IOMMU")), "Intel box drops the AMD IOMMU");
++        assert!(flat.contains(&&n("DRM_I915")), "no Intel GPU detected -> i915 goes");
++        assert!(!flat.contains(&&n("DRM_NOUVEAU")), "NVIDIA GPU present -> nouveau stays selectable");
++        assert_eq!(nr_cpus_for(24), 32);
++        assert_eq!(nr_cpus_for(2), 8);
++    }
+ }
+-- 
+2.55.0
+

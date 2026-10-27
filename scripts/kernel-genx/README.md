@@ -195,6 +195,13 @@ lockdown; `nvidia-smi`, OpenRGB (i2c-dev), liquidctl, lm-sensors keep working.
   `app-crypt/tpm2-tools` is not installed, so the TPM event-log check from
   the CachyOS guide needs it first.
 
+## KernelSmith
+
+The same findings, applied to the user's own kernel builder: `kernelsmith/` holds a patch for
+github.com/firesand/kernelsmith adding module signing, anti-cheat readiness, this-PC trims and
+broader keep families, with an example of the script it now generates for GenX. See
+`kernelsmith/README.md`.
+
 ## Regenerating for a new cachyos-kernel version
 
 ```bash
