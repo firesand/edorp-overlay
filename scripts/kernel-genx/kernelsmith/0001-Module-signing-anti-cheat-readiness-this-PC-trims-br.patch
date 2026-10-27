@@ -1,8 +1,8 @@
 From b7e20fadee74063c0618f00eeaa7d9b8ced63b93 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 28 Oct 2026 00:05:35 +0700
-Subject: [PATCH] Module signing, anti-cheat readiness, this-PC trims, broader
- keep families
+Subject: [PATCH 1/2] Module signing, anti-cheat readiness, this-PC trims,
+ broader keep families
 
 Lessons from a real build on a Z790/i9-14900K/RTX 4090 box (job "max"):
 the kernel booted fine but nothing was signed, several on-demand modules

@@ -1,15 +1,18 @@
 # KernelSmith changes derived from the GenX build check
 
-`0001-kernelsmith-signing-anticheat-trims-keep-families.patch` applies on top of
-KernelSmith commit `71d2703` (the initial release, what `sys-kernel/kernelsmith-9999`
-built on 2026-10-27):
+The two patches apply, in order, on top of KernelSmith commit `71d2703` (the initial
+release, what `sys-kernel/kernelsmith-9999` built on 2026-10-27):
 
 ```bash
 git clone https://github.com/firesand/kernelsmith.git
 cd kernelsmith
-git am /path/to/0001-kernelsmith-signing-anticheat-trims-keep-families.patch
-cargo test -p kernelsmith-core && cargo check --workspace
+git am /path/to/kernelsmith/000*.patch
+cargo test -p kernelsmith-core && cargo check --workspace && cargo clippy -p kernelsmith-core
 ```
+
+The second patch makes the AutoFDO profile reuse happen when the job is prepared (after the
+wizard turned AutoFDO on), lets a build reuse a `MODULES_SIGN_KEY` Portage already has (one key
+per machine), and records the Portage signing files where the Library can remove them.
 
 What it adds, each a direct answer to a gap found in the `7.3.0-ks-max` build:
 
@@ -24,7 +27,7 @@ What it adds, each a direct answer to a gap found in the `7.3.0-ks-max` build:
 | `VMD=m` with the root NVMe behind VMD | VMD becomes a critical built-in requirement when a VMD controller is detected |
 
 Verification done on GenX before exporting: 22 core unit tests (4 new), `cargo check --workspace`
-clean, `kernelsmith detect --json` reports the new fields correctly for this machine,
+and `cargo clippy` clean (the repository has no CI workflow of its own), `kernelsmith detect --json` reports the new fields correctly for this machine,
 `kernelsmith plan` with `signing=enforce anticheat=ready` produced `example-build-GenX.sh`
 (bash -n clean; `example-plan-GenX.toml` is its plan), its embedded GRUB script was dry-run
 against the installed `7.3.0-ks-max` files and produced a correct entry, and the `sign_modules`

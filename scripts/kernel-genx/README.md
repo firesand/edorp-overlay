@@ -156,6 +156,13 @@ as root, but linux-mod-r1 (nvidia) signs in `src_install` as the portage user.
 Keep a copy of `keys/` somewhere safe; a lost key just means regenerating one
 and rebuilding kernel + nvidia.
 
+One key per machine: with the patched KernelSmith (see `kernelsmith/`), its
+builds pick up the `MODULES_SIGN_KEY` that `install.sh` put in make.conf and
+sign with the same GenX key, so drivers rebuilt for either kernel load on both.
+If KernelSmith runs first instead, it creates
+`/etc/kernelsmith/keys/modules-signing.pem`; point `GENX_KEY_DIR` at that
+directory (or copy the pair into `keys/`) before running `install.sh`.
+
 After the reboot (normal entry first):
 
 ```bash

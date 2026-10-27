@@ -1,0 +1,177 @@
+From 333043bbd0170d3e6d51b546eee466e87dc9a561 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 28 Oct 2026 00:13:08 +0700
+Subject: [PATCH 2/2] Reuse recorded AutoFDO profiles at job time, honour
+ Portage's signing key
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- The newest recorded profile is picked up in prepare_build, after the
+  wizard or --set has turned AutoFDO on, not only when the plan is created;
+  loose *.afdo files dropped into the profiles directory count too.
+- The build script uses an existing MODULES_SIGN_KEY/MODULES_SIGN_CERT from
+  Portage when present, so a machine never ends up with two signing keys.
+- The signing files are recorded under /var/lib/kernelsmith/portage/, where
+  Library → "Runtime tuning & Portage" can remove them.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ README.md                  |  4 +++-
+ crates/core/src/autofdo.rs |  6 +++++-
+ crates/core/src/job.rs     |  3 +++
+ crates/core/src/plan.rs    | 13 ++++++++++++-
+ crates/core/src/script.rs  | 25 ++++++++++++++++++++-----
+ 5 files changed, 43 insertions(+), 8 deletions(-)
+
+diff --git a/README.md b/README.md
+index 2dcb5d4..2a85656 100644
+--- a/README.md
++++ b/README.md
+@@ -130,7 +130,9 @@ the newest kernel the default). Your previous kernel stays installed as a fallba
+   same key. The key is created once in `/etc/kernelsmith/keys/modules-signing.pem` (root, readable
+   by the `portage` group) and reused by every build; `/etc/portage/env/kernelsmith-modules-sign.conf`
+   plus a `package.env`/`package.use` entry per driver package keep Portage signing them on later
+-  rebuilds. *Sign and enforce* additionally sets `MODULE_SIG_FORCE`, so unsigned modules never load.
++  rebuilds. If Portage already has a `MODULES_SIGN_KEY` (make.conf or an env file), that key is
++  used instead, so one machine never ends up with two signing keys. *Sign and enforce* additionally
++  sets `MODULE_SIG_FORCE`, so unsigned modules never load.
+   (`modinfo -F signer` only shows the signer when `sys-apps/kmod` has `USE=pkcs7`.)
+ - **Anti-cheat readiness** — builds in what Easy Anti-Cheat Linux v2 checks on the machine
+   (lockdown LSM armed early, BPF LSM, `lsm=` order, IOMMU with DMA translation, TPM 2.0 drivers,
+diff --git a/crates/core/src/autofdo.rs b/crates/core/src/autofdo.rs
+index 16394b3..1bd116c 100644
+--- a/crates/core/src/autofdo.rs
++++ b/crates/core/src/autofdo.rs
+@@ -128,7 +128,11 @@ pub fn rebuild_plan(m: &Manifest, afdo: PathBuf) -> Result<BuildPlan> {
+ pub fn latest_profile() -> Option<PathBuf> {
+     let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+     for e in std::fs::read_dir(paths::profiles_dir()).into_iter().flatten().flatten() {
+-        let p = e.path().join("kernel.afdo");
++        // Recorded: <release>-<stamp>/kernel.afdo. Imported by hand: any *.afdo file.
++        let p = if e.path().is_dir() { e.path().join("kernel.afdo") } else { e.path() };
++        if p.extension().is_none_or(|x| x != "afdo") {
++            continue;
++        }
+         let Ok(md) = std::fs::metadata(&p) else { continue };
+         if md.len() == 0 {
+             continue;
+diff --git a/crates/core/src/job.rs b/crates/core/src/job.rs
+index 5eb1655..fdef0ad 100644
+--- a/crates/core/src/job.rs
++++ b/crates/core/src/job.rs
+@@ -56,6 +56,9 @@ pub fn module_list(sys: &SystemInfo, use_db: bool) -> Vec<String> {
+ }
+ 
+ pub fn prepare_build(plan: &BuildPlan, sys: &SystemInfo, src: &KernelSource, symbols: Option<&SymbolIndex>) -> Result<PreparedJob> {
++    // AutoFDO is usually switched on after the plan was created; pick up the
++    // newest recorded profile now, when the choices are final.
++    let plan = &plan::with_recorded_profile(plan.clone());
+     let dir = new_job_dir(&plan.name)?;
+     plan.save(&dir.join("plan.toml"))?;
+ 
+diff --git a/crates/core/src/plan.rs b/crates/core/src/plan.rs
+index 1690bb8..94f0934 100644
+--- a/crates/core/src/plan.rs
++++ b/crates/core/src/plan.rs
+@@ -186,6 +186,14 @@ impl BuildPlan {
+     }
+ }
+ 
++/// With AutoFDO on and no profile chosen, use the newest recorded one.
++pub fn with_recorded_profile(mut plan: BuildPlan) -> BuildPlan {
++    if plan.profile_data.is_none() && plan.tweaks.get("autofdo").is_some_and(|v| v != "off") {
++        plan.profile_data = autofdo::latest_profile().map(|afdo| ProfileData { afdo, propeller_prefix: None });
++    }
++    plan
++}
++
+ const ALL_DEFAULT_NAMES: [&str; 6] = ["gaming", "desktop", "creator", "workstation", "laptop", "server"];
+ 
+ fn default_name(p: ProfileId) -> String {
+@@ -409,7 +417,10 @@ pub fn check(plan: &BuildPlan, sys: &SystemInfo, src: Option<&KernelSource>) ->
+             out.push(f(Level::Info, format!("AutoFDO: compiling with the profile {}.", pd.afdo.display())));
+         }
+     } else if plan.tweaks.get("autofdo").is_some_and(|v| v != "off") {
+-        out.push(f(Level::Info, "AutoFDO: no recorded profile yet, so this build only prepares for profiling (Library → Record a profile, then rebuild)."));
++        match autofdo::latest_profile() {
++            Some(p) => out.push(f(Level::Info, format!("AutoFDO: compiling with the newest recorded profile, {}.", p.display()))),
++            None => out.push(f(Level::Info, "AutoFDO: no recorded profile yet, so this build only prepares for profiling (Library → Record a profile, then rebuild). A profile recorded elsewhere can be dropped into ~/.local/share/kernelsmith/autofdo/<name>/kernel.afdo or passed with --afdo.")),
++        }
+     }
+     let signing = plan.tweaks.get("signing").map(String::as_str).unwrap_or("off");
+     if signing != "off" && plan.install.install && !plan.install.module_rebuild && !sys.external_modules.is_empty() {
+diff --git a/crates/core/src/script.rs b/crates/core/src/script.rs
+index a5a93e4..b7d9aae 100644
+--- a/crates/core/src/script.rs
++++ b/crates/core/src/script.rs
+@@ -311,6 +311,17 @@ apply_patch() {{
+             r#"
+ # ── Module signing key (created once, reused by every build) ─────────────────
+ SIGN_KEY={key}
++SIGN_CERT=
++# A key already configured for Portage (MODULES_SIGN_KEY in make.conf or an env file)
++# wins: one key per machine, or drivers signed for one kernel get refused by the other.
++if command -v portageq >/dev/null; then
++    PORTAGE_SIGN_KEY=$(portageq envvar MODULES_SIGN_KEY 2>/dev/null || true)
++    if [[ -n $PORTAGE_SIGN_KEY && -s $PORTAGE_SIGN_KEY ]]; then
++        SIGN_KEY=$PORTAGE_SIGN_KEY
++        SIGN_CERT=$(portageq envvar MODULES_SIGN_CERT 2>/dev/null || true)
++        note "Using the module signing key Portage already knows: $SIGN_KEY"
++    fi
++fi
+ if [[ ! -s $SIGN_KEY ]]; then
+     note "Creating the module signing key $SIGN_KEY"
+     mkdir -p "$(dirname "$SIGN_KEY")"
+@@ -326,7 +337,8 @@ if [[ ! -s $SIGN_KEY ]]; then
+         chgrp portage "$SIGN_KEY" "${{SIGN_KEY%.pem}}.crt" && chmod 0640 "$SIGN_KEY" && chmod 0644 "${{SIGN_KEY%.pem}}.crt"
+     fi
+ fi
+-[[ -s ${{SIGN_KEY%.pem}}.crt ]] || openssl x509 -in "$SIGN_KEY" -out "${{SIGN_KEY%.pem}}.crt"
++[[ -n $SIGN_CERT && -s $SIGN_CERT ]] || SIGN_CERT=${{SIGN_KEY%.pem}}.crt
++[[ -s $SIGN_CERT ]] || openssl x509 -in "$SIGN_KEY" -out "$SIGN_CERT"
+ kconf --set-str MODULE_SIG_KEY "$SIGN_KEY"
+ "${{MAKE[@]}}" -s olddefconfig
+ SIGN_HASH=$(sed -n 's/^CONFIG_MODULE_SIG_HASH="\(.*\)"/\1/p' "$TREE/.config")
+@@ -631,7 +643,7 @@ sign_modules() {
+             *.xz)  plain=${ko%.xz};  xz -d "$ko" ;;
+             *.gz)  plain=${ko%.gz};  gzip -d "$ko" ;;
+         esac
+-        "$TREE/scripts/sign-file" "$SIGN_HASH" "$SIGN_KEY" "$SIGN_KEY" "$plain"
++        "$TREE/scripts/sign-file" "$SIGN_HASH" "$SIGN_KEY" "$SIGN_CERT" "$plain"
+         signed=$((signed + 1))
+         case $ko in
+             *.zst) zstd -q --rm -19 "$plain" ;;
+@@ -656,16 +668,17 @@ fn portage_sign_snippet(sys: &SystemInfo) -> String {
+     format!(
+         r#"# ── Keep Portage signing rebuilt drivers with the Kernelsmith key ──────────
+ if [[ -d /etc/portage && ( -d /etc/portage/package.use || ! -e /etc/portage/package.use ) ]]; then
+-    mkdir -p /etc/portage/env /etc/portage/package.env /etc/portage/package.use "$STATE"
++    mkdir -p /etc/portage/env /etc/portage/package.env /etc/portage/package.use "$STATE/portage"
+     cat > {env} <<KS_EOF
+ # Written by Kernelsmith: sign out-of-tree modules with the Kernelsmith key (linux-mod-r1).
+ MODULES_SIGN_KEY="$SIGN_KEY"
+-MODULES_SIGN_CERT="${{SIGN_KEY%.pem}}.crt"
++MODULES_SIGN_CERT="$SIGN_CERT"
+ MODULES_SIGN_HASH="$SIGN_HASH"
+ KS_EOF
+     printf '%s\n' {pkgenv} > {pkgenv_file}
+     printf '%s\n' {pkguse} > {pkguse_file}
+-    printf '%s\n' {env} {pkgenv_file} {pkguse_file} > "$STATE/signing.list"
++    # Listed like a Portage-mode integration, so Library → "Runtime tuning & Portage" can remove it.
++    printf '%s\n' {env} {pkgenv_file} {pkguse_file} > "$STATE/portage/signing.list"
+     note "Portage will sign {n} driver package(s) with $SIGN_KEY on every rebuild"
+ else
+     warn "/etc/portage/package.use is a file; not adding USE=modules-sign for your driver packages"
+@@ -842,6 +855,8 @@ mod tests {
+             "kconf --set-str MODULE_SIG_KEY",
+             "scripts/sign-file",
+             "sign_modules \"/lib/modules/$REL\"",
++            "portageq envvar MODULES_SIGN_KEY",
++            "$STATE/portage/signing.list",
+             "/etc/portage/env/kernelsmith-modules-sign.conf",
+             "x11-drivers/nvidia-drivers modules-sign",
+             "41_kernelsmith-eac-$REL",
+-- 
+2.55.0
+
