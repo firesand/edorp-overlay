@@ -126,8 +126,23 @@ Propeller profile it only adds basic-block address-map metadata.
 ```bash
 sudo ./install.sh --check     # dry run
 sudo ./install.sh
+sudo sed -i '/=sys-kernel\/cachyos-kernel-7.3.0-r1$/d' /etc/portage/sets/kernels-keep
 sudo emerge -av1 =sys-kernel/cachyos-kernel-7.3.0-r3 x11-drivers/nvidia-drivers
 ```
+
+The `sed` is needed: `@kernels-keep` (in `world_sets`) pins `-r1`, which sits in
+the same slot as `-r3`, and emerge reports a slot conflict until that line is
+gone (verified with a dry run). `=sys-kernel/cachyos-kernel-7.2.11` stays
+pinned and is the fallback boot entry. Re-add `-r3` with your
+`kernel-mark-good` once it has proven itself.
+
+**Reboot right after the emerge.** `-r3` replaces `-r1` inside the same
+`/lib/modules/7.3.0-cachyos-dist`, so from the moment the kernel merges the
+running system only has the trimmed module set (don't count on hot-plugging
+something exotic in between). If the nvidia-drivers rebuild fails, the old
+unsigned `nvidia*.ko` are left in `video/` and the new kernel refuses them:
+the desktop comes up on simpledrm; fix nvidia-drivers and run
+`emerge --config =sys-kernel/cachyos-kernel-7.3.0-r3` to rebuild the initramfs.
 
 Order matters: the kernel installs `/usr/src/linux-7.3.0-cachyos-dist` and
 its certificate; nvidia-drivers then builds against it and signs
@@ -159,6 +174,26 @@ cat /sys/kernel/iommu_groups/0/type      # DMA-FQ
 
 In the EAC entry, `intel-undervolt` and other MSR writers are refused by
 lockdown; `nvidia-smi`, OpenRGB (i2c-dev), liquidctl, lm-sensors keep working.
+
+## Things to know about a full savedconfig
+
+* The savedconfig is merged *after* the ebuild's `scripts/config` calls, so
+  the cachyos-kernel USE flags that only edit the config (`hz_ticks_*`,
+  `tickrate_*`, `preempt_*`, `llvm-lto-*`, `o3`/`os`, `bbr3`, `hugepage_*`,
+  `per-gov`, `m*`) have **no effect** until you regenerate. Only the flags that
+  select patches (`bore`, `bmq`, `eevdf`, `rt*`, `deckify`, `aufs`) still do
+  something. Change such a flag in package.use, regenerate, reinstall.
+* `/etc/kernel/config.d/` is read by **every** dist-kernel built on this host
+  (gentoo-kernel too, should you ever install it). The fragments are written
+  for this hardware, nothing else.
+* `keys/` is git-ignored: a fresh clone of the branch has no signing key. The
+  key lives in this worktree and, after `install.sh`, in
+  `/etc/portage/kernel-signing/`.
+* Not tested here: `intel_iommu=on iommu.passthrough=0` together with the root
+  NVMe behind Intel VMD (QEMU had an emulated VT-d but no VMD). That is the
+  first thing to watch on the EAC entry; the normal entry is unaffected.
+  `app-crypt/tpm2-tools` is not installed, so the TPM event-log check from
+  the CachyOS guide needs it first.
 
 ## Regenerating for a new cachyos-kernel version
 

@@ -60,6 +60,17 @@ fi
 append_once 'MODULES_SIGN_KEY=' /etc/portage/make.conf "${here}/portage/make.conf--snippet"
 append_once 'x11-drivers/nvidia-drivers dist-kernel modules-sign' /etc/portage/package.use/nvidia "${here}/portage/package.use--nvidia"
 
+# A same-slot pin in @kernels-keep makes emerge refuse the upgrade.
+ver=${cfg##*config-GenX-}
+if [[ -f /etc/portage/sets/kernels-keep ]] && grep -qE "^=sys-kernel/cachyos-kernel-${ver}(-r[0-9]+)?$" /etc/portage/sets/kernels-keep; then
+	pin=$(grep -E "^=sys-kernel/cachyos-kernel-${ver}(-r[0-9]+)?$" /etc/portage/sets/kernels-keep | head -n1)
+	echo
+	echo "NOTE: ${pin} is pinned in /etc/portage/sets/kernels-keep (same slot as the"
+	echo "      version you are about to install). Drop it first, otherwise emerge"
+	echo "      reports a slot conflict:"
+	echo "        sed -i '\|^${pin}\$|d' /etc/portage/sets/kernels-keep"
+fi
+
 (( check )) && { echo "(check mode, nothing written)"; exit 0; }
 cat <<'NEXT'
 
@@ -67,7 +78,7 @@ Next steps (as root):
   emerge -av1 =sys-kernel/cachyos-kernel-7.3.0-r3 x11-drivers/nvidia-drivers
       kernel first, then nvidia-drivers signs its modules with the GenX key,
       installkernel runs dracut + grub-mkconfig (the EAC entry appears there).
-  reboot, pick the normal "Gentoo GNU/Linux" entry first and check:
+  reboot RIGHT AFTER (the new modules replace the running kernel's), pick the normal "Gentoo GNU/Linux" entry first and check:
       uname -r; modinfo -F signer nvidia; cat /sys/kernel/security/lockdown
   then try "Gentoo (EAC) 7.3.0-cachyos-dist" and check:
       cat /sys/kernel/security/lockdown        -> none [integrity] confidentiality
