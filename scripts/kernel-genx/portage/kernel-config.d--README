@@ -1,0 +1,5 @@
+The fragments in ../fragments/ are ALSO installed to /etc/kernel/config.d/ by
+install.sh.  kernel-build.eclass merges /etc/kernel/config.d/*.config as the
+last step, after the savedconfig, so the EAC/hardware decisions survive even
+if the savedconfig is ever removed or a future version adds new options.
+Applying them twice (savedconfig already contains them) is harmless.

@@ -1,0 +1,6 @@
+# Add to /etc/portage/package.use/nvidia (keeps the existing flags there).
+# dist-kernel: build against the installed cachyos-kernel and rebuild on each
+# kernel bump through virtual/dist-kernel; also re-runs dracut afterwards.
+# modules-sign: sign nvidia*.ko with the GenX key so they load with
+# CONFIG_MODULE_SIG_FORCE and under lockdown=integrity.
+x11-drivers/nvidia-drivers dist-kernel modules-sign

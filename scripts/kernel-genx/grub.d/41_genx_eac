@@ -1,0 +1,75 @@
+#!/bin/sh
+# /etc/grub.d/41_genx_eac - "Gentoo (EAC)" boot entry for Easy Anti-Cheat Linux v2.
+#
+# Boots the newest *-cachyos-dist kernel with the normal command line from
+# /etc/default/grub plus the options Easy Anti-Cheat Linux v2 checks on the
+# measured command line (the list from the CachyOS EAC guide):
+#   lockdown=integrity lsm=landlock,lockdown,yama,integrity,bpf
+#   iommu.passthrough=0 intel_iommu=on module.sig_enforce=1
+#   sysctl.kernel.kexec_load_disabled=1
+# The regular entries from 10_linux are untouched, so the default boot stays
+# unlocked (intel-undervolt, MSR access, hibernation keep working there).
+# Root device, btrfs subvolume and early microcode are derived exactly the way
+# 10_linux does it, from the variables grub-mkconfig exports.
+set -e
+prefix="/usr"
+exec_prefix="/usr"
+datarootdir="/usr/share"
+. "${datarootdir}/grub/grub-mkconfig_lib"
+
+EAC_REQ="lockdown=integrity lsm=landlock,lockdown,yama,integrity,bpf iommu.passthrough=0 intel_iommu=on module.sig_enforce=1 sysctl.kernel.kexec_load_disabled=1"
+
+# Newest cachyos-dist kernel in /boot.
+kernel=$(ls /boot/vmlinuz-*-cachyos-dist 2>/dev/null | version_sort | tail -n1 || true)
+[ -n "$kernel" ] || exit 0
+version=${kernel#/boot/vmlinuz-}
+initrd=/boot/initramfs-${version}.img
+if [ ! -e "$initrd" ]; then
+	gettext_printf "41_genx_eac: no initramfs for %s, skipping the EAC entry\n" "$version" >&2
+	exit 0
+fi
+
+# root= the way 10_linux chooses it.
+case x"$GRUB_DEVICE_UUID" in
+	x) LINUX_ROOT_DEVICE=${GRUB_DEVICE} ;;
+	*) LINUX_ROOT_DEVICE=UUID=${GRUB_DEVICE_UUID} ;;
+esac
+case x"$GRUB_FS" in
+	xbtrfs)
+		rootsubvol="`make_system_path_relative_to_its_root /`"
+		rootsubvol="${rootsubvol#/}"
+		if [ "x${rootsubvol}" != x ]; then
+			GRUB_CMDLINE_LINUX="rootflags=subvol=${rootsubvol} ${GRUB_CMDLINE_LINUX}"
+		fi
+		;;
+esac
+
+# Early microcode first, as 10_linux does.
+early=
+for i in ${GRUB_EARLY_INITRD_LINUX_STOCK} ${GRUB_EARLY_INITRD_LINUX_CUSTOM}; do
+	if [ -e "/boot/${i}" ]; then
+		early="$early $(make_system_path_relative_to_its_root "/boot/${i}")"
+	fi
+done
+
+rel_kernel=$(make_system_path_relative_to_its_root "$kernel")
+rel_initrd=$(make_system_path_relative_to_its_root "$initrd")
+
+gettext_printf "Found EAC entry kernel: %s\n" "$kernel" >&2
+cat <<ENTRY
+menuentry 'Gentoo (EAC) ${version}' --class gentoo --class gnu-linux --class gnu --class os \$menuentry_id_option 'genx-eac-${version}' {
+	load_video
+	insmod gzio
+	insmod part_gpt
+	insmod btrfs
+ENTRY
+if [ x"$GRUB_DEVICE_BOOT" != x ]; then
+	prepare_grub_to_access_device "${GRUB_DEVICE_BOOT}" | grub_add_tab
+fi
+cat <<ENTRY
+	echo 'Loading Linux ${version} (EAC: lockdown=integrity, signed modules only, IOMMU on)'
+	linux ${rel_kernel} root=${LINUX_ROOT_DEVICE} ro ${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT} ${EAC_REQ}
+	echo 'Loading initial ramdisk ...'
+	initrd${early} ${rel_initrd}
+}
+ENTRY

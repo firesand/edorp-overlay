@@ -1,0 +1,8 @@
+# Append to /etc/portage/make.conf
+# Persistent kernel module signing key (RSA-4096, PEM holds key + cert).
+# kernel-build.eclass reads it as root in pkg_setup; linux-mod-r1
+# (nvidia-drivers) reads it in src_install as the portage user, hence the
+# root:portage 0640 permissions set by install.sh.
+MODULES_SIGN_KEY="/etc/portage/kernel-signing/genx-modules-signing.pem"
+MODULES_SIGN_CERT="/etc/portage/kernel-signing/genx-modules-signing.crt"
+MODULES_SIGN_HASH="sha512"

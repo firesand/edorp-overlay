@@ -1,0 +1,6 @@
+# /etc/portage/package.use/cachyos-kernel
+# GenX kernel: CachyOS base (BORE, clang ThinLTO, -O3, -march=native, AutoFDO,
+# BBR3, 1000 Hz, NO_HZ_IDLE, full preemption), hardware-trimmed savedconfig,
+# all modules signed.  propeller is off: without a Propeller profile it only
+# adds basic-block address-map metadata (the ebuild warns about this too).
+sys-kernel/cachyos-kernel bore tickrate_idle bbr3 autofdo clang -tickrate_full savedconfig modules-sign -propeller
