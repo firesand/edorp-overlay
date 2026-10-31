@@ -1,0 +1,37 @@
+Verify that hunspell can actually load the requested dictionary before
+advertising the Linux CLI spell-checker as available, and handle '#'-prefixed
+no-suggestion responses from `hunspell -a`. Without this check, hosts with
+app-text/hunspell installed but without a matching dictionary (e.g. en_US)
+report `system_speller.available = true` while silently treating every word as
+spelled correctly.
+
+--- a/src/app/control/spellcheck.rs
++++ b/src/app/control/spellcheck.rs
+@@ -664,7 +664,8 @@ pub(crate) mod linux_impl {
+             }
+ 
+             // Only hunspell is ever invoked (`check_via_cli`), so only it counts.
+-            let has_cli = is_command_in_path("hunspell");
++            let has_cli = is_command_in_path("hunspell")
++                && check_via_cli("test", lang_tag, false).is_some();
+ 
+             if !found_any && !has_cli {
+                 return None;
+@@ -763,11 +764,17 @@ pub(crate) mod linux_impl {
+         }
+ 
+         let output = child.wait_with_output().ok()?;
++        if !output.status.success() {
++            return None;
++        }
+         let stdout = String::from_utf8_lossy(&output.stdout);
+         for line in stdout.lines() {
+             if line.starts_with('*') || line.starts_with('+') || line.starts_with('-') {
+                 return Some((true, Vec::new()));
+             }
++            if line.starts_with('#') {
++                return Some((false, Vec::new()));
++            }
+             if line.starts_with('&') {
+                 let mut suggs = Vec::new();
+                 if want_suggestions {

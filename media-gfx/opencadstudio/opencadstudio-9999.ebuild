@@ -6,7 +6,7 @@ EAPI=8
 # iced (git dependency) declares rust-version 1.92
 RUST_MIN_VER="1.92.0"
 
-inherit cargo desktop git-r3 xdg
+inherit cargo desktop git-r3 optfeature xdg
 
 DESCRIPTION="A CAD application built with Rust — 2D/3D drawing, DWG/DXF support"
 HOMEPAGE="https://github.com/HakanSeven12/OpenCADStudio"
@@ -21,8 +21,8 @@ LICENSE="GPL-3+"
 # Dependent crate licenses
 LICENSE+="
 	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions Boost-1.0 BSD BSD-2
-	CC0-1.0 CDLA-Permissive-2.0 ISC LGPL-2.1+ MIT MPL-2.0 OFL-1.1 Unicode-3.0
-	Unlicense UoI-NCSA ZLIB
+	CC0-1.0 CDLA-Permissive-2.0 ISC LGPL-2.1+ MIT MIT-0 MPL-2.0 OFL-1.1
+	Unicode-3.0 Unlicense UoI-NCSA ZLIB
 "
 
 SLOT="0"
@@ -47,6 +47,10 @@ RDEPEND="
 
 # Upstream's release profile (strip = true) pre-strips the binary
 QA_PRESTRIPPED="usr/bin/OpenCADStudio"
+
+PATCHES=(
+	"${FILESDIR}/${PN}-2026.43-spellcheck-hunspell-dict-probe.patch"
+)
 
 src_unpack() {
 	git-r3_src_unpack
@@ -97,4 +101,10 @@ src_install() {
 	newicon -s scalable assets/logo.svg io.github.HakanSeven12.OpenCadStudio.svg
 	insinto /usr/share/icons/hicolor/scalable/mimetypes
 	doins assets/mimetypes/image-vnd.dwg.svg assets/mimetypes/image-vnd.dxf.svg
+}
+
+pkg_postinst() {
+	xdg_pkg_postinst
+
+	optfeature "system spell-checking in text audit" "app-text/hunspell app-dicts/myspell-en"
 }
