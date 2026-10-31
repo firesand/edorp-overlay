@@ -154,7 +154,7 @@ CRATES="
 	crypto-common@0.2.2
 	ctr@0.10.1
 	ctr@0.9.2
-	ctutils@0.4.2
+	ctutils@0.4.5
 	cursor-icon@1.2.0
 	curve25519-dalek-derive@0.1.1
 	curve25519-dalek@5.0.0
@@ -867,9 +867,10 @@ declare -A GIT_CRATES=(
 	[winit]="https://github.com/crmne/winit;0bed9dc0a7db02590a279fb8bac795fa39ee6948;winit-%commit%"
 )
 
+LLVM_COMPAT=( {18..23} )
 RUST_MIN_VER="1.98.0"
 
-inherit cargo desktop xdg
+inherit cargo desktop llvm-r2 xdg
 
 DESCRIPTION="Fast native WhatsApp client written in Rust and egui"
 HOMEPAGE="https://zapfast.rocks https://github.com/crmne/zapfast"
@@ -892,7 +893,9 @@ BDEPEND="
 	dev-build/cmake
 	dev-lang/nasm
 	dev-lang/perl
-	llvm-core/clang
+	$(llvm_gen_dep '
+		llvm-core/clang:${LLVM_SLOT}
+	')
 	virtual/pkgconfig
 "
 DEPEND="
@@ -913,6 +916,11 @@ RDEPEND="${DEPEND}"
 QA_FLAGS_IGNORED="usr/bin/zapfast"
 # Upstream's release profile strips the binary.
 QA_PRESTRIPPED="usr/bin/zapfast"
+
+pkg_setup() {
+	llvm-r2_pkg_setup
+	rust_pkg_setup
+}
 
 src_prepare() {
 	default
