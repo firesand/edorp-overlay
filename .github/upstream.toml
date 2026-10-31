@@ -57,7 +57,7 @@ source = "regex"
 url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-amd64/Packages"
 regex = 'Version: ([0-9][0-9.]*)'
 policy = "review"
-note = "Confirm the arm64 index reports the same version, then refresh both distfiles."
+note = "Confirm the arm64 index reports the same version, refresh both distfiles, and recheck resources/native/*.node plus resources/cua_node/lib/node_modules for new NEEDED sonames or bundled library licenses (26.1027.30824 added remote-control-device-key.node linking openssl + tpm2-tss and @img/sharp-libvips under LGPL-3+)."
 
 # Proprietary Electron .deb served from Anthropic's apt repository. The
 # per-arch Packages index lists every published version; the regex source
@@ -68,7 +68,7 @@ source = "regex"
 url = "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages"
 regex = 'claude-desktop_([0-9][0-9.]+)_amd64\.deb'
 policy = "review"
-note = "Bump amd64 + arm64 debs together and regenerate the Manifest. Re-derive the glibc floor and NEEDED set of resources/app.asar.unpacked/node_modules/@ant/claude-native/claude-native-binding.node: 2.19675.1 started linking libpipewire-0.3 and calling pidfd_spawnp (glibc 2.39)."
+note = "Bump amd64 + arm64 debs together and regenerate the Manifest. Re-derive the glibc floor and NEEDED set of resources/app.asar.unpacked/node_modules/@ant/claude-native/claude-native-binding.node: 2.19675.1 started linking libpipewire-0.3 and calling pidfd_spawnp (glibc 2.39 then; untagged weak symbol -> 2.34 since 2.31226.1)."
 
 # Official Electron .deb hosted by ToDesktop. The electron-updater feed names
 # the newest version and carries the sha512 of each artifact.
@@ -309,7 +309,7 @@ github = "ZerBea/hcxtools"
 use_latest_release = true
 policy = "review"
 group = "hcx-suite"
-note = "Bump together with hcxdumptool when their release versions are paired."
+note = "Bump together with hcxdumptool when their release versions are paired, and verify CLI/hash-line compatibility with net-wireless/wiflux and app-crypt/hashcat (8.0.0 added WPA*03/WPA*04 FT-PSK lines requiring hashcat >= 8.0.0 while keeping standard WPA*01/WPA*02 lines compatible with 7.1.2)."
 
 ["net-wireless/mdk4"]
 source = "github"
