@@ -12,6 +12,8 @@ start of future sessions before making assumptions.
 - Agreement should be earned: agree only after testing the idea and add useful
   reasoning.
 - Prefer practical implementation over long theory when the direction is clear.
+- Use `sudo` in commands and docs. These systems do not have `doas`; the
+  README and these notes used it until 2026-11-03.
 
 ## Current Goal
 
@@ -142,9 +144,9 @@ The repo is public, so use HTTPS for Portage sync. Do not use SSH for
 requires root:
 
 ```bash
-doas eselect repository enable guru
-doas emerge --sync guru
-doas cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
+sudo eselect repository enable guru
+sudo emerge --sync guru
+sudo cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
 ```
 
 ## Repository Hygiene
@@ -216,8 +218,8 @@ Actual imported package placement:
 Install:
 
 ```bash
-echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
-doas emerge -av sys-firmware/ds5dongle
+echo "sys-firmware/ds5dongle ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+sudo emerge -av sys-firmware/ds5dongle
 ```
 
 Validation completed on 2026-07-19:
@@ -347,15 +349,15 @@ Install (versioned):
 
 ```bash
 emerge --sync edorp
-echo "=app-emulation/mameuix-0.1.7 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
-doas emerge -av app-emulation/mameuix
+echo "=app-emulation/mameuix-0.1.7 ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-mameuix
+sudo emerge -av app-emulation/mameuix
 ```
 
 Install (live):
 
 ```bash
-echo "=app-emulation/mameuix-9999 **" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
-doas emerge -av =app-emulation/mameuix-9999
+echo "=app-emulation/mameuix-9999 **" | sudo tee /etc/portage/package.accept_keywords/edorp-mameuix
+sudo emerge -av =app-emulation/mameuix-9999
 ```
 
 Portable AppImage (non-Gentoo / no emerge):
@@ -432,10 +434,10 @@ Portable AppImage (non-Gentoo / no emerge):
 Install:
 
 ```bash
-echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5-r3 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
-echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
-doas emerge -av net-wireless/wiflux
+echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | sudo tee /etc/portage/package.use/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5-r3 ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/hcxtools-7.1.2 ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/edorp-wiflux
+sudo emerge -av net-wireless/wiflux
 ```
 
 Validation completed on 2026-07-12:
