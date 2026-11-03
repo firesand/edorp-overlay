@@ -110,8 +110,9 @@ pkg_postinst() {
 	elog "same 'photocraft' command and desktop ID as upstream PhotoCraft."
 	elog
 	elog "AI services: Codex (ChatGPT subscription, via PATH or"
-	elog "PHOTOCRAFT_CODEX_PATH), Gemini, Seedream, FLUX, and any"
-	elog "OpenAI-compatible image API. Keys are stored through the Secret Service"
-	elog "API; local addresses (localhost, 127.0.0.1) need no key."
+	elog "PHOTOCRAFT_CODEX_PATH), Gemini, Seedream, FLUX, any OpenAI-compatible"
+	elog "image API, and ComfyUI workflows saved in API format under"
+	elog "~/.config/photocraft-ai/comfyui-workflows/. Keys are stored through the"
+	elog "Secret Service API; local addresses (localhost, 127.0.0.1) need no key."
 	elog "Generation sends the image and prompt to the selected service."
 }
