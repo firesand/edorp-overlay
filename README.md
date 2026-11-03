@@ -322,6 +322,29 @@ and GPU libraries (X11/Wayland, xkbcommon, Vulkan or EGL) are loaded at runtime;
 start with `photocraft --safe-gpu` to fall back to CPU rendering if the GPU
 path fails.
 
+Claude cannot generate or edit pixels, so it is not an image backend here. It
+can drive the editor instead (crop, select, adjust, mask, export) through
+PhotoCraft's MCP server. Start the app with its control server, which also
+makes it a separate process from the normal launcher:
+
+```bash
+photocraft --control 47219 \
+  --control-token-file ~/.config/photocraft-ai/control.token \
+  --automation-read-root ~/Pictures --automation-write-root ~/Pictures
+```
+
+Then register the bridge in Claude Code (Claude Desktop takes the same command
+and arguments under `mcpServers` in `~/.config/Claude/claude_desktop_config.json`):
+
+```bash
+claude mcp add --scope user photocraft -- /usr/bin/photocraft-cli mcp \
+  --bridge 127.0.0.1:47219 \
+  --control-token-file ~/.config/photocraft-ai/control.token
+```
+
+The app creates the token file with mode 0600 on first start. Automation can
+only open and save files under the read and write roots.
+
 ### Plexo
 
 Plexo `1.0.0_rc15` packages upstream `v1.0.0-rc.15`, a release candidate.
