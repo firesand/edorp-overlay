@@ -1513,6 +1513,46 @@ this is the second consecutive audit found going stale in under a week.
   the MIME XML passed. The only QA notice is the machine-wide pre-stripped one.
   AI generation itself was not exercised (needs an account or API key).
 
+### Fork, live ebuild and Claude (2026-11-04)
+
+- Own fork: https://github.com/firesand/photocraft-ai, cloned at
+  `/home/edo/Downloads/PhotoCraft_AI` (remotes `origin` = fork, `upstream` =
+  BLEZZ0102; commit identity firesand). The fork's `main` mirrors official
+  PhotoCraft; the AI code is upstream's `codex/package-ai-beta` branch (= tag
+  `v0.19.0-ai-beta.2`). Work branches from the tag:
+  `feat/openai-compatible-images` → `feat/comfyui-workflows`, merged into the
+  integration branch `ai-main`, which `photocraft-ai-9999.ebuild` follows
+  (`git-r3` + `cargo_live_src_unpack`, no `[patch]` rewrite needed because the
+  git checkouts stay reachable offline).
+- Fork features: an OpenAI Images (`/v1/images/edits`, JSON) protocol with an
+  aspect-matched multiple-of-16 size; API keys optional on loopback addresses;
+  a ComfyUI provider (workflow `<name>.json` in
+  `~/.config/photocraft-ai/comfyui-workflows/`, `{{image}}`/`{{prompt}}`/
+  `{{seed}}` placeholders, upload → `/prompt` → `/history` → `/view`, cancel
+  dequeues). New UI strings are English only.
+- Live-ebuild pitfall: `cargo vendor` names the `xml` crate's directory plain
+  `xml`, and zbus-lockstep's `validate` macro prefers `../xml` over
+  atspi-common's own `xml/`, then panics ("File has no extension") on the
+  crate's LICENSE files. `src_unpack` renames `${ECARGO_VENDOR}/xml` to
+  `xml-crate`. Versioned ebuilds are unaffected (dirs are `name-version`).
+- Test the live ebuild before pushing with
+  `EGIT_OVERRIDE_REPO_FIRESAND_PHOTOCRAFT_AI=file:///home/edo/Downloads/PhotoCraft_AI EGIT_CLONE_TYPE=shallow`
+  (the clone is `--filter=blob:none`, so only a shallow fetch works).
+- Validation: fork crates `photocraft-gen` 45 tests, engine `ai_` 21, UI
+  `ai` 465 pass; strict clippy `-D warnings` clean on gen/engine/ui-egui;
+  end-to-end with `photocraft-cli` against a mock OpenAI server and with the
+  desktop app over MCP against a mock ComfyUI. The live ebuild built and
+  installed from the local clone (binary reports the fork commit). No real
+  OpenAI account or ComfyUI edit model was used.
+- Claude cannot output images (Anthropic vision docs), so it drives PhotoCraft
+  through MCP instead: `photocraft-cli mcp --bridge 127.0.0.1:47219
+  --control-token-file ~/.config/photocraft-ai/control.token` is registered in
+  Claude Code (user scope) and Claude Desktop; the app must run with
+  `--control 47219 ...`, which makes it a separate process (no single-instance
+  file forwarding). The user-level launcher
+  `~/.local/share/applications/photocraft-ai-claude.desktop` does that with
+  ~/Pictures as the automation read/write root.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

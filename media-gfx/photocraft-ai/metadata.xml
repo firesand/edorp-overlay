@@ -17,6 +17,7 @@
 	</use>
 	<upstream>
 		<remote-id type="github">BLEZZ0102/photocraft-ai</remote-id>
+		<remote-id type="github">firesand/photocraft-ai</remote-id>
 		<bugs-to>https://github.com/BLEZZ0102/photocraft-ai/issues</bugs-to>
 	</upstream>
 </pkgmetadata>
