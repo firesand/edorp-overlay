@@ -225,6 +225,19 @@ prefix = "v"
 policy = "review"
 note = "Upstream moved from semver to CalVer at v2026.36; the versioned ebuild pins EGIT_COMMIT to the tag, so smoke-test cargo vendoring after bumps."
 
+# The fork publishes only prereleases (vX.Y.Z-ai-beta.N), so
+# /releases/latest returns 404; follow the tags instead.
+["media-gfx/photocraft-ai"]
+source = "github"
+github = "BLEZZ0102/photocraft-ai"
+use_max_tag = true
+include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-ai-beta\.[0-9]+$'
+prefix = "v"
+from_pattern = '-ai-beta\.'
+to_pattern = '_beta'
+policy = "review"
+note = "Regenerate CRATES/GIT_CRATES (egui, winit, craft-libs and winprint forks), update PHOTOCRAFT_COMMIT and PHOTOCRAFT_DATE, and check whether a stable tag scheme has replaced -ai-beta.N."
+
 ["media-gfx/photon-studio"]
 source = "regex"
 url = "https://tenzen.studio/api/v1/photon/releases/latest"
