@@ -1463,7 +1463,7 @@ and `sys-kernel/kernelsmith-9999` was smoke-built at HEAD (`71d2703`).
   aspect-matched multiple-of-16 size; API keys optional on loopback addresses;
   a ComfyUI provider (workflow `<name>.json` in
   `~/.config/photocraft-ai/comfyui-workflows/`, `{{image}}`/`{{prompt}}`/
-  `{{seed}}` placeholders, upload → `/prompt` → `/history` → `/view`, cancel
+  `{{seed}}` placeholders, default `http://127.0.0.1:8188`, upload → `/prompt` → `/history` → `/view`, cancel
   dequeues). New UI strings are English only.
 - Live-ebuild pitfall: `cargo vendor` names the `xml` crate's directory plain
   `xml`, and zbus-lockstep's `validate` macro prefers `../xml` over
