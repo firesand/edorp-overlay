@@ -153,8 +153,10 @@ local machine configuration do not belong in the overlay.
   source; Cargo dependencies come from `CRATES` plus `GIT_CRATES` for
   upstream's egui, winit, craft-libs and winprint forks. Requires Rust >= 1.95
   and `~amd64` keywording
-  (`metadata/package.accept_keywords/edorp-photocraft-ai`). See the PhotoCraft
-  AI section.
+  (`metadata/package.accept_keywords/edorp-photocraft-ai`). The live `9999`
+  ebuild builds the `ai-main` branch of the
+  [firesand fork](https://github.com/firesand/photocraft-ai), which adds
+  OpenAI-compatible and ComfyUI image services. See the PhotoCraft AI section.
 - `media-gfx/photon-studio`: Photon Studio 0.1.65, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
@@ -316,8 +318,28 @@ AI editing has two paths:
 - Gemini (Nano Banana), FLUX and Seedream: use your own API keys, stored
   through the Secret Service API (KWallet or GNOME Keyring).
 
-Both send the image and prompt to the selected online service. The fork's
-one-click updater only runs on Windows, so Portage handles updates. Windowing
+Both send the image and prompt to the selected online service.
+
+The live ebuild builds the `ai-main` branch of
+[firesand/photocraft-ai](https://github.com/firesand/photocraft-ai), which adds
+two more services:
+
+- OpenAI-compatible / local server: the OpenAI Images edit API, or any gateway
+  or local server that speaks it.
+- ComfyUI (local workflow): runs a workflow exported from ComfyUI with
+  Export (API), with `{{image}}` and `{{prompt}}` placeholders, saved under
+  `~/.config/photocraft-ai/comfyui-workflows/<name>.json`.
+
+API keys are optional for `localhost`/`127.0.0.1` addresses. See
+`docs/ai-beta.md` in the fork for the details.
+
+```bash
+echo "=media-gfx/photocraft-ai-9999 **" | \
+  sudo tee /etc/portage/package.accept_keywords/edorp-photocraft-ai-live
+sudo emerge -av =media-gfx/photocraft-ai-9999
+```
+
+The fork's one-click updater only runs on Windows, so Portage handles updates. Windowing
 and GPU libraries (X11/Wayland, xkbcommon, Vulkan or EGL) are loaded at runtime;
 start with `photocraft --safe-gpu` to fall back to CPU rendering if the GPU
 path fails.
