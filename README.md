@@ -147,6 +147,16 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+- `media-gfx/photocraft-ai`: PhotoCraft AI 0.19.0 beta 2 (`v0.19.0-ai-beta.2`),
+  an unofficial community fork of the Rust PhotoCraft image editor with AI
+  editing built into the interface
+  ([source](https://github.com/BLEZZ0102/photocraft-ai)). Upstream only
+  publishes Windows binaries, so the ebuild builds the pinned git tag from
+  source; Cargo dependencies come from `CRATES` plus `GIT_CRATES` for
+  upstream's egui, winit, craft-libs and winprint forks. Requires Rust >= 1.95
+  and `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-photocraft-ai`). See the PhotoCraft
+  AI section.
 - `media-gfx/photon-studio`: Photon Studio 0.1.69, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
@@ -280,6 +290,39 @@ Anything V2 Small and the LaMa inpainting model behind Remove and Content-Aware
 Fill) are Apache-2.0, and HEIF decoding uses LGPL-3 libheif and libde265,
 whose source archives ship inside the app directory. The native RAW decoder
 needs glibc 2.39 or newer.
+
+### PhotoCraft AI
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-photocraft-ai \
+  /etc/portage/package.accept_keywords/edorp-photocraft-ai
+sudo emerge -av media-gfx/photocraft-ai
+```
+
+PhotoCraft AI is a community fork of PhotoCraft by BLEZZ0102, not an official
+ArtCraft release. Upstream publishes Windows MSI/portable builds only, so this
+package compiles the tagged source with Rust >= 1.95. The `heif` USE flag is
+on by default to match the official builds; it uses the pure-Rust `heic-rs`
+decoder and adds no system library.
+
+It installs `photocraft`, `photocraft-cli` (with man pages and bash, zsh and
+fish completions), the `ai.storyteller.photocraft` desktop entry, MIME types,
+AppStream metadata and icons. Those are the same names an official PhotoCraft
+package would use, so the two cannot be installed together; no such package
+exists in any configured repository today.
+
+AI editing has two paths:
+
+- ChatGPT subscription: runs through the Codex CLI, found via `PATH` or
+  `PHOTOCRAFT_CODEX_PATH`. Upstream only validates this path on Windows.
+- Gemini (Nano Banana), FLUX and Seedream: use your own API keys, stored
+  through the Secret Service API (KWallet or GNOME Keyring).
+
+Both send the image and prompt to the selected online service. The fork's
+one-click updater only runs on Windows, so Portage handles updates. Windowing
+and GPU libraries (X11/Wayland, xkbcommon, Vulkan or EGL) are loaded at runtime;
+start with `photocraft --safe-gpu` to fall back to CPU rendering if the GPU
+path fails.
 
 ### Plexo
 

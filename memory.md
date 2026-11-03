@@ -1452,6 +1452,64 @@ this is the second consecutive audit found going stale in under a week.
 - `games-emulation/shadps4-qtlauncher-bin`: 404 again, third audit running.
   Offset 944632 re-validated (hit at 194183 still a false positive).
   Launcher-only this time: shadps4-bin 0.21.0 is current.
+## PhotoCraft AI (2026-11-03)
+
+- Upstream: https://github.com/BLEZZ0102/photocraft-ai, an unofficial
+  community fork of `storytold/photocraft` (Rust/egui image editor) with AI
+  editing built in: ChatGPT subscription via the Codex CLI, or the user's own
+  Gemini, FLUX and Seedream API keys. The author's r/ArtCraftAI post says it is
+  not official; their upstream proposals are `storytold/photocraft` issue
+  11014 (plugin extension API) and PR 10593 (built-in AI editing).
+- Overlay ebuild: `media-gfx/photocraft-ai/photocraft-ai-0.19.0_beta2.ebuild`,
+  `~amd64`. `MY_PV="${PV/_beta/-ai-beta.}"` maps to tag `v0.19.0-ai-beta.2`.
+  All releases are Windows-only prereleases (MSI, portable zip, source zip),
+  so the ebuild builds the GitHub tag tarball. `RUST_MIN_VER` 1.95.0 comes
+  from the workspace `rust-version`.
+- `CRATES` (863) and `GIT_CRATES` (21: craft-libs, the egui and winit forks,
+  two winprint.rs commits) were generated with
+  `uvx pycargoebuild -C -M --no-config -l /var/db/repos/gentoo/metadata/license-mapping.conf -d "$PWD/.distfiles" -i <ebuild> <clone>/apps/photocraft`.
+  uvx's Python has no `portage` module, hence `--no-config` and `-l`; it also
+  refuses the workspace root, so point it at a member.
+- The root `Cargo.toml` pins the egui and winit forks through
+  `[patch.crates-io]` git entries. Cargo resolves patch sources directly, so
+  the eclass's `[patch.'<git url>']` tables do not apply and offline
+  resolution fails with "can't checkout ... offline mode". `src_prepare`
+  rewrites those entries to the unpacked tarball paths, reading the commits
+  from `GIT_CRATES`. That also covers the unused `egui_demo_lib`,
+  `egui_inspection` and `egui_system_font_provider` patches, which
+  pycargoebuild leaves out of `GIT_CRATES`.
+- Build mirrors `packaging/linux/package.sh`: `-p photocraft -p photocraft-cli
+  --bins --features heif`, then the `man-and-completions` example in its own
+  run. `PHOTOCRAFT_BUILD_SHA`/`PHOTOCRAFT_BUILD_DATE` come from
+  `PHOTOCRAFT_COMMIT`/`PHOTOCRAFT_DATE` at the top of the ebuild; update both
+  on bumps. The metainfo bugtracker URL is redirected to the fork's issues.
+- The only native code built on Linux is `aws-lc-sys` (bundled AWS-LC via
+  `cc`, for rustls). Both binaries NEED only glibc and libgcc; X11/Wayland,
+  xkbcommon, Vulkan and EGL are dlopen'd, so RDEPEND follows upstream's
+  `packaging/linux/nfpm.yaml`. `xcap` (PipeWire/bindgen) is Windows-only.
+- The fork's updater is gated to Windows x86_64 (`installed_kind()`), so
+  nothing needs patching. Codex is found via `PATH` or
+  `PHOTOCRAFT_CODEX_PATH` on Linux; API keys go through `keyring` to the
+  Secret Service. Settings live in `~/.config/photocraft-ai`.
+- It installs the same `/usr/bin/photocraft` and `ai.storyteller.photocraft`
+  desktop ID an official PhotoCraft package would use. None exists in any
+  configured repo, so there is no blocker yet.
+- `RESTRICT="test"`: upstream's suite is thousands of tests, many GPU-bound.
+- Watcher: GitHub `use_max_tag` with
+  `include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-ai-beta\.[0-9]+$'` (no
+  `/releases/latest` because every release is a prerelease); covered by
+  `test_photocraft_ai_watcher_normalizes_fork_beta_tags`.
+- Local image installs as non-root also need `PORTAGE_INST_UID=$(id -u)
+  PORTAGE_INST_GID=$(id -g)`, otherwise `dobin` fails trying to chown to root.
+- Validation on 2026-11-03: `pkgcheck scan media-gfx/photocraft-ai` clean,
+  watcher tests OK, `ebuild ... clean install` passed (Rust 1.99.0; about
+  4.5 min for the binaries plus 2 min for the man/completion example; 147 MiB
+  installed). The image `photocraft-cli` converted PNG to PSD, WebP and
+  `.pcraft`; a 10 s GUI launch with throwaway XDG dirs on KDE Wayland picked
+  the RTX 4090 Vulkan adapter and the portal file chooser with no warnings.
+  `desktop-file-validate`, `appstreamcli validate --no-net` and `xmllint` on
+  the MIME XML passed. The only QA notice is the machine-wide pre-stripped one.
+  AI generation itself was not exercised (needs an account or API key).
 
 ## Future Session Checklist
 
