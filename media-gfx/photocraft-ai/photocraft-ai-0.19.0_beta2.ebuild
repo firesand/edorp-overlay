@@ -946,6 +946,9 @@ RDEPEND="
 	x11-libs/libxkbcommon[X]
 "
 
+# Upstream's release profile strips both binaries.
+QA_PRESTRIPPED="usr/bin/photocraft usr/bin/photocraft-cli"
+
 src_prepare() {
 	default
 

@@ -63,6 +63,9 @@ src_unpack() {
 	fi
 }
 
+# Upstream's release profile strips both binaries.
+QA_PRESTRIPPED="usr/bin/photocraft usr/bin/photocraft-cli"
+
 src_compile() {
 	export PHOTOCRAFT_BUILD_SHA="${EGIT_VERSION}"
 	export PHOTOCRAFT_BUILD_DATE="$(date -u +%Y-%m-%d)"
