@@ -7,9 +7,9 @@ Personal Gentoo overlay for packages maintained or tested by Edo.
 Register the overlay by copying the repo config:
 
 ```bash
-doas eselect repository enable guru
-doas emerge --sync guru
-doas cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
+sudo eselect repository enable guru
+sudo emerge --sync guru
+sudo cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
 ```
 
 GURU is a declared master because MarkItDown has mandatory dependencies there.
@@ -147,6 +147,18 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
+- `media-gfx/photocraft-ai`: PhotoCraft AI 0.19.0 beta 2 (`v0.19.0-ai-beta.2`),
+  an unofficial community fork of the Rust PhotoCraft image editor with AI
+  editing built into the interface
+  ([source](https://github.com/BLEZZ0102/photocraft-ai)). Upstream only
+  publishes Windows binaries, so the ebuild builds the pinned git tag from
+  source; Cargo dependencies come from `CRATES` plus `GIT_CRATES` for
+  upstream's egui, winit, craft-libs and winprint forks. Requires Rust >= 1.95
+  and `~amd64` keywording
+  (`metadata/package.accept_keywords/edorp-photocraft-ai`). The live `9999`
+  ebuild builds the `ai-main` branch of the
+  [firesand fork](https://github.com/firesand/photocraft-ai), which adds
+  OpenAI-compatible and ComfyUI image services. See the PhotoCraft AI section.
 - `media-gfx/photon-studio`: Photon Studio 0.1.69, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
@@ -281,6 +293,82 @@ Fill) are Apache-2.0, and HEIF decoding uses LGPL-3 libheif and libde265,
 whose source archives ship inside the app directory. The native RAW decoder
 needs glibc 2.39 or newer.
 
+### PhotoCraft AI
+
+```bash
+sudo cp metadata/package.accept_keywords/edorp-photocraft-ai \
+  /etc/portage/package.accept_keywords/edorp-photocraft-ai
+sudo emerge -av media-gfx/photocraft-ai
+```
+
+PhotoCraft AI is a community fork of PhotoCraft by BLEZZ0102, not an official
+ArtCraft release. Upstream publishes Windows MSI/portable builds only, so this
+package compiles the tagged source with Rust >= 1.95. The `heif` USE flag is
+on by default to match the official builds; it uses the pure-Rust `heic-rs`
+decoder and adds no system library.
+
+It installs `photocraft`, `photocraft-cli` (with man pages and bash, zsh and
+fish completions), the `ai.storyteller.photocraft` desktop entry, MIME types,
+AppStream metadata and icons. Those are the same names an official PhotoCraft
+package would use, so the two cannot be installed together; no such package
+exists in any configured repository today.
+
+AI editing has two paths:
+
+- ChatGPT subscription: runs through the Codex CLI, found via `PATH` or
+  `PHOTOCRAFT_CODEX_PATH`. Upstream only validates this path on Windows.
+- Gemini (Nano Banana), FLUX and Seedream: use your own API keys, stored
+  through the Secret Service API (KWallet or GNOME Keyring).
+
+Both send the image and prompt to the selected online service.
+
+The live ebuild builds the `ai-main` branch of
+[firesand/photocraft-ai](https://github.com/firesand/photocraft-ai), which adds
+two more services:
+
+- OpenAI-compatible / local server: the OpenAI Images edit API, or any gateway
+  or local server that speaks it.
+- ComfyUI (local workflow): runs a workflow exported from ComfyUI with
+  Export (API), with `{{image}}` and `{{prompt}}` placeholders, saved under
+  `~/.config/photocraft-ai/comfyui-workflows/<name>.json`.
+
+API keys are optional for `localhost`/`127.0.0.1` addresses. See
+`docs/ai-beta.md` in the fork for the details.
+
+```bash
+echo "=media-gfx/photocraft-ai-9999 **" | \
+  sudo tee /etc/portage/package.accept_keywords/edorp-photocraft-ai-live
+sudo emerge -av =media-gfx/photocraft-ai-9999
+```
+
+The fork's one-click updater only runs on Windows, so Portage handles updates. Windowing
+and GPU libraries (X11/Wayland, xkbcommon, Vulkan or EGL) are loaded at runtime;
+start with `photocraft --safe-gpu` to fall back to CPU rendering if the GPU
+path fails.
+
+Claude cannot generate or edit pixels, so it is not an image backend here. It
+can drive the editor instead (crop, select, adjust, mask, export) through
+PhotoCraft's MCP server. Start the app with its control server, which also
+makes it a separate process from the normal launcher:
+
+```bash
+photocraft --control 47219 \
+  --control-token-file ~/.config/photocraft-ai/control.token \
+  --automation-read-root ~/Pictures --automation-write-root ~/Pictures
+```
+
+Then register the bridge in Claude Code (Claude Desktop takes the same command
+and arguments under `mcpServers` in `~/.config/Claude/claude_desktop_config.json`):
+
+```bash
+claude mcp add --scope user photocraft -- /usr/bin/photocraft-cli mcp \
+  --bridge 127.0.0.1:47219 \
+  --control-token-file ~/.config/photocraft-ai/control.token
+```
+
+The app creates the token file with mode 0600 on first start. Automation can
+only open and save files under the read and write roots.
+
 ### Plexo
 
 Plexo `1.0.0_rc15` packages upstream `v1.0.0-rc.15`, a release candidate.
@@ -317,12 +405,12 @@ with `client`, `X`, and `pulseaudio` is required for RemoteApp windows.
 
 ```bash
 # If this machine uses the local checkout instead of /var/db/repos/edorp:
-doas cp metadata/edorp.local.conf /etc/portage/repos.conf/edorp.conf
-doas cp metadata/package.accept_keywords/edorp-winboat \
+sudo cp metadata/edorp.local.conf /etc/portage/repos.conf/edorp.conf
+sudo cp metadata/package.accept_keywords/edorp-winboat \
   /etc/portage/package.accept_keywords/edorp-winboat
-doas cp metadata/package.use/edorp-winboat \
+sudo cp metadata/package.use/edorp-winboat \
   /etc/portage/package.use/edorp-winboat
-doas emerge -av app-emulation/winboat
+sudo emerge -av app-emulation/winboat
 ```
 
 After install, ensure Docker is running, add your user to the `docker` group,
@@ -338,8 +426,8 @@ with the Pico SDK. Flash the Pico 2 W by holding BOOTSEL, connecting USB, and
 copying `/usr/share/ds5dongle/ds5-bridge-pico2w.uf2` onto the mounted drive.
 
 ```bash
-echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
-doas emerge -av sys-firmware/ds5dongle
+echo "sys-firmware/ds5dongle ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+sudo emerge -av sys-firmware/ds5dongle
 ```
 
 After the DualSense is connected through the dongle, adjust settings with
@@ -356,11 +444,11 @@ ebuild to update instead. gentoo-zh ships an ebuild with the same name; see
 [Packages shared with other overlays](#packages-shared-with-other-overlays).
 
 ```bash
-doas cp metadata/package.accept_keywords/edorp-chatgpt-desktop \
+sudo cp metadata/package.accept_keywords/edorp-chatgpt-desktop \
   /etc/portage/package.accept_keywords/edorp-chatgpt-desktop
-doas cp metadata/package.license/edorp-chatgpt-desktop \
+sudo cp metadata/package.license/edorp-chatgpt-desktop \
   /etc/portage/package.license/edorp-chatgpt-desktop
-doas emerge -av app-misc/chatgpt-desktop
+sudo emerge -av app-misc/chatgpt-desktop
 ```
 
 This build ships no setuid `chrome-sandbox`, so the Chromium sandbox relies on
@@ -375,9 +463,9 @@ keeps its FHS layout: it resolves resources as `<exe dir>/../lib/Unsloth`, and
 that `lib` is literal, never `$(get_libdir)`.
 
 ```bash
-echo "app-misc/unsloth-desktop ~amd64" | doas tee \
+echo "app-misc/unsloth-desktop ~amd64" | sudo tee \
   /etc/portage/package.accept_keywords/edorp-unsloth-desktop
-doas emerge -av app-misc/unsloth-desktop
+sudo emerge -av app-misc/unsloth-desktop
 ```
 
 This installs the GUI only. On first launch the app downloads a private Python
@@ -417,9 +505,9 @@ separate unpublished repository, so the published bundle is the only form
 there is to ship.
 
 ```bash
-echo "app-text/md2hd ~amd64" | doas tee \
+echo "app-text/md2hd ~amd64" | sudo tee \
   /etc/portage/package.accept_keywords/edorp-md2hd
-doas emerge -av app-text/md2hd
+sudo emerge -av app-text/md2hd
 ```
 
 `md2hd notes/` serves the map on 127.0.0.1:4173 and opens a browser with
@@ -480,9 +568,9 @@ defaults in `/etc/xdg/walker`.
 Install Walker with:
 
 ```bash
-echo "gui-apps/walker ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-walker
-echo "gui-apps/elephant ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-walker
-doas emerge -av gui-apps/walker
+echo "gui-apps/walker ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-walker
+echo "gui-apps/elephant ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/edorp-walker
+sudo emerge -av gui-apps/walker
 ```
 
 Elephant 2.22.1's `go.mod` asks for Go 1.27.1, which Gentoo only offers as
@@ -507,8 +595,8 @@ Additional Elephant providers are selectable with USE flags. For example,
 enable file search, clipboard history, and bookmarks with:
 
 ```bash
-echo "gui-apps/elephant files clipboard bookmarks" | doas tee /etc/portage/package.use/edorp-elephant
-doas emerge -av gui-apps/elephant
+echo "gui-apps/elephant files clipboard bookmarks" | sudo tee /etc/portage/package.use/edorp-elephant
+sudo emerge -av gui-apps/elephant
 ```
 
 The `files` provider indexes the home directory when Elephant starts, while
@@ -520,8 +608,8 @@ Video previews are optional because they require GTK's GStreamer backend and
 additional plugins:
 
 ```bash
-echo "gui-apps/walker gstreamer" | doas tee /etc/portage/package.use/edorp-walker
-doas emerge -av gui-apps/walker
+echo "gui-apps/walker gstreamer" | sudo tee /etc/portage/package.use/edorp-walker
+sudo emerge -av gui-apps/walker
 ```
 
 ### Wiflux
@@ -532,10 +620,10 @@ enabled Python targets are only 3.13/3.14, disable those tools before installing
 Wiflux:
 
 ```bash
-echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "net-wireless/wiflux ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
-echo "net-wireless/hcxtools ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
-doas emerge -av net-wireless/wiflux
+echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | sudo tee /etc/portage/package.use/edorp-wiflux
+echo "net-wireless/wiflux ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "net-wireless/hcxtools ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/edorp-wiflux
+sudo emerge -av net-wireless/wiflux
 ```
 
 Wiflux now pulls in `hcxtools` because its primary handshake validation path
@@ -587,18 +675,18 @@ The mandatory Magika dependency uses ONNX Runtime. `dev-python/markdownify` and
 an EDORP repository master. Enable it before installing or syncing EDORP:
 
 ```bash
-doas eselect repository enable guru
-doas emerge --sync guru
-echo "sci-libs/onnxruntime python" | doas tee /etc/portage/package.use/edorp-markitdown
-echo "sci-ml/onnx disableStaticReg" | doas tee -a /etc/portage/package.use/edorp-markitdown
-doas emerge -av app-text/markitdown
+sudo eselect repository enable guru
+sudo emerge --sync guru
+echo "sci-libs/onnxruntime python" | sudo tee /etc/portage/package.use/edorp-markitdown
+echo "sci-ml/onnx disableStaticReg" | sudo tee -a /etc/portage/package.use/edorp-markitdown
+sudo emerge -av app-text/markitdown
 ```
 
 Enable optional document formats only when needed:
 
 ```bash
-echo "app-text/markitdown docx outlook pdf pptx xls xlsx" | doas tee -a /etc/portage/package.use/edorp-markitdown
-doas emerge -av app-text/markitdown
+echo "app-text/markitdown docx outlook pdf pptx xls xlsx" | sudo tee -a /etc/portage/package.use/edorp-markitdown
+sudo emerge -av app-text/markitdown
 ```
 
 On a stable-keyword system, review and accept the `~amd64` keywords Portage
@@ -653,9 +741,9 @@ systemctl enable --now asusd.service asus-shutdown.service supergfxd.service
 Accept keywords for live ebuilds:
 
 ```bash
-echo "=sys-power/asusctl-9999 **" | doas tee /etc/portage/package.accept_keywords/edorp-asus
-echo "=sys-power/supergfxctl-9999 **" | doas tee -a /etc/portage/package.accept_keywords/edorp-asus
-echo "sys-power/asusctl gui" | doas tee /etc/portage/package.use/edorp-asus
+echo "=sys-power/asusctl-9999 **" | sudo tee /etc/portage/package.accept_keywords/edorp-asus
+echo "=sys-power/supergfxctl-9999 **" | sudo tee -a /etc/portage/package.accept_keywords/edorp-asus
+echo "sys-power/asusctl gui" | sudo tee /etc/portage/package.use/edorp-asus
 ```
 
 ### shadPS4
@@ -698,9 +786,9 @@ Live-only for now: there is no tagged release yet, so the ebuild builds `main`
 of `firesand/kernelsmith` and fetches its crates during unpack.
 
 ```bash
-echo "=sys-kernel/kernelsmith-9999 **" | doas tee \
+echo "=sys-kernel/kernelsmith-9999 **" | sudo tee \
   /etc/portage/package.accept_keywords/edorp-kernelsmith
-doas emerge -av sys-kernel/kernelsmith
+sudo emerge -av sys-kernel/kernelsmith
 ```
 
 It needs full kernel sources (`sys-kernel/gentoo-sources`, or

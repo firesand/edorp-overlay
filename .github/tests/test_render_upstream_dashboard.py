@@ -79,6 +79,22 @@ class RenderDashboardTest(unittest.TestCase):
         for tag in ("nightly", "models-v1", "v0.2.3-rc.1"):
             self.assertIsNone(re.fullmatch(entry["include_regex"], tag))
 
+    def test_photocraft_ai_watcher_normalizes_fork_beta_tags(self) -> None:
+        with (REPO_ROOT / ".github/upstream.toml").open("rb") as file:
+            entry = tomllib.load(file)["media-gfx/photocraft-ai"]
+        for tag, version in (
+            ("v0.18.0-ai-beta.1", "0.18.0_beta1"),
+            ("v0.19.0-ai-beta.2", "0.19.0_beta2"),
+        ):
+            with self.subTest(tag=tag):
+                self.assertIsNotNone(re.fullmatch(entry["include_regex"], tag))
+                normalized = tag.removeprefix(entry["prefix"])
+                normalized = re.sub(entry["from_pattern"], entry["to_pattern"], normalized)
+                self.assertEqual(normalized, version)
+        # Plain upstream PhotoCraft tags are not releases of this fork.
+        for tag in ("v0.19.0", "v0.19.0-beta.2"):
+            self.assertIsNone(re.fullmatch(entry["include_regex"], tag))
+
     def test_empty_update_list_closes_dashboard(self) -> None:
         self.assertEqual(dashboard.render_dashboard([], {}), "")
         self.assertEqual(

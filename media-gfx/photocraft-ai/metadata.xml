@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		PhotoCraft AI is an unofficial community fork of PhotoCraft, the
+		open-source native image editor written in Rust, with AI image editing
+		built into the interface. Edits run through a ChatGPT subscription via
+		the Codex CLI or through user-supplied Gemini, FLUX and Seedream API
+		keys. Includes the photocraft-cli headless converter.
+	</longdescription>
+	<use>
+		<flag name="heif">Open HEIC/HEIF photos with the pure-Rust heic-rs decoder</flag>
+	</use>
+	<upstream>
+		<remote-id type="github">BLEZZ0102/photocraft-ai</remote-id>
+		<remote-id type="github">firesand/photocraft-ai</remote-id>
+		<bugs-to>https://github.com/BLEZZ0102/photocraft-ai/issues</bugs-to>
+	</upstream>
+</pkgmetadata>

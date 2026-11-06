@@ -12,6 +12,8 @@ start of future sessions before making assumptions.
 - Agreement should be earned: agree only after testing the idea and add useful
   reasoning.
 - Prefer practical implementation over long theory when the direction is clear.
+- Use `sudo` in commands and docs. These systems do not have `doas`; the
+  README and these notes used it until 2026-11-03.
 
 ## Current Goal
 
@@ -142,9 +144,9 @@ The repo is public, so use HTTPS for Portage sync. Do not use SSH for
 requires root:
 
 ```bash
-doas eselect repository enable guru
-doas emerge --sync guru
-doas cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
+sudo eselect repository enable guru
+sudo emerge --sync guru
+sudo cp metadata/edorp.conf /etc/portage/repos.conf/edorp.conf
 ```
 
 ## Repository Hygiene
@@ -216,8 +218,8 @@ Actual imported package placement:
 Install:
 
 ```bash
-echo "sys-firmware/ds5dongle ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-ds5dongle
-doas emerge -av sys-firmware/ds5dongle
+echo "sys-firmware/ds5dongle ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-ds5dongle
+sudo emerge -av sys-firmware/ds5dongle
 ```
 
 Validation completed on 2026-07-19:
@@ -347,15 +349,15 @@ Install (versioned):
 
 ```bash
 emerge --sync edorp
-echo "=app-emulation/mameuix-0.1.7 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
-doas emerge -av app-emulation/mameuix
+echo "=app-emulation/mameuix-0.1.7 ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-mameuix
+sudo emerge -av app-emulation/mameuix
 ```
 
 Install (live):
 
 ```bash
-echo "=app-emulation/mameuix-9999 **" | doas tee /etc/portage/package.accept_keywords/edorp-mameuix
-doas emerge -av =app-emulation/mameuix-9999
+echo "=app-emulation/mameuix-9999 **" | sudo tee /etc/portage/package.accept_keywords/edorp-mameuix
+sudo emerge -av =app-emulation/mameuix-9999
 ```
 
 Portable AppImage (non-Gentoo / no emerge):
@@ -432,10 +434,10 @@ Portable AppImage (non-Gentoo / no emerge):
 Install:
 
 ```bash
-echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | doas tee /etc/portage/package.use/edorp-wiflux
-echo "=net-wireless/wiflux-1.0.5-r3 ~amd64" | doas tee /etc/portage/package.accept_keywords/edorp-wiflux
-echo "=net-wireless/hcxtools-7.1.2 ~amd64" | doas tee -a /etc/portage/package.accept_keywords/edorp-wiflux
-doas emerge -av net-wireless/wiflux
+echo "net-wireless/aircrack-ng -airdrop-ng -airgraph-ng" | sudo tee /etc/portage/package.use/edorp-wiflux
+echo "=net-wireless/wiflux-1.0.5-r3 ~amd64" | sudo tee /etc/portage/package.accept_keywords/edorp-wiflux
+echo "=net-wireless/hcxtools-7.1.2 ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/edorp-wiflux
+sudo emerge -av net-wireless/wiflux
 ```
 
 Validation completed on 2026-07-12:
@@ -1452,6 +1454,104 @@ this is the second consecutive audit found going stale in under a week.
 - `games-emulation/shadps4-qtlauncher-bin`: 404 again, third audit running.
   Offset 944632 re-validated (hit at 194183 still a false positive).
   Launcher-only this time: shadps4-bin 0.21.0 is current.
+## PhotoCraft AI (2026-11-03)
+
+- Upstream: https://github.com/BLEZZ0102/photocraft-ai, an unofficial
+  community fork of `storytold/photocraft` (Rust/egui image editor) with AI
+  editing built in: ChatGPT subscription via the Codex CLI, or the user's own
+  Gemini, FLUX and Seedream API keys. The author's r/ArtCraftAI post says it is
+  not official; their upstream proposals are `storytold/photocraft` issue
+  11014 (plugin extension API) and PR 10593 (built-in AI editing).
+- Overlay ebuild: `media-gfx/photocraft-ai/photocraft-ai-0.19.0_beta2.ebuild`,
+  `~amd64`. `MY_PV="${PV/_beta/-ai-beta.}"` maps to tag `v0.19.0-ai-beta.2`.
+  All releases are Windows-only prereleases (MSI, portable zip, source zip),
+  so the ebuild builds the GitHub tag tarball. `RUST_MIN_VER` 1.95.0 comes
+  from the workspace `rust-version`.
+- `CRATES` (863) and `GIT_CRATES` (21: craft-libs, the egui and winit forks,
+  two winprint.rs commits) were generated with
+  `uvx pycargoebuild -C -M --no-config -l /var/db/repos/gentoo/metadata/license-mapping.conf -d "$PWD/.distfiles" -i <ebuild> <clone>/apps/photocraft`.
+  uvx's Python has no `portage` module, hence `--no-config` and `-l`; it also
+  refuses the workspace root, so point it at a member.
+- The root `Cargo.toml` pins the egui and winit forks through
+  `[patch.crates-io]` git entries. Cargo resolves patch sources directly, so
+  the eclass's `[patch.'<git url>']` tables do not apply and offline
+  resolution fails with "can't checkout ... offline mode". `src_prepare`
+  rewrites those entries to the unpacked tarball paths, reading the commits
+  from `GIT_CRATES`. That also covers the unused `egui_demo_lib`,
+  `egui_inspection` and `egui_system_font_provider` patches, which
+  pycargoebuild leaves out of `GIT_CRATES`.
+- Build mirrors `packaging/linux/package.sh`: `-p photocraft -p photocraft-cli
+  --bins --features heif`, then the `man-and-completions` example in its own
+  run. `PHOTOCRAFT_BUILD_SHA`/`PHOTOCRAFT_BUILD_DATE` come from
+  `PHOTOCRAFT_COMMIT`/`PHOTOCRAFT_DATE` at the top of the ebuild; update both
+  on bumps. The metainfo bugtracker URL is redirected to the fork's issues.
+- The only native code built on Linux is `aws-lc-sys` (bundled AWS-LC via
+  `cc`, for rustls). Both binaries NEED only glibc and libgcc; X11/Wayland,
+  xkbcommon, Vulkan and EGL are dlopen'd, so RDEPEND follows upstream's
+  `packaging/linux/nfpm.yaml`. `xcap` (PipeWire/bindgen) is Windows-only.
+- The fork's updater is gated to Windows x86_64 (`installed_kind()`), so
+  nothing needs patching. Codex is found via `PATH` or
+  `PHOTOCRAFT_CODEX_PATH` on Linux; API keys go through `keyring` to the
+  Secret Service. Settings live in `~/.config/photocraft-ai`.
+- It installs the same `/usr/bin/photocraft` and `ai.storyteller.photocraft`
+  desktop ID an official PhotoCraft package would use. None exists in any
+  configured repo, so there is no blocker yet.
+- `RESTRICT="test"`: upstream's suite is thousands of tests, many GPU-bound.
+- Watcher: GitHub `use_max_tag` with
+  `include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-ai-beta\.[0-9]+$'` (no
+  `/releases/latest` because every release is a prerelease); covered by
+  `test_photocraft_ai_watcher_normalizes_fork_beta_tags`.
+- Local image installs as non-root also need `PORTAGE_INST_UID=$(id -u)
+  PORTAGE_INST_GID=$(id -g)`, otherwise `dobin` fails trying to chown to root.
+- Validation on 2026-11-03: `pkgcheck scan media-gfx/photocraft-ai` clean,
+  watcher tests OK, `ebuild ... clean install` passed (Rust 1.99.0; about
+  4.5 min for the binaries plus 2 min for the man/completion example; 147 MiB
+  installed). The image `photocraft-cli` converted PNG to PSD, WebP and
+  `.pcraft`; a 10 s GUI launch with throwaway XDG dirs on KDE Wayland picked
+  the RTX 4090 Vulkan adapter and the portal file chooser with no warnings.
+  `desktop-file-validate`, `appstreamcli validate --no-net` and `xmllint` on
+  the MIME XML passed. The only QA notice is the machine-wide pre-stripped one.
+  AI generation itself was not exercised (needs an account or API key).
+
+### Fork, live ebuild and Claude (2026-11-04)
+
+- Own fork: https://github.com/firesand/photocraft-ai, cloned at
+  `/home/edo/Downloads/PhotoCraft_AI` (remotes `origin` = fork, `upstream` =
+  BLEZZ0102; commit identity firesand). The fork's `main` mirrors official
+  PhotoCraft; the AI code is upstream's `codex/package-ai-beta` branch (= tag
+  `v0.19.0-ai-beta.2`). Work branches from the tag:
+  `feat/openai-compatible-images` → `feat/comfyui-workflows`, merged into the
+  integration branch `ai-main`, which `photocraft-ai-9999.ebuild` follows
+  (`git-r3` + `cargo_live_src_unpack`, no `[patch]` rewrite needed because the
+  git checkouts stay reachable offline).
+- Fork features: an OpenAI Images (`/v1/images/edits`, JSON) protocol with an
+  aspect-matched multiple-of-16 size; API keys optional on loopback addresses;
+  a ComfyUI provider (workflow `<name>.json` in
+  `~/.config/photocraft-ai/comfyui-workflows/`, `{{image}}`/`{{prompt}}`/
+  `{{seed}}` placeholders, default `http://127.0.0.1:8188`, upload → `/prompt` → `/history` → `/view`, cancel
+  dequeues). New UI strings are English only.
+- Live-ebuild pitfall: `cargo vendor` names the `xml` crate's directory plain
+  `xml`, and zbus-lockstep's `validate` macro prefers `../xml` over
+  atspi-common's own `xml/`, then panics ("File has no extension") on the
+  crate's LICENSE files. `src_unpack` renames `${ECARGO_VENDOR}/xml` to
+  `xml-crate`. Versioned ebuilds are unaffected (dirs are `name-version`).
+- Test the live ebuild before pushing with
+  `EGIT_OVERRIDE_REPO_FIRESAND_PHOTOCRAFT_AI=file:///home/edo/Downloads/PhotoCraft_AI EGIT_CLONE_TYPE=shallow`
+  (the clone is `--filter=blob:none`, so only a shallow fetch works).
+- Validation: fork crates `photocraft-gen` 45 tests, engine `ai_` 21, UI
+  `ai` 465 pass; strict clippy `-D warnings` clean on gen/engine/ui-egui;
+  end-to-end with `photocraft-cli` against a mock OpenAI server and with the
+  desktop app over MCP against a mock ComfyUI. The live ebuild built and
+  installed from the local clone (binary reports the fork commit). No real
+  OpenAI account or ComfyUI edit model was used.
+- Claude cannot output images (Anthropic vision docs), so it drives PhotoCraft
+  through MCP instead: `photocraft-cli mcp --bridge 127.0.0.1:47219
+  --control-token-file ~/.config/photocraft-ai/control.token` is registered in
+  Claude Code (user scope) and Claude Desktop; the app must run with
+  `--control 47219 ...`, which makes it a separate process (no single-instance
+  file forwarding). The user-level launcher
+  `~/.local/share/applications/photocraft-ai-claude.desktop` does that with
+  ~/Pictures as the automation read/write root.
 
 ## Future Session Checklist
 
