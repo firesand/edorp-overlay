@@ -5,8 +5,8 @@ EAPI=8
 
 inherit desktop xdg
 
-MY_COMMIT="6f6b911f4865a1c8bf2425071ca8d39ec46d9ea9"
-MY_DATE="2026-10-18"
+MY_COMMIT="811fb0319cea2e76f1fb8f89d22d67efdf45761a"
+MY_DATE="2026-10-26"
 MY_TAG="shadPS4QtLauncher-${MY_DATE}-${MY_COMMIT}"
 
 DESCRIPTION="Official Qt launcher for the shadPS4 PlayStation 4 emulator"
@@ -34,7 +34,7 @@ RESTRICT="bindist mirror strip"
 # release of main), so the shadps4-bin floor tracks the pairing this overlay
 # ships and tests together rather than an upstream-stated requirement.
 RDEPEND="
-	>=games-emulation/shadps4-bin-0.20.0
+	>=games-emulation/shadps4-bin-0.21.0
 	dev-libs/expat
 	dev-libs/libgpg-error
 	dev-libs/libpcre2

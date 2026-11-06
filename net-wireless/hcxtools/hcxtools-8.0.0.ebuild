@@ -24,3 +24,10 @@ src_install() {
 	doman man/hcxtools.1
 	dodoc README.md changelog
 }
+
+pkg_postinst() {
+	elog "hcxpcapngtool 8.0.0 emits WPA*03/WPA*04 lines for 802.11r WPA-FT-PSK"
+	elog "captures and allows EAPOL frames up to 512 bytes; cracking those lines"
+	elog "requires >=app-crypt/hashcat-8.0.0. Standard WPA*01/WPA*02 captures"
+	elog "remain compatible with app-crypt/hashcat-7.1.2."
+}

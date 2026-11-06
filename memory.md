@@ -1291,6 +1291,102 @@ Second stacked PR, branched off `claude/upstream-updates-2026-10-23`.
 - Next: once a tag exists, add a versioned ebuild with `CRATES` (about 263
   registry crates per `Cargo.lock`) and switch the watcher to the GitHub source.
 
+## Upstream audit (2026-10-31)
+
+Branch `upstream-updates-2026-10-31`, based on `sys-kernel/kernelsmith-9999`
+(`b486b6b`, open PR #32 on top of `origin/main` `4f4aa9f`). Of the 14 newer
+entries detected by `nvchecker==2.20`, 13 packages were verified and bumped,
+1 CI container pin (`ci/pkgcheck-image`) was deliberately kept at `0.10.48`,
+and `sys-kernel/kernelsmith-9999` was smoke-built at HEAD (`71d2703`).
+
+- `app-misc/chatgpt-desktop` `26.1027.30824`: both `amd64` and `arm64` APT
+  indexes agree and match SHA256s. After `src_prepare` `prebuilds` pruning, the
+  bundle max glibc floor remains `GLIBC_2.30` (`sky_linux_{x64,arm64}`), now
+  explicitly declared in `RDEPEND`. Two real upstream additions required ebuild
+  updates:
+  1. New bundled native addon `resources/native/remote-control-device-key.node`
+     links `libcrypto.so.3` (`>=dev-libs/openssl-3.0.0:0`) and
+     `libtss2-{esys,mu,tcti-device}.so.0` (`app-crypt/tpm2-tss`); upstream's
+     `.deb` `Depends` also added `xz-utils` (`app-arch/xz-utils`).
+  2. New bundled `resources/cua_node/lib/node_modules/@img/sharp-libvips-linux-{x64,arm64}`
+     (`libvips-cpp.so.8.18.7`) is licensed under `LGPL-3.0-or-later`, so
+     `LGPL-3+` was added to `LICENSE`.
+- `app-misc/claude-desktop` `4.4212.0`: both `amd64` and `arm64` APT indexes
+  agree and match SHA256s. Layout, 14 ELFs, `DT_NEEDED` (`libpipewire-0.3.so.0`,
+  `libcap-ng.so.0`, `libseccomp.so.2`), untagged weak `pidfd_spawnp` /
+  `pidfd_getpid` symbols, and bundle max `GLIBC_2.34` are unchanged.
+- `app-misc/grok-bot` `0.78.1` (`GROK_BOT_BUILD="72e130b4e6be3fdc47b97e809b6b420908ce2dd8"`):
+  both `amd64` and `arm64` `.deb`s match the SHA256s in Cursor's APT `Packages`
+  index; layout, 17 ELFs, `DT_NEEDED`, and `GLIBC_2.38` floor
+  (`cursor_proclist.node`) are unchanged.
+- `app-misc/unsloth-desktop` `0.1.913_beta`: sorts above `0.1.909_beta`; matches
+  upstream GitHub asset SHA256; single Tauri ELF (`GLIBC_2.34`) and desktop
+  `Categories=` fix unchanged.
+- `games-emulation/shadps4-bin` `0.21.0` (`SOURCE_COMMIT="11557f2eb60b3b00712c8887c30852de7615d6df"`)
+  and `games-emulation/shadps4-qtlauncher-bin` `0_p20261026135048`
+  (`MY_COMMIT="811fb0319cea2e76f1fb8f89d22d67efdf45761a"`, `MY_DATE="2026-10-26"`,
+  watcher publication baseline `20261026.140909`): SquashFS v4.0 superblocks in
+  both AppImages re-verified at byte offset `944632` (after the false-positive
+  `"hsqs"` hit at `194183`); bundle max `GLIBC_2.38` and external `DT_NEEDED`
+  sets unchanged; launcher core pin raised to `>=games-emulation/shadps4-bin-0.21.0`.
+- `games-util/dlss-updater` `5.2.0`: Flatpak OSTree commit
+  `addca4cf427e7436554fac2787b0805c55fdce50057ef4a7835fd8f7640ee77a`; inspecting
+  `flet.version` and `flet_desktop.version` inside the PyInstaller PYZ
+  (`libpython3.14t.so.1.0`) showed `FLET_PV` moved from `1.0.2` to `1.0.5`
+  (Flutter `3.44.8`), max `GLIBC_2.34`.
+- `media-gfx/photon-studio` `0.1.65`: Flatpak OSTree commit
+  `703b6cbc36b770f7027ae243a113fe26dd1ab6dfc08c184565166c87e7546b19`. The
+  Flatpak bundle dropped from 1.25 GB to 856.5 MB because upstream moved all 46
+  `dist/models/*` files out of `app.asar` into `app.asar.unpacked/dist/models/*`
+  and compressed the ONNX weights (~812 MB unpacked models + Electron = ~1.1 GB
+  installed). Model families, `LICENSE-*.txt` notices (`LICENSE-DINOv3.txt`
+  remains byte-identical to `files/LICENSE-DINOv3.txt`), native `*-licenses`
+  directories, `DT_NEEDED`, max `GLIBC_2.39` (`build/cli/linux-x64/photon`), and
+  the `X-KDE-RunOnDiscreteGpu` strip are unchanged.
+- `media-gfx/opencadstudio` `2026.43` (tag `v2026.43`, commit `dbd50b20`):
+  vendored crate count grew to 778 (MSRV still `1.92` from `iced` and `hayro`),
+  adding `borrow-or-share` (`MIT-0` via `fluent-uri`), so `MIT-0` was added to
+  `LICENSE+=` in both `2026.43` and `9999`. Running `src_test` (3,143 tests)
+  caught a bug in `2026.43`'s new Linux spellchecker
+  (`src/app/control/spellcheck.rs`): `LinuxSpeller::new()` checked only whether
+  `hunspell` existed on `PATH` without probing that `-d <lang>` had an installed
+  dictionary, and `check_via_cli()` ignored non-zero exit codes and `#`-prefixed
+  zero-suggestion lines — causing hosts with `app-text/hunspell` but no `en_US`
+  dictionary to claim `system_speller.available = true` while marking all typos
+  valid. Fixed via `files/opencadstudio-2026.43-spellcheck-hunspell-dict-probe.patch`
+  plus an `optfeature` hint for `app-text/hunspell app-dicts/myspell-en`.
+- `net-im/zapfast` `0.20.1`: `Cargo.lock` changed only 1 registry crate
+  (`ctutils@0.4.2` -> `ctutils@0.4.5`, `Apache-2.0 OR MIT`, MSRV `1.87`); all 46
+  `GIT_CRATES` across 6 pinned git repositories and `RUST_MIN_VER="1.98.0"` are
+  unchanged. Switched `BDEPEND` from unslotted `llvm-core/clang` to `llvm-r2`
+  (`LLVM_COMPAT=( {18..23} )` with `llvm-r2_pkg_setup` + `rust_pkg_setup`) so
+  `bindgen` (`libspa-sys`) selects a slot with `libclang.so` installed when a
+  newer `llvm-core/llvm` slot is present on `PATH` without matching `clang`.
+- `net-wireless/hcxdumptool` `8.0.0` and `net-wireless/hcxtools` `8.0.0`:
+  upstream paired the `8.0.0` bump with `hashcat v8.0.0` (2026-10-25) for
+  802.11r `WPA-FT-PSK` (`WPA*03`/`WPA*04` hash lines and 512-byte EAPOL limit),
+  while `::gentoo` currently carries `app-crypt/hashcat-7.1.2-r1`. Auditing
+  `hcxpcapngtool.c` proved standard non-FT captures still emit identical
+  `WPA*01`/`WPA*02` lines compatible with `hashcat-7.1.2`, `hcxdumptool-8.0.0`
+  retains every CLI flag used by `net-wireless/wiflux`, and
+  `wiflux.tools.transition.select_hash_line()` prioritizes `WPA*01`/`WPA*02`
+  ahead of `WPA*03`/`WPA*04`. Added a `pkg_postinst` `elog` to `hcxtools-8.0.0`
+  noting that 802.11r FT-PSK `WPA*03`/`WPA*04` lines require
+  `>=app-crypt/hashcat-8.0.0`.
+- `app-emulation/hbmame` `0.289.4` (`_COMMIT="769c449fefc2f7719f8f28debd630fda81bbb12b"`,
+  MAME `0.289` base): all three downstream CPS1/CPS2 patches still apply
+  (`cps2-input-include` at 1-line offset).
+- NOT bumped: `ci/pkgcheck-image` (`0.10.48` vs PyPI `0.10.49`). Upstream
+  `pkgcore/pkgcheck`'s `v0.10.49` `release` GitHub Actions workflow failed on
+  2026-10-24 after publishing `0.10.49` to PyPI and before pushing the container
+  image to GHCR (`tags/list` ends at `0.10.48` and `latest` on GHCR is still
+  `0.10.48`, `sha256:732a539c...`). Keep `.github/workflows/overlay-qa.yml` and
+  `upstream-old.json` at `0.10.48` until GHCR publishes a newer image.
+- Manual/snapshot/live packages verified unchanged: `unigine-superposition`
+  (`1.1`), `linuxmameui` (`0.1.0`), `bully`, `mdk4`, `bettercap::caplets`,
+  `kernelsmith` (`9999`, 0 tags), and `asusctl`/`supergfxctl` (`9999` on this
+  branch; pinned `6.5.0`/`5.2.7` are tracked in open PR #31).
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.

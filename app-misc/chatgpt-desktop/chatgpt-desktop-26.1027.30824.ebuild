@@ -24,24 +24,29 @@ S="${WORKDIR}"
 
 # Proprietary OpenAI application, governed by the OpenAI Terms of Use
 # (https://openai.com/policies/terms-of-use/). The remaining entries cover the
-# bundled Electron/Chromium runtime, the Node runtime, and the vendored
-# node_modules; see /opt/chatgpt-desktop/LICENSES.chromium.html.
-LICENSE="all-rights-reserved Apache-2.0 BSD BSD-2 ISC MIT MPL-2.0"
+# bundled Electron/Chromium runtime, the Node runtime, bundled libvips in
+# @img/sharp-libvips, and the vendored node_modules; see
+# /opt/chatgpt-desktop/LICENSES.chromium.html.
+LICENSE="all-rights-reserved Apache-2.0 BSD BSD-2 ISC LGPL-3+ MIT MPL-2.0"
 SLOT="0"
 KEYWORDS="-* ~amd64 ~arm64"
 IUSE="apparmor"
 RESTRICT="bindist mirror strip"
 
-# Runtime libraries taken from the NEEDED entries of the Electron binary, plus
-# the ones it dlopen()s (libGL, libnotify) and libusb for the bundled node-hid
-# addon.
+# Runtime libraries taken from the NEEDED entries of the Electron binary and
+# bundled native addons (libusb for node-hid, libcrypto and tpm2-tss for
+# remote-control-device-key.node), plus the ones Electron dlopen()s (libGL,
+# libnotify) and xz-utils from upstream's runtime dependencies.
 RDEPEND="
 	>=app-accessibility/at-spi2-core-2.46.0:2
+	app-arch/xz-utils
+	app-crypt/tpm2-tss
 	app-misc/ca-certificates
 	dev-libs/expat
 	dev-libs/glib:2
 	dev-libs/nspr
 	dev-libs/nss
+	>=dev-libs/openssl-3.0.0:0
 	media-libs/alsa-lib
 	media-libs/libglvnd
 	media-libs/mesa[gbm(+)]
@@ -65,6 +70,7 @@ RDEPEND="
 	x11-libs/libxkbcommon
 	x11-libs/pango
 	x11-misc/xdg-utils
+	elibc_glibc? ( >=sys-libs/glibc-2.30 )
 	apparmor? ( sys-apps/apparmor )
 "
 BDEPEND="$(unpacker_src_uri_depends)"

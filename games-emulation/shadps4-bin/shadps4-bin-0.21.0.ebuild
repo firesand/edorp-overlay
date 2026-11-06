@@ -5,9 +5,9 @@ EAPI=8
 
 inherit desktop xdg
 
-# Commit behind upstream's annotated v.0.20.0 tag. The source archive supplies
+# Commit behind upstream's annotated v.0.21.0 tag. The source archive supplies
 # the core and embedded-data notices omitted from the binary release ZIP.
-SOURCE_COMMIT="529ceb32f5546b820588f194b903cc39d08015fe"
+SOURCE_COMMIT="11557f2eb60b3b00712c8887c30852de7615d6df"
 
 DESCRIPTION="Experimental PlayStation 4 emulator, official prebuilt SDL core"
 HOMEPAGE="https://shadps4.net/ https://github.com/shadps4-emu/shadPS4"
@@ -74,7 +74,7 @@ src_unpack() {
 	unpack "${P}-linux-sdl.zip" "${PN}-source-${SOURCE_COMMIT}.tar.gz"
 
 	# ELF section-table end and SquashFS superblock offset of the verified
-	# 0.19.0 AppImage. Re-audit this number on every version bump. Never run the
+	# 0.21.0 AppImage. Re-audit this number on every version bump. Never run the
 	# AppImage runtime during a build, and do not require a FUSE mount at runtime.
 	unsquashfs -no-progress -offset 944632 -d "${S}" \
 		"${WORKDIR}/Shadps4-sdl.AppImage" || die "AppImage extraction failed"

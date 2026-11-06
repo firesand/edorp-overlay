@@ -7,7 +7,7 @@ inherit desktop pax-utils xdg
 
 # Commit embedded in the upstream Flatpak bundle. Reject changed payloads even
 # when the CDN keeps the same versioned URL.
-FLATPAK_COMMIT="af74fba59aaf749e95e11e854597f05edfe5afcdee0524a6feedb23f528b6fc4"
+FLATPAK_COMMIT="703b6cbc36b770f7027ae243a113fe26dd1ab6dfc08c184565166c87e7546b19"
 
 DESCRIPTION="Offline image editor with layers, retouching and PSD support"
 HOMEPAGE="https://tenzen.studio/photon/"
@@ -105,7 +105,7 @@ src_install() {
 		com.tenzen.photon.png
 
 	# The bundled background-removal model includes Meta DINOv3 weights.
-	# Keep its agreement available directly without extracting app.asar.
+	# Keep its agreement available directly in /usr/share/doc/${PF}.
 	newdoc "${FILESDIR}/LICENSE-DINOv3.txt" LICENSE-DINOv3.txt
 }
 

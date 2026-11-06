@@ -44,9 +44,9 @@ local machine configuration do not belong in the overlay.
 
 ### General
 
-- `games-emulation/shadps4-bin`: official shadPS4 0.20.0 stable amd64 core.
+- `games-emulation/shadps4-bin`: official shadPS4 0.21.0 stable amd64 core.
 - `games-emulation/shadps4-qtlauncher-bin`: official QtLauncher snapshot
-  from 2026-10-18 (`6f6b911`), packaged separately from the emulator core.
+  from 2026-10-26 (`811fb03`), packaged separately from the emulator core.
   Both packages extract the verified upstream AppImages under `/opt`, so
   neither FUSE nor an AppImage runtime is needed. See the shadPS4 section.
 - `net-misc/fluxcast`: imported from the existing FluxCast portable overlay
@@ -100,7 +100,7 @@ local machine configuration do not belong in the overlay.
   release tarball or Git source URI exists.
 - `app-emulation/mame`: MAME 0.289-r1 ebuild imported from local LinuxMAMEUI
   packaging.
-- `app-emulation/hbmame`: HBMAME 0.289.3 ebuild imported from local LinuxMAMEUI
+- `app-emulation/hbmame`: HBMAME 0.289.4 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
   ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
@@ -137,7 +137,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.42, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.43, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced and
@@ -145,7 +145,7 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photon-studio`: Photon Studio 0.1.59, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.65, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
@@ -194,7 +194,7 @@ local machine configuration do not belong in the overlay.
   edges, served on loopback and read in a browser
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
-- `net-im/zapfast`: ZapFast 0.20.0, an unofficial native WhatsApp client
+- `net-im/zapfast`: ZapFast 0.20.1, an unofficial native WhatsApp client
   built with Rust and egui ([source](https://github.com/crmne/zapfast)).
   Built from pinned Cargo and git sources; needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-zapfast`). Using an unofficial
@@ -626,7 +626,7 @@ sudo emerge -av app-misc/claude-desktop
 
 Linux support is upstream **beta** and only `amd64`/`arm64` are published.
 Since 2.19675.1 the native addon links `media-video/pipewire` for Wayland
-screen sharing and needs glibc 2.39 or newer. Optional: `virtual/secret-service`
+screen sharing, and since 2.31226.1 it needs glibc 2.34 or newer. Optional: `virtual/secret-service`
 for keyring storage, `media-libs/libpulse` for microphone capture, and
 `app-emulation/qemu` plus KVM (`/dev/kvm`, hardware virtualization) for
 Cowork's sandboxed VM. Sign
@@ -658,9 +658,9 @@ echo "sys-power/asusctl gui" | doas tee /etc/portage/package.use/edorp-asus
 
 ### shadPS4
 
-The core package follows stable upstream releases (currently **0.19.0**).
+The core package follows stable upstream releases (currently **0.21.0**).
 QtLauncher publishes rolling prerelease snapshots; its ebuild pins the
-2026-10-05 release commit and includes the full UTC commit timestamp in its
+2026-10-26 release commit and includes the full UTC commit timestamp in its
 version. Both packages require glibc >= 2.38; the core requires an
 x86-64-v3 (AVX2-era) CPU. A Vulkan-capable GPU
 and driver are required; game compatibility varies.
