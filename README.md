@@ -46,7 +46,7 @@ local machine configuration do not belong in the overlay.
 
 - `games-emulation/shadps4-bin`: official shadPS4 0.21.0 stable amd64 core.
 - `games-emulation/shadps4-qtlauncher-bin`: official QtLauncher snapshot
-  from 2026-10-26 (`811fb03`), packaged separately from the emulator core.
+  from 2026-11-06 (`ecc8507`), packaged separately from the emulator core.
   Both packages extract the verified upstream AppImages under `/opt`, so
   neither FUSE nor an AppImage runtime is needed. See the shadPS4 section.
 - `net-misc/fluxcast`: imported from the existing FluxCast portable overlay
@@ -138,6 +138,8 @@ local machine configuration do not belong in the overlay.
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
 - `media-gfx/opencadstudio`: OpenCADStudio 2026.43, a Rust/iced 2D/3D CAD
+  (held: upstream's `acadrust` git dependency is no longer reachable, so no
+  version currently builds from source — see memory.md for the 2026-11-06 audit)
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced and
@@ -145,7 +147,7 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photon-studio`: Photon Studio 0.1.65, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.69, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
@@ -194,7 +196,7 @@ local machine configuration do not belong in the overlay.
   edges, served on loopback and read in a browser
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
-- `net-im/zapfast`: ZapFast 0.20.1, an unofficial native WhatsApp client
+- `net-im/zapfast`: ZapFast 0.21.1, an unofficial native WhatsApp client
   built with Rust and egui ([source](https://github.com/crmne/zapfast)).
   Built from pinned Cargo and git sources; needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-zapfast`). Using an unofficial

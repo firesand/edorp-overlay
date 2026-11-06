@@ -37,6 +37,10 @@ RESTRICT="bindist mirror strip"
 # bundled native addons (libusb for node-hid, libcrypto and tpm2-tss for
 # remote-control-device-key.node), plus the ones Electron dlopen()s (libGL,
 # libnotify) and xz-utils from upstream's runtime dependencies.
+# The glibc floor is the highest versioned symbol across BOTH arch bundles.
+# 26.1103.31037 lowered it from 2.30 to 2.28: the sky_linux_x64 and
+# sky_linux_arm64 helpers that set 2.30 in 26.1027.30824 now need only 2.25,
+# leaving libvips-cpp, node and the node.napi.armv* addons at 2.28.
 RDEPEND="
 	>=app-accessibility/at-spi2-core-2.46.0:2
 	app-arch/xz-utils
@@ -70,7 +74,7 @@ RDEPEND="
 	x11-libs/libxkbcommon
 	x11-libs/pango
 	x11-misc/xdg-utils
-	elibc_glibc? ( >=sys-libs/glibc-2.30 )
+	elibc_glibc? ( >=sys-libs/glibc-2.28 )
 	apparmor? ( sys-apps/apparmor )
 "
 BDEPEND="$(unpacker_src_uri_depends)"

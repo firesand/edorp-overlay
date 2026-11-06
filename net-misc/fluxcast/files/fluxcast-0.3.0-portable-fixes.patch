@@ -32,7 +32,7 @@
  async def _close_portal_capture_async(session_handle: str, bus: Optional[Any] = None) -> None:
 --- a/src/main.py
 +++ b/src/main.py
-@@ -53,6 +53,7 @@
+@@ -57,6 +57,7 @@
      --wfd-timeout N          Wi-Fi Direct scan timeout in seconds (default: 8)
      --wfd-go-intent 0-15     P2P group-owner intent; 0 lets the TV be the owner (default: 0)
      --wfd-monitor NAME       Deprecated alias for --monitor
@@ -40,7 +40,7 @@
  """
  
  import argparse
-@@ -60,6 +61,7 @@
+@@ -64,6 +65,7 @@
  import os
  import signal
  import socket
@@ -48,7 +48,7 @@
  import time
  import sys
  import termios
-@@ -209,6 +211,10 @@
+@@ -229,6 +231,10 @@
                            "(driver picks the channel).")
      wfd.add_argument("--wfd-monitor", default=None, dest="monitor_name",
                       help="Deprecated alias for --monitor, kept for compatibility")
@@ -59,7 +59,7 @@
      wfd.add_argument("--wfd-p2p-backend", default="nm", dest="wfd_p2p_backend",
                       choices=["nm", "wpas"],
                       help="How to bring up the P2P link: 'nm' uses "
-@@ -350,25 +356,68 @@
+@@ -373,25 +379,68 @@
      ffmpeg_procs = None
      stream_server = None
      tv = None
@@ -146,7 +146,7 @@
  import sys
  import subprocess
  import threading
-@@ -209,7 +210,12 @@
+@@ -215,7 +216,12 @@
      global _proc, _cast_target
      log_fp = open(_LOG_PATH, "ab", buffering=0)
      log_fp.write(f"\n=== {target} :: {' '.join(cmd)} ===\n".encode())
@@ -160,7 +160,7 @@
      log_fp.close()
      with _lock:
          _proc = proc
-@@ -223,18 +229,93 @@
+@@ -229,18 +235,93 @@
      threading.Thread(target=_watch, args=(proc, target), daemon=True).start()
  
  
@@ -257,8 +257,8 @@
  # ── discovery ─────────────────────────────────────────────────────────────────
  
  def _scan_wfd() -> None:
-@@ -702,6 +783,11 @@
-         items.append(pystray.MenuItem(_l("Rescan Devices"), lambda *_: _rescan_all()))
+@@ -718,6 +799,11 @@
+         items.append(pystray.MenuItem(_l("Settings"), lambda *_: _show_settings()))
  
      items.append(pystray.Menu.SEPARATOR)
 +    items.append(pystray.MenuItem(
@@ -269,7 +269,7 @@
      items.append(pystray.MenuItem(_l("About FluxCast"), lambda *_: _show_about()))
      items.append(pystray.MenuItem(_l("Exit"), _on_exit))
  
-@@ -723,6 +809,10 @@
+@@ -739,6 +825,10 @@
  
      def kickoff():
          _log("kickoff: GTK loop is alive, starting scans")
@@ -292,7 +292,7 @@
  
  
  class WFDNotReady(RuntimeError):
-@@ -28,6 +31,8 @@
+@@ -31,6 +34,8 @@
      h264_profile: str = "baseline"
      aosp_pmt_pid: bool = False  # opt-in: PMT on AOSP's 0x0100 instead of the muxer default (#84)
      dump_ts_path: Optional[str] = None
@@ -316,7 +316,7 @@
 --- a/src/wfd/media/portal.py
 +++ b/src/wfd/media/portal.py
 @@ -21,7 +21,17 @@
-     _pipewiresrc_selector_attempts, _wfd_gst_prog_map,
+     _gst_x264enc_properties, _pipewiresrc_selector_attempts, _wfd_gst_prog_map,
  )
  from ..modes import _h264_level_for_mode
 -from ..net import _ffmpeg_sender_args
@@ -371,7 +371,7 @@
          # source_type: 1=MONITOR, 2=WINDOW, 4=VIRTUAL ("Share virtual screen")
          if session.source_type is not None and session.source_type not in (1, 2, 4):
              close_portal_capture(self.portal_session)
-@@ -283,7 +297,11 @@
+@@ -284,7 +298,11 @@
  
          is_lg = "LG" in self.config.peer_name.upper()
          if is_lg and not self.config.bitrate_explicit:
@@ -384,8 +384,8 @@
  
          effective_bitrate = _kbits_to_bitrate_text(effective_kbits)
          if effective_kbits > requested_kbits:
-@@ -312,9 +330,13 @@
-         def _gst_video_chain(video_caps: str, selector_args: list[str]) -> list[str]:
+@@ -333,9 +351,13 @@
+                              dmabuf: bool = False) -> list[str]:
              # Use more buffers for high-res 1440p capture and move videorate early
              props = _gst_pipewiresrc_properties()
 +            queue_buffers, pw_buffers = _WFD_LATENCY_PROFILES.get(
@@ -399,7 +399,7 @@
              if "resend-last" in props:
                  pipewire_args.append("resend-last=true")
              if "min-force-user-latency" in props:
-@@ -377,7 +399,7 @@
+@@ -404,7 +426,7 @@
                      )
              else:
                  if "vbv-buf-capacity" in x264_props:
@@ -408,29 +408,24 @@
                  # vbv-maxrate not exposed as GObject property; mirrors ffmpeg's -maxrate.
                  if "option-string" in x264_props:
                      opt_parts.append(f"vbv-maxrate={bitrate_kbits}")
-@@ -401,11 +423,11 @@
+@@ -497,7 +519,7 @@
+                 # is not enough - the starvation is about holding the buffers,
                  # not about their memory type.
                  "always-copy=true",
-                 "keepalive-time=33",
 -                "!", "queue", "max-size-buffers=64", "max-size-time=1000000000", "leaky=downstream",
 +                "!", "queue", f"max-size-buffers={queue_buffers}", "max-size-time=0", "max-size-bytes=0", "leaky=downstream",
-                 "!", "videorate", "skip-to-first=true",
-                 "!", f"video/x-raw,framerate={self.config.fps}/1",
-                 "!", "videoconvert",
--                "!", "videoscale",
-+                "!", "videoscale", "method=bilinear", "n-threads=0",
-                 "!", video_caps,
-                 "!", "videoconvert",
-                 "!", "video/x-raw,format=I420",
-@@ -569,6 +591,7 @@
+                 # KWin only sends a frame on damage. Thin bursts here and repeat the
+                 # last frame after the conversion (see encoder_chain), so a static
+                 # screen is not converted and scaled 30 times a second.
+@@ -684,6 +706,7 @@
                      f"selector={selector_name}, caps={attempt_name}"
                  )
-                 gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args)
+                 gst_cmd = _gst_cmd_for_caps(attempt_caps, selector_args, dmabuf)
 +                attempt_tx_baseline = _netdev_tx_bytes(self.tx_interface)
                  gst_proc = subprocess.Popen(gst_cmd, stderr=None, pass_fds=(session.pw_fd,))
                  time.sleep(2.5)
                  if gst_proc.poll() is not None:
-@@ -586,6 +609,27 @@
+@@ -701,6 +724,27 @@
                      )
                      continue
  
@@ -503,7 +498,7 @@
                              eff_cfg,
 --- a/src/wfd/rtsp/handler.py
 +++ b/src/wfd/rtsp/handler.py
-@@ -465,6 +465,8 @@
+@@ -494,6 +494,8 @@
              raise WFDNotReady("Cannot start media before the TV RTP port is known.")
          if self.media is None:
              mode = self._cea_mode()
@@ -512,7 +507,7 @@
              effective_config = replace(
                  self.media_config,
                  source_port=self.source_rtp_port,
-@@ -472,6 +474,7 @@
+@@ -501,6 +503,7 @@
                  fps=mode.fps,
                  no_audio=self.media_config.no_audio or self.negotiated_no_audio,
                  h264_profile=_encoder_h264_profile(self.sink_video_format),
@@ -565,7 +560,7 @@
      no_audio = getattr(args, "wfd_no_audio", False)
      if getattr(args, "wfd_test_pattern", False):
          if no_audio:
-@@ -139,6 +161,8 @@
+@@ -142,6 +164,8 @@
          uibc=getattr(args, "wfd_uibc", False),
          aosp_pmt_pid=getattr(args, "wfd_aosp_pmt_pid", False),
          dump_ts_path=getattr(args, "wfd_dump_ts", None),
@@ -574,7 +569,7 @@
      )
      if media_config.dump_ts_path:
          print(f"[FluxCast WFD] Dumping transmitted MPEG-TS to: {media_config.dump_ts_path}")
-@@ -225,6 +249,9 @@
+@@ -228,6 +252,9 @@
          _cleanup_step("TS dump report",
                        lambda: report_ts_dump(media_config.dump_ts_path))
          _cleanup_step("RTSP server shutdown", rtsp.stop)
