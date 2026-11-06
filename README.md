@@ -70,6 +70,10 @@ local machine configuration do not belong in the overlay.
   (`metadata/package.accept_keywords/edorp-goverlay`).
 - `app-portage/equery-gui`: graphical front-end for `equery`
   ([source](https://github.com/firesand/equery-gui)).
+- `sys-kernel/kernelsmith`: guided, hardware-aware custom kernel builder with
+  a Steam-style GUI ([source](https://github.com/firesand/kernelsmith)).
+  Live ebuild `9999` only (`git-r3` + `cargo_live_src_unpack`); see the
+  Kernelsmith section.
 - `gui-apps/walker`: Walker 2.17.2, the Rust/GTK4 rewrite of the Wayland
   application launcher. The ebuild builds entirely from pinned Cargo sources
   and replaces the obsolete Go-based package from GURU.
@@ -685,6 +689,28 @@ If migrating from a manual installation, check `command -v shadps4` and
 `command -v shadps4-core`: older `~/.local/bin` wrappers and user desktop
 entries can take precedence over the system package. Keep the previous
 core available until the games you use have been checked on the new version.
+
+### Kernelsmith
+
+Live-only for now: there is no tagged release yet, so the ebuild builds `main`
+of `firesand/kernelsmith` and fetches its crates during unpack.
+
+```bash
+echo "=sys-kernel/kernelsmith-9999 **" | doas tee \
+  /etc/portage/package.accept_keywords/edorp-kernelsmith
+doas emerge -av sys-kernel/kernelsmith
+```
+
+It needs full kernel sources (`sys-kernel/gentoo-sources`, or
+`sys-kernel/cachyos-sources` from the CachyOS-kernels overlay); the `*-dist`
+trees that distribution kernels install only hold headers. Builds, installs
+and uninstalls run as root through `pkexec` (the package installs a polkit
+action for a clear prompt), `installkernel` generates the initramfs and updates
+the bootloader, and every kernel it installs is recorded in
+`/var/lib/kernelsmith/kernels`. Unmerging the package leaves those kernels in
+place, so remove them from the app's Library page first if you want them gone.
+Clang/LLD, pahole, perf, modprobed-db and scx are optional; `pkg_postinst`
+lists what each one unlocks.
 
 ## Validation
 

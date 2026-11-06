@@ -346,6 +346,12 @@ policy = "review"
 note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the published tag and refresh SRC_URI assets."
 
 # Live-only packages have no version bump; smoke-build their HEAD manually.
+["sys-kernel/kernelsmith"]
+source = "manual"
+manual = "9999"
+policy = "live"
+note = "Smoke-build HEAD; add a versioned ebuild with CRATES once firesand/kernelsmith publishes a tagged release."
+
 ["sys-power/asusctl"]
 source = "manual"
 manual = "9999"
