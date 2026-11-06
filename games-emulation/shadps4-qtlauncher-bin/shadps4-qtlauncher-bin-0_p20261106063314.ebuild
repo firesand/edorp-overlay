@@ -5,8 +5,8 @@ EAPI=8
 
 inherit desktop xdg
 
-MY_COMMIT="811fb0319cea2e76f1fb8f89d22d67efdf45761a"
-MY_DATE="2026-10-26"
+MY_COMMIT="ecc85072dae45c05628934fdb6b3aa036e9f1d4b"
+MY_DATE="2026-11-06"
 MY_TAG="shadPS4QtLauncher-${MY_DATE}-${MY_COMMIT}"
 
 DESCRIPTION="Official Qt launcher for the shadPS4 PlayStation 4 emulator"
