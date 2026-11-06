@@ -1387,6 +1387,72 @@ and `sys-kernel/kernelsmith-9999` was smoke-built at HEAD (`71d2703`).
   `kernelsmith` (`9999`, 0 tags), and `asusctl`/`supergfxctl` (`9999` on this
   branch; pinned `6.5.0`/`5.2.7` are tracked in open PR #31).
 
+## Upstream audit (2026-11-06)
+
+Eleven entries newer than the 2026-10-31 baselines: nine bumped, one blocked
+upstream, one deliberately still held. Branch
+`claude/upstream-updates-2026-11-06`, stacked on
+`claude/upstream-updates-2026-10-31` (`af94066`), which is itself stacked on
+`sys-kernel/kernelsmith-9999` (`b486b6b`, PR #32) over main `4f4aa9f`.
+
+PROCESS FAILURE FOUND FIRST, and the cadence lesson was already written five
+days before it happened: the complete 2026-10-31 audit (13 bumps) was sitting
+COMMITTED BUT UNPUSHED on a branch named `claude/photocraft-ai`, mixed in with
+two unrelated features. It was pushed as-is before anything else. Those 21
+commits are really three things, so the audit was split onto its own branch at
+`af94066` (which is a clean audit tip: kernelsmith + the 14 audit commits, no
+photocraft) and pushed for its own PR; `claude/photocraft-ai` was left alone
+rather than rewritten, since it was not this session's branch. By 11-06, five
+of the 10-31 audit's thirteen bumps had already been superseded upstream, so
+this is the second consecutive audit found going stale in under a week.
+
+- `media-gfx/opencadstudio` 2026.44 is BLOCKED and NOT bumped. `cargo fetch`
+  fails: the Cargo.lock pins `acadrust` to a git revision in
+  `HakanSeven12/acadrust`, and that REPOSITORY NO LONGER EXISTS (GitHub API
+  404, `git ls-remote` "Repository not found"). This is NOT a 2026.44
+  regression — the packaged 2026.43 fails the same way with its own revision
+  (`24b037af`), so every version is currently unbuildable from source. It
+  built fine on 2026-10-23 and 2026-11-04, so upstream took the repo private
+  or deleted it in between. Keeping 2026.43 rather than shipping an equally
+  broken bump.
+- `ci/pkgcheck-image` 0.10.49 still correctly held, re-verified: GHCR's
+  `tags/list` still ends at 0.10.48 and 0.10.48 still resolves to the pinned
+  `sha256:732a539c...`. Upstream's release workflow published to PyPI but
+  never pushed the image, 13 days on.
+- `app-misc/chatgpt-desktop` 26.1103.31037 LOWERED its glibc floor 2.30 ->
+  2.28. The `sky_linux_x64`/`sky_linux_arm64` helpers that set 2.30 now need
+  only 2.25, leaving libvips-cpp/node/node.napi.armv* at 2.28. Checked across
+  BOTH arch bundles, since the ebuild keywords ~amd64 and ~arm64 and the
+  staged image only covers one — extract the other deb and scan it too.
+- `net-im/zapfast` 0.21.1 needs TWO lists updated, and the first build died
+  because only one was. CRATES went 812 -> 813, but the new `mp4` crate is a
+  GIT source from `crmne/mp4-rust`, which CARGO_CRATE_URIS cannot express:
+  it belongs in `GIT_CRATES`. 0.21.1 also moved the egui pin (10 entries),
+  the winit pin (2) and the fastframe tag (21). Verify GIT_CRATES
+  programmatically afterwards: every `git+` package in Cargo.lock must have an
+  entry whose commit matches (47 for 47 here).
+- `net-misc/fluxcast` 0.3.0 needed a real merge; upstream has now ADOPTED
+  `_netdev_tx_bytes` (it is in src/wfd/net.py), `allow_window`,
+  `bitrate_explicit`, `n-threads=0` on videoscale/videoconvert, and replaced
+  `videorate skip-to-first` with its own damage-aware
+  `drop-only=true max-rate=<fps>`. Those downstream hunks were DROPPED. Still
+  downstream-only: the `_WFD_LATENCY_PROFILES` knob and its queue sizing, the
+  TX-byte attempt check (its baseline moved because upstream added a `dmabuf`
+  argument to `_gst_cmd_for_caps`), the resolution-aware LG cap, the 16:10
+  `wants_1200` test, and the "Start on login" tray item (whose menu entry now
+  goes below the Settings item 0.3.0 added). 0.3.0 also restructures i18n to
+  `translations/` and excludes `sync_translations.py` from the wheel.
+- `media-gfx/photon-studio` 0.1.69: TRAP AVOIDED. Its models are no longer
+  inside `app.asar` but in `app.asar.unpacked/dist/models` as plain files, so
+  the ASAR inventory from earlier audits returns zero and looks like the
+  models vanished. That relocation happened at or before 0.1.65, NOT in this
+  bump — compare against the PACKAGED version's flatpak (0.1.65 was still in
+  DISTDIR), not against a tree from two audits ago. Model set, the 27 native
+  licence files and the glibc floors are all unchanged.
+- `games-emulation/shadps4-qtlauncher-bin`: 404 again, third audit running.
+  Offset 944632 re-validated (hit at 194183 still a false positive).
+  Launcher-only this time: shadps4-bin 0.21.0 is current.
+
 ## Future Session Checklist
 
 1. Read this file before proposing or changing overlay structure.
