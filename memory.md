@@ -1456,6 +1456,36 @@ this is the second consecutive audit found going stale in under a week.
 - `games-emulation/shadps4-qtlauncher-bin`: 404 again, third audit running.
   Offset 944632 re-validated (hit at 194183 still a false positive).
   Launcher-only this time: shadps4-bin 0.21.0 is current.
+## pkgcheck failure on main: Python 3.12 (2026-11-11)
+
+- Symptom: the `pkgcheck` job of Overlay QA failed on `main` from the scheduled
+  run of 2026-11-07 on, and so on every pull request (first seen on #36), with
+  `NonsolvableDepsInStable` for `dev-python/magika` 0.6.3 and 1.0.3 and
+  `app-text/markitdown` 0.1.9. Nothing in the overlay had changed: the job
+  scans the whole overlay against Gentoo and GURU as they are that day.
+- Cause: GURU dropped Python 3.12. `sci-libs/onnxruntime` 1.28.0 and 1.29.0 are
+  `python3_{13..14}`; `dev-python/markdownify` has 0.11.6 for 3.12 only and
+  1.2.2 for 3.13 and 3.14, so no version covers all three. The three ebuilds
+  still had `PYTHON_COMPAT=( python3_{12..14} )` with `[${PYTHON_USEDEP}]`.
+- Fix: `PYTHON_COMPAT=( python3_{13..14} )` in the three ebuilds, with a
+  comment naming the provider. No revision bump: only the 3.12 target goes.
+  README's MarkItDown section now says 3.13 and 3.14.
+- Not a failure: `NonsolvableDepsInDev` for `app-misc/unsloth-desktop` and
+  `media-video/wolfcut` (glibc floor on the musl profiles) and `app-text/md2hd`
+  (Node.js on x32) is printed in red but is not in the job's exit set; the
+  passing runs of 2026-11-06 printed the same three. Left as they are.
+  `app-misc/chatgpt-desktop` avoids it with `elibc_glibc? ( >=sys-libs/glibc-… )`
+  if they should ever go; nothing in an overlay can fix the x32 one.
+- Scanning a worktree: `pkgcheck scan` run inside `.claude/worktrees/<name>`
+  scans the main checkout, because the path lies inside the configured `edorp`
+  repository. Scan a worktree as the workflow does: a config folder with
+  `make.profile` linked to `default/linux/amd64/23.0` and a `repos.conf` naming
+  gentoo, guru and the worktree as `edorp`, then
+  `pmaint --config <dir> regen --dir <cache>/repos edorp` and
+  `pkgcheck --config <dir> scan --cache-dir <cache> --exit GentooCI,-VisibleVcsPkg`.
+- Checks: that scan exits 0 on the worktree (it exited 1 before); `.github/tests`
+  passes 8/8. No package was rebuilt: this machine's targets are 3.13 and 3.14.
+
 ## PhotoCraft AI (2026-11-03)
 
 - Upstream: https://github.com/BLEZZ0102/photocraft-ai, an unofficial

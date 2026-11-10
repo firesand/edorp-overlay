@@ -4,7 +4,9 @@
 EAPI=8
 
 DISTUTILS_USE_PEP517=hatchling
-PYTHON_COMPAT=( python3_{12..14} )
+# No dev-python/markdownify in GURU covers Python 3.12 together with 3.13 and
+# 3.14, and dev-python/magika no longer has 3.12.
+PYTHON_COMPAT=( python3_{13..14} )
 
 inherit distutils-r1 optfeature
 
