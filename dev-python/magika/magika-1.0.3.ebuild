@@ -4,7 +4,8 @@
 EAPI=8
 
 DISTUTILS_USE_PEP517=hatchling
-PYTHON_COMPAT=( python3_{12..14} )
+# GURU's sci-libs/onnxruntime no longer builds for Python 3.12.
+PYTHON_COMPAT=( python3_{13..14} )
 
 inherit distutils-r1 pypi
 

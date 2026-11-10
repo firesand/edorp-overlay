@@ -641,7 +641,7 @@ select it with `--dict FILE`.
 ### MarkItDown
 
 The versioned `app-text/markitdown-0.1.8` ebuild builds the GitHub release with
-Hatchling. It supports Python 3.12 through 3.14. Python 3.14 was smoke-tested
+Hatchling. It supports Python 3.13 and 3.14. Python 3.14 was smoke-tested
 with the CLI, Magika detection, HTML, CSV, and the targeted upstream core tests.
 
 MarkItDown 0.1.8 still requires Magika below 0.7 and, for DOCX, Mammoth below
