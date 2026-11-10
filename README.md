@@ -57,6 +57,14 @@ local machine configuration do not belong in the overlay.
   multiple network connections ([source](https://github.com/anmolkapil/plexo)).
   Installs the upstream amd64 `.deb` with its matching bundled Electron
   runtime. Requires glibc and `~amd64` keywording.
+- `net-misc/misterdownloadmanager`: Mister Download Manager, the Rust/egui
+  download manager laid out like Internet Download Manager, from the
+  [firesand fork](https://github.com/firesand/misterdownloadmanager) of
+  [upstream](https://github.com/anefzaoui/misterdownloadmanager). The fork's
+  `combined` branch adds Plexo's Combine networks and Usenet (NZB) downloads
+  to upstream 0.5.2. Live ebuild `9999` only (`git-r3` +
+  `cargo_live_src_unpack`); requires Rust >= 1.95. See the Mister Download
+  Manager section.
 - `games-util/dlss-updater`: DLSS, XeSS and FSR DLL updater for Linux games
   ([source](https://github.com/Recol/DLSS-Updater#linux)). Repackages the
   upstream amd64 Flatpak executable with its Flet client for native Gentoo
@@ -395,6 +403,47 @@ requires unprivileged user namespaces (`CONFIG_USER_NS=y`); the launcher does
 not disable the sandbox. Each selected network needs a working route to the
 download server. Multiple interfaces alone do not guarantee combined bandwidth.
 Updates are managed by Portage.
+
+### Mister Download Manager
+
+Live-only: the ebuild builds the `combined` branch of
+[firesand/misterdownloadmanager](https://github.com/firesand/misterdownloadmanager)
+and fetches its crates during unpack. The fork's `main` mirrors upstream
+[Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager);
+`combined` is upstream 0.5.2 plus:
+
+- Combine networks (Downloads → Combine networks…): a file download goes
+  through several networks at once, such as Ethernet and Wi-Fi, each with its
+  own connections, name, speed limit and data allowance per day, week or
+  month. Also `misterdownloadmanager-cli get <url> --combine eno2,wlan0`.
+- Usenet: Tasks → Open NZB file… downloads an NZB's files from the news
+  server set in Tasks → Usenet server….
+- Three fixes: dark mode's white line under the menu bar, Download video
+  remembering its folder, and the clipboard watch's log warning each second.
+
+```bash
+echo "=net-misc/misterdownloadmanager-9999 **" | sudo tee \
+  /etc/portage/package.accept_keywords/edorp-misterdownloadmanager
+sudo emerge -av net-misc/misterdownloadmanager
+```
+
+It installs `misterdownloadmanager`, `misterdownloadmanager-cli`,
+`misterdownloadmanager-mcp` and the browsers' helper
+`misterdownloadmanager-nmhost`, a desktop entry (magnet links, `.torrent` and
+`.nzb` files) and the icon. The native messaging manifests for Chrome,
+Chromium, Edge and Firefox are installed for every user, as upstream's `.deb`
+and `.rpm` do, so the store's extension finds the program; an unpacked copy of
+the extension is in `/usr/share/misterdownloadmanager/`. These are the names
+an upstream package would use, so the two cannot be installed together; no
+such package exists in this overlay or its masters. Updates come through
+Portage: the program's own Update now leaves a copy in `/usr/bin` alone.
+
+The release profile uses fat LTO in one codegen unit: the build took about
+seven minutes on an i9-14900K and needs about 4 GiB of disk. yt-dlp, ffmpeg, gallery-dl and
+Node.js are optional; `pkg_postinst` lists what each one unlocks. Combine
+networks covers file downloads; torrents, video pages and galleries use the
+single adapter of Options → Proxy / Socks. Each combined network needs its
+own working route to the server.
 
 ### WinBoat
 

@@ -359,6 +359,12 @@ policy = "review"
 note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the published tag and refresh SRC_URI assets."
 
 # Live-only packages have no version bump; smoke-build their HEAD manually.
+["net-misc/misterdownloadmanager"]
+source = "manual"
+manual = "9999"
+policy = "live"
+note = "Smoke-build the combined branch of firesand/misterdownloadmanager; rebase it onto each anefzaoui/misterdownloadmanager release, and add a versioned ebuild with CRATES/GIT_CRATES once the fork tags one."
+
 ["sys-kernel/kernelsmith"]
 source = "manual"
 manual = "9999"

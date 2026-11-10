@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>edohikmahtiar@me.com</email>
+		<name>Edo Hikmahtiar</name>
+	</maintainer>
+	<longdescription lang="en">
+		Mister Download Manager is a download manager written in Rust, laid
+		out the way Internet Download Manager users expect: several
+		connections per file, resume, queues, a scheduler, browser capture,
+		video pages through yt-dlp, galleries and torrents. This package
+		builds the firesand fork, which adds two capabilities of the Plexo
+		download manager written for its engine: Combine networks, where a
+		download goes through several network connections at once with a
+		speed limit and data allowance for each, and Usenet downloads from
+		NZB files. Includes the command line, the browsers' native messaging
+		host and the MCP server.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">anefzaoui/misterdownloadmanager</remote-id>
+		<remote-id type="github">firesand/misterdownloadmanager</remote-id>
+	</upstream>
+</pkgmetadata>
