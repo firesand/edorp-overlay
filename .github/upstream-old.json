@@ -35,6 +35,7 @@
   "net-analyzer/bettercap::caplets": "20260707.141042",
   "net-im/zapfast": "0.21.1",
   "net-misc/fluxcast": "0.3.0",
+  "net-misc/misterdownloadmanager": "9999",
   "net-misc/plexo": "1.0.0_rc15",
   "net-wireless/bully": "20260622.011703",
   "net-wireless/hcxdumptool": "8.0.0",

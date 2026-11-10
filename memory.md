@@ -195,6 +195,8 @@ Actual imported package placement:
 - `net-analyzer/bettercap` (modular network and wireless auditing framework)
 - `sys-firmware/ds5dongle` (DualSense Pico 2 W bridge firmware + config helper)
 - `sys-kernel/kernelsmith` (guided custom kernel builder GUI; live ebuild only)
+- `net-misc/misterdownloadmanager` (Mister Download Manager plus Plexo's
+  network combining and Usenet, from the firesand fork; live ebuild only)
 
 ## DS5Dongle (Jul 2026)
 
@@ -1552,6 +1554,64 @@ this is the second consecutive audit found going stale in under a week.
   file forwarding). The user-level launcher
   `~/.local/share/applications/photocraft-ai-claude.desktop` does that with
   ~/Pictures as the automation read/write root.
+
+## Mister Download Manager, combined build (2026-11-10)
+
+Branch `claude/misterdownloadmanager`, based on `main` at a932d51 (PR #35).
+
+- Source repo: `/home/edo/Downloads/DownloadManager`, a checkout of
+  https://github.com/anefzaoui/misterdownloadmanager (Rust workspace, egui,
+  GPL-3.0-or-later) with two of Plexo's capabilities written for it in Rust
+  (Combine networks, Usenet/NZB) and three fixes. Published 2026-11-10 as
+  branch `combined` of the fork https://github.com/firesand/misterdownloadmanager
+  (`5f54562` = upstream tag `v0.5.2` + one commit; the fork's `main` mirrors
+  upstream). No tags of its own.
+- Overlay ebuild: `net-misc/misterdownloadmanager/misterdownloadmanager-9999.ebuild`
+  (live: `git-r3` with `EGIT_BRANCH="combined"` + `cargo_live_src_unpack`,
+  `cargo_src_configure --locked`, one `cargo_src_compile` for `mdm-app`,
+  `mdm-nmhost`, `mdm-cli`, `mdm-mcp`). Watcher entry is `policy = "live"`
+  with baseline `9999`.
+- `cargo_live_src_unpack` now runs `cargo fetch` in the current directory,
+  which is `${WORKDIR}` in `src_unpack` (Gentoo tree synced 2026-11-09), so
+  the ebuild does `cd "${S}"` first. Without it: "could not find Cargo.toml
+  in .../work". `sys-kernel/kernelsmith-9999` fails that way today
+  (`ebuild ... clean unpack`, checked 2026-11-10); `mameuix-9999`,
+  `asusctl-9999`, `supergfxctl-9999` and `photocraft-ai-9999` call it the
+  same way and were NOT checked or changed here.
+- Installs the four programs, a desktop entry written in the ebuild (as
+  `tools/installer/build-linux.sh` writes it, plus `application/x-nzb`), a
+  256 px icon resized from `art/Mister Download Manager.png` with
+  ImageMagick, the browser extension packed in bash (upstream's
+  `tools/extension/pack.ps1` needs PowerShell): the unpacked Chromium folder
+  and `mdm-firefox.xpi` under `/usr/share/misterdownloadmanager/`, and the
+  native messaging manifests the built `misterdownloadmanager-nmhost
+  --package-manifests` writes for `/etc/opt/chrome`, `/etc/chromium`,
+  `/etc/opt/edge` and `/usr/lib{,64}/mozilla`.
+- The programs link only libc, libm and libgcc_s; X11, Wayland, EGL/GL,
+  xkbcommon and D-Bus are `dlopen()`ed, hence the RDEPEND list. File dialogs
+  use the desktop portal (rfd without GTK).
+- `RESTRICT="test"`: the 857 tests pass with `cargo test --workspace` in the
+  source repo, but the release profile is fat LTO for every test program.
+- The program's own Update now treats a copy in `/usr/bin` that dpkg and rpm
+  don't own as the system's and leaves it alone (`crates/tools/src/update.rs`).
+- Checks on 2026-11-10: `pkgcheck scan --exit GentooCI,-VisibleVcsPkg
+  net-misc/misterdownloadmanager` exits 0 with no output; `.github/tests`
+  8/8; `DISTDIR="$PWD/.distfiles" PORTAGE_TMPDIR="$PWD/.portage-tmp"
+  PORTAGE_INST_UID=$(id -u) PORTAGE_INST_GID=$(id -g) ebuild ... clean
+  install` completes (release build 6m 53s on the i9-14900K, build directory
+  3.7 GiB, image 56 MiB). The only QA notice is "Pre-stripped files", from
+  this machine's `RUSTFLAGS="... -C strip=symbols"` as with every Rust
+  package here. From the image, `misterdownloadmanager-cli get <100 MB url>
+  --combine eno2,wlp0s20f3` saved the file in 9.5 s (33.7 MB over Ethernet,
+  66.3 MB over Wi-Fi). `virtual/pkgconfig` was added to BDEPEND after that
+  build (x11-dl's and wayland-sys's build scripts probe with it). NOT done:
+  a real `emerge`, or opening the installed desktop entry.
+- Do not probe the image with `misterdownloadmanager --version`: there is no
+  such option and it opens the window with the real settings folder. Use
+  `misterdownloadmanager-cli` with `MDM_DATA_DIR` set.
+- Next: when upstream tags a release, rebase `combined` onto it in the source
+  repo and push; add a versioned ebuild with `CRATES`/`GIT_CRATES` (egui,
+  rqbit and craft-libs forks) once the fork tags one.
 
 ## Future Session Checklist
 
