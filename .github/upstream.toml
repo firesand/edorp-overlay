@@ -225,18 +225,21 @@ prefix = "v"
 policy = "review"
 note = "Upstream moved from semver to CalVer at v2026.36; the versioned ebuild pins EGIT_COMMIT to the tag, so smoke-test cargo vendoring after bumps."
 
-# The fork publishes only prereleases (vX.Y.Z-ai-beta.N), so
-# /releases/latest returns 404; follow the tags instead.
+# The fork publishes only prereleases (vX.Y.Z-ai-beta.N and point fixes
+# such as vX.Y.Z-ai-beta.N.M.P), so /releases/latest returns 404; follow
+# the tags instead. Normalize the optional point-fix tail into a PEP 440
+# local version (+0 or +0.M.P) so nvchecker's parser keeps epoch 0 and
+# orders 0.20.1_beta3+0 < 0.20.1_beta3+0.1.2 < 0.20.1_beta4+0 < 0.20.1.
 ["media-gfx/photocraft-ai"]
 source = "github"
 github = "BLEZZ0102/photocraft-ai"
 use_max_tag = true
-include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-ai-beta\.[0-9]+$'
+include_regex = '^v[0-9]+\.[0-9]+\.[0-9]+-ai-beta\.[0-9]+(?:\.[0-9]+)*$'
 prefix = "v"
-from_pattern = '-ai-beta\.'
-to_pattern = '_beta'
+from_pattern = '-ai-beta\.([0-9]+)((?:\.[0-9]+)*)$'
+to_pattern = '_beta\1+0\2'
 policy = "review"
-note = "Regenerate CRATES/GIT_CRATES (egui, winit, craft-libs and winprint forks), update PHOTOCRAFT_COMMIT and PHOTOCRAFT_DATE, and check whether a stable tag scheme has replaced -ai-beta.N."
+note = "Map +0.M.P point-fix suffixes to _pM_pP in the Gentoo ebuild PV (e.g. 0.20.1_beta3+0.1.2 -> 0.20.1_beta3_p1_p2). Regenerate CRATES/GIT_CRATES (egui, winit, craft-libs and winprint forks), check [patch.crates-io] rewrites, update PHOTOCRAFT_COMMIT and PHOTOCRAFT_DATE, and check whether a stable tag scheme has replaced -ai-beta.N."
 
 ["media-gfx/photon-studio"]
 source = "regex"
@@ -256,7 +259,7 @@ prefix = "v"
 from_pattern = '-alpha\.'
 to_pattern = '_alpha'
 policy = "review"
-note = "Concat replaced WolfCut's Tauri build with Slint; check asset layout, licenses, FFmpeg ABI and bundled runtime libraries."
+note = "Concat replaced WolfCut's Tauri build with Slint; check asset layout, licenses, FFmpeg ABI and bundled runtime libraries. Confirm the GitHub release for a new tag is published (not a draft returning 404 on release assets) before bumping."
 
 ["net-analyzer/bettercap"]
 source = "github"
@@ -356,7 +359,7 @@ use_latest_release = true
 from_pattern = '^v([0-9]+\.[0-9]+\.[0-9]+)(?:-hotfix)?$'
 to_pattern = '\1'
 policy = "review"
-note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the published tag and refresh SRC_URI assets."
+note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the published tag, check release notes for version-specific Web UI URLs, and refresh SRC_URI assets."
 
 # Live-only packages have no version bump; smoke-build their HEAD manually.
 ["net-misc/misterdownloadmanager"]
