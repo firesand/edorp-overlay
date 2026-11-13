@@ -25,7 +25,8 @@ S="${WORKDIR}"
 # 0.2.8 grew the bundled font set from one to 37 faces: 35 carry the SIL Open
 # Font License and two the Apache License, both already listed below, so the
 # identifiers are unchanged. 0.2.8 also dropped LICENSE-EXCEPTIONS.md.
-# The new bundled FFmpeg reports GPL-3+, without --enable-nonfree.
+# 0.2.10 added DeepFilterNet3 (MIT OR Apache-2.0) and Spleeter (MIT) notices.
+# The bundled FFmpeg reports GPL-3+, without --enable-nonfree.
 LICENSE="AGPL-3+ Apache-2.0 BSD BSD-2 GPL-3 GPL-3+ ISC MIT OFL-1.1 Unsplash"
 SLOT="0"
 KEYWORDS="-* ~amd64"
@@ -84,6 +85,8 @@ src_install() {
 	# 0.2.8 bundles 37 font faces; install every face's licence, not just one.
 	docinto fonts
 	dodoc "${MY_S}"/src/crates/concat-text/fonts/LICENSE-*.txt
+	docinto deepfilternet3
+	dodoc "${MY_S}"/src/crates/concat-speech/assets/deepfilternet3/LICENSE-{APACHE,MIT}
 }
 
 pkg_postinst() {
