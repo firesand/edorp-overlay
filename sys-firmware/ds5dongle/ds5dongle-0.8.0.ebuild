@@ -9,8 +9,8 @@ inherit python-single-r1
 DESCRIPTION="DualSense wireless bridge firmware for Raspberry Pi Pico 2 W"
 HOMEPAGE="https://github.com/awalol/DS5Dongle"
 
-# Upstream publishes the current 0.7.2 release under the v0.7.2-hotfix tag.
-MY_PV="${PV}-hotfix"
+# Release tags sometimes carry a -hotfix suffix (e.g. v0.7.2-hotfix); 0.8.0 does not.
+MY_PV="${PV}"
 SRC_URI="
 	https://github.com/awalol/DS5Dongle/archive/refs/tags/v${MY_PV}.tar.gz
 		-> ${P}.tar.gz
@@ -84,7 +84,7 @@ pkg_postinst() {
 	elog "Configure a connected DualSense bridge with:"
 	elog "  ds5dongle-config get"
 	elog "  ds5dongle-config set speaker_volume=90"
-	elog "Web configuration UI: https://ds5.awalol.eu.org"
+	elog "Web configuration UI (0.8 firmware): https://ds5-0.8.awalol.eu.org"
 	if use other-boards; then
 		elog "Pico W and Waveshare UF2 builds are in /usr/share/ds5dongle/other-boards/"
 	fi
