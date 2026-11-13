@@ -51,6 +51,7 @@ QA_FLAGS_IGNORED="usr/bin/kernelsmith"
 
 src_unpack() {
 	git-r3_src_unpack
+	cd "${S}" || die
 	cargo_live_src_unpack
 }
 

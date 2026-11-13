@@ -7,7 +7,7 @@ inherit desktop pax-utils xdg
 
 # Commit embedded in the upstream Flatpak bundle. Reject changed payloads even
 # when the CDN keeps the same versioned URL.
-FLATPAK_COMMIT="596f886efa573599849b85c8f511154d347852504ac14689774abbddfa3ea921"
+FLATPAK_COMMIT="f0cb18ff1d149893d134a32cf1525270d556762cd9f5e9e0e7c292974d33cb37"
 
 DESCRIPTION="Offline image editor with layers, retouching and PSD support"
 HOMEPAGE="https://tenzen.studio/photon/"
@@ -58,7 +58,7 @@ RDEPEND="
 	x11-libs/libxkbcommon
 	x11-libs/pango
 	x11-misc/xdg-utils
-	elibc_glibc? ( >=sys-libs/glibc-2.39 )
+	elibc_glibc? ( >=sys-libs/glibc-2.35 )
 "
 
 QA_PREBUILT="opt/${PN}/*"

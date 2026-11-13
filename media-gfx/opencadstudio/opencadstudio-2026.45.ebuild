@@ -20,9 +20,9 @@ fi
 LICENSE="GPL-3+"
 # Dependent crate licenses
 LICENSE+="
-	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions Boost-1.0 BSD BSD-2
-	CC0-1.0 CDLA-Permissive-2.0 ISC LGPL-2.1+ MIT MIT-0 MPL-2.0 OFL-1.1
-	Unicode-3.0 Unlicense UoI-NCSA ZLIB
+	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions BlueOak-1.0.0
+	Boost-1.0 BSD BSD-2 CC0-1.0 CDLA-Permissive-2.0 ISC LGPL-2.1+
+	MIT MIT-0 MPL-2.0 OFL-1.1 Unicode-3.0 Unlicense UoI-NCSA ZLIB
 "
 
 SLOT="0"

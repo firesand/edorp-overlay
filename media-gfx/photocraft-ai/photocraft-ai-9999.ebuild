@@ -50,6 +50,7 @@ RDEPEND="
 
 src_unpack() {
 	git-r3_src_unpack
+	cd "${S}" || die
 	# Vendors crates.io and the egui, winit, craft-libs and winprint git
 	# dependencies; the git checkouts stay reachable for the offline build.
 	cargo_live_src_unpack

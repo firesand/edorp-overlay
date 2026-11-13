@@ -83,8 +83,10 @@ class RenderDashboardTest(unittest.TestCase):
         with (REPO_ROOT / ".github/upstream.toml").open("rb") as file:
             entry = tomllib.load(file)["media-gfx/photocraft-ai"]
         for tag, version in (
-            ("v0.18.0-ai-beta.1", "0.18.0_beta1"),
-            ("v0.19.0-ai-beta.2", "0.19.0_beta2"),
+            ("v0.18.0-ai-beta.1", "0.18.0_beta1+0"),
+            ("v0.19.0-ai-beta.2", "0.19.0_beta2+0"),
+            ("v0.20.1-ai-beta.3", "0.20.1_beta3+0"),
+            ("v0.20.1-ai-beta.3.1.2", "0.20.1_beta3+0.1.2"),
         ):
             with self.subTest(tag=tag):
                 self.assertIsNotNone(re.fullmatch(entry["include_regex"], tag))
@@ -92,7 +94,7 @@ class RenderDashboardTest(unittest.TestCase):
                 normalized = re.sub(entry["from_pattern"], entry["to_pattern"], normalized)
                 self.assertEqual(normalized, version)
         # Plain upstream PhotoCraft tags are not releases of this fork.
-        for tag in ("v0.19.0", "v0.19.0-beta.2"):
+        for tag in ("v0.19.0", "v0.19.0-beta.2", "v0.20.1-ai-beta."):
             self.assertIsNone(re.fullmatch(entry["include_regex"], tag))
 
     def test_empty_update_list_closes_dashboard(self) -> None:

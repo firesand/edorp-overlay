@@ -1739,3 +1739,21 @@ PORTAGE_TMPDIR=/home/edo/EDORP/.portage-tmp ebuild app-benchmarks/unigine-superp
 
 All listed basic parse checks passed after enabling thin manifests and using a
 local `PORTAGE_TMPDIR`.
+
+## Upstream audit (2026-11-13)
+
+- Bumped 10 packages to current upstream releases (and dropped superseded ebuilds):
+  - `app-misc/chatgpt-desktop`: `26.1103.31037` -> `26.1111.21308` (`amd64` & `arm64`, max `GLIBC_2.28`).
+  - `app-misc/claude-desktop`: `4.23118.0` -> `5.11492.2` (`amd64` & `arm64`, `/usr/lib/claude-desktop`, max `GLIBC_2.34`).
+  - `app-misc/comfy-desktop`: `1.1.8` -> `1.1.9` (`amd64`, max `GLIBC_2.28`).
+  - `app-misc/grok-bot`: `0.79.2` -> `1.0.3` (`amd64` & `arm64`, `/opt/Grok Bot`, max `GLIBC_2.38`).
+  - `app-misc/unsloth-desktop`: `0.1.915_beta` -> `0.1.917_beta` (`amd64`, max `GLIBC_2.34`).
+  - `media-gfx/opencadstudio`: `2026.43` -> `2026.45` (unblocked previous `acadrust` hold; upstream now uses `opencadcodec`/`opencadkernel`/`opencadgraph`, added `BlueOak-1.0.0` to `2026.45` and `9999` `LICENSE`).
+  - `media-gfx/photocraft-ai`: `0.19.0_beta2` -> `0.20.1_beta3_p1_p2` (`v0.20.1-ai-beta.3.1.2`; updated `[patch.crates-io]` for `craft-libs` `hayro*` alongside `egui*` and `winit`; normalized upstream tag to PEP 440 local-version `+0\2` in `.github/upstream.toml` and added regression tests).
+  - `media-gfx/photon-studio`: `0.1.69` -> `0.1.73` (Flatpak commit `f0cb18ff1d149893d134a32cf1525270d556762cd9f5e9e0e7c292974d33cb37`, bumped min glibc dep to `>=sys-libs/glibc-2.35`).
+  - `media-video/wolfcut`: `0.2.9` -> `0.2.10` (Concat desktop `0.2.10`, added `DeepFilterNet3` license docs).
+  - `sys-firmware/ds5dongle`: `0.7.2` -> `0.8.0` (`MY_PV="${PV}"`, Web UI URL updated to `https://ds5-0.8.awalol.eu.org`, tested both `USE=""` and `USE="other-boards"`).
+- Held entries (2):
+  - `ci/pkgcheck-image`: held at `0.10.48` because `ghcr.io/pkgcore/pkgcheck:0.10.49` does not exist yet on GHCR.
+  - `media-video/wolfcut`: `v0.2.11` held because the release assets return HTTP 404 (unpublished draft release).
+- Live `-9999.ebuild` fix: inserted `cd "${S}" || die` before `cargo_live_src_unpack` (where `EGIT_CHECKOUT_DIR` leaves `src_unpack` in `${WORKDIR}`) across `app-emulation/mameuix`, `media-gfx/photocraft-ai`, `sys-kernel/kernelsmith`, `sys-power/asusctl`, and `sys-power/supergfxctl`.

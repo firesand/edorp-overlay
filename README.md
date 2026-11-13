@@ -145,9 +145,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.43, a Rust/iced 2D/3D CAD
-  (held: upstream's `acadrust` git dependency is no longer reachable, so no
-  version currently builds from source — see memory.md for the 2026-11-06 audit)
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.45, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced and
@@ -155,7 +153,8 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photocraft-ai`: PhotoCraft AI 0.19.0 beta 2 (`v0.19.0-ai-beta.2`),
+- `media-gfx/photocraft-ai`: PhotoCraft AI 0.20.1 beta 3.1.2
+  (`v0.20.1-ai-beta.3.1.2`, packaged as `0.20.1_beta3_p1_p2`),
   an unofficial community fork of the Rust PhotoCraft image editor with AI
   editing built into the interface
   ([source](https://github.com/BLEZZ0102/photocraft-ai)). Upstream only
@@ -167,7 +166,7 @@ local machine configuration do not belong in the overlay.
   ebuild builds the `ai-main` branch of the
   [firesand fork](https://github.com/firesand/photocraft-ai), which adds
   OpenAI-compatible and ComfyUI image services. See the PhotoCraft AI section.
-- `media-gfx/photon-studio`: Photon Studio 0.1.69, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.73, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
@@ -490,7 +489,7 @@ sudo emerge -av sys-firmware/ds5dongle
 
 After the DualSense is connected through the dongle, adjust settings with
 `ds5dongle-config get` / `ds5dongle-config set ...`, or use the upstream web
-UI at https://ds5.awalol.eu.org.
+UI at https://ds5-0.8.awalol.eu.org.
 
 ### ChatGPT Desktop
 

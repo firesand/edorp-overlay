@@ -85,8 +85,10 @@ CRATES="
 	borsh-derive@1.8.1
 	borsh@1.8.1
 	brotli-decompressor@5.0.3
+	brotli@8.0.4
 	built@0.8.1
 	bumpalo@3.20.3
+	bytecount@0.6.9
 	bytemuck@1.25.2
 	bytemuck_derive@1.12.1
 	byteorder-lite@0.1.0
@@ -180,6 +182,7 @@ CRATES="
 	drm@0.15.0
 	dunce@1.0.5
 	dyn-clone@1.0.20
+	ecb@0.1.2
 	either@1.18.0
 	encoding_rs@0.8.42
 	endi@1.1.1
@@ -216,6 +219,7 @@ CRATES="
 	fnv@1.0.7
 	foldhash@0.1.5
 	foldhash@0.2.0
+	font-types@0.11.3
 	font-types@0.12.5
 	fontconfig-parser@0.5.8
 	fontdb@0.23.0
@@ -248,6 +252,7 @@ CRATES="
 	gif@0.14.2
 	gl@0.14.0
 	gl_generator@0.14.0
+	glifo@0.1.1
 	glifo@0.3.0
 	glob@0.3.4
 	glow@0.17.0
@@ -264,6 +269,10 @@ CRATES="
 	hashbrown@0.15.5
 	hashbrown@0.16.1
 	hashbrown@0.17.1
+	hayro-ccitt@0.3.0
+	hayro-cmap@0.1.1
+	hayro-jpeg2000@0.3.5
+	hayro-postscript@0.2.0
 	heck@0.5.0
 	heic-rs@0.1.4
 	hermit-abi@0.5.3
@@ -279,6 +288,8 @@ CRATES="
 	hyper@1.12.0
 	iana-time-zone-haiku@0.1.2
 	iana-time-zone@0.1.65
+	icu_casemap@2.3.0
+	icu_casemap_data@2.3.0
 	icu_collections@2.3.0
 	icu_decimal@2.3.0
 	icu_locale_core@2.3.0
@@ -365,9 +376,12 @@ CRATES="
 	lock_api@0.4.14
 	log@0.4.34
 	loop9@0.1.5
+	lopdf@0.38.0
 	lru-slab@0.1.3
+	lz4_flex@0.11.6
 	maybe-owned@0.3.4
 	maybe-rayon@0.1.1
+	md-5@0.10.6
 	memchr@2.8.3
 	memmap2@0.9.11
 	memoffset@0.9.1
@@ -392,7 +406,9 @@ CRATES="
 	nohash-hasher@0.2.0
 	nom@7.1.3
 	nom@8.0.0
+	nom_locate@5.0.0
 	noop_proc_macro@0.3.0
+	ntapi@0.4.3
 	num-bigint@0.4.8
 	num-complex@0.4.6
 	num-conv@0.2.2
@@ -428,6 +444,7 @@ CRATES="
 	objc2-foundation@0.2.2
 	objc2-foundation@0.3.2
 	objc2-image-io@0.3.2
+	objc2-io-kit@0.3.2
 	objc2-io-surface@0.3.2
 	objc2-link-presentation@0.2.2
 	objc2-media-toolbox@0.3.2
@@ -466,10 +483,15 @@ CRATES="
 	peniko@0.6.1
 	percent-encoding@2.3.2
 	petgraph@0.8.3
+	phf@0.13.1
 	phf@0.14.0
+	phf_generator@0.13.1
 	phf_generator@0.14.0
+	phf_macros@0.13.1
 	phf_macros@0.14.0
+	phf_shared@0.13.1
 	phf_shared@0.14.0
+	pic-scale@0.7.12
 	pico-args@0.5.0
 	pin-project-internal@1.1.13
 	pin-project-lite@0.2.17
@@ -526,6 +548,7 @@ CRATES="
 	rand_pcg@0.10.2
 	rand_xorshift@0.5.0
 	range-alloc@0.1.5
+	rangemap@1.8.0
 	rav1e@0.8.1
 	ravif@0.13.0
 	raw-cpuid@11.6.0
@@ -533,7 +556,9 @@ CRATES="
 	raw-window-metal@1.1.0
 	rayon-core@1.13.0
 	rayon@1.12.0
+	read-fonts@0.39.2
 	read-fonts@0.41.0
+	read-fonts@0.44.0
 	reborrow@0.5.5
 	redox_syscall@0.4.1
 	redox_syscall@0.5.18
@@ -580,6 +605,7 @@ CRATES="
 	schemars_derive@1.2.3
 	scoped-tls@1.0.1
 	scopeguard@1.2.0
+	sctk-adwaita@0.10.1
 	secret-service@4.0.0
 	security-framework-sys@2.17.0
 	security-framework@2.11.1
@@ -616,7 +642,9 @@ CRATES="
 	simdutf8@0.1.5
 	simplecss@0.2.2
 	siphasher@1.0.4
+	skrifa@0.42.1
 	skrifa@0.44.0
+	skrifa@0.47.0
 	slab@0.4.12
 	slotmap@1.1.1
 	smallvec@1.16.2
@@ -633,6 +661,7 @@ CRATES="
 	strength_reduce@0.2.4
 	strict-num@0.1.1
 	string-interner@0.19.0
+	stringprep@0.1.5
 	strsim@0.11.1
 	strum@0.28.0
 	strum_macros@0.28.0
@@ -644,6 +673,7 @@ CRATES="
 	sync_wrapper@1.0.2
 	synstructure@0.14.0
 	sys-locale@0.3.2
+	sysinfo@0.40.1
 	system-configuration-sys@0.6.0
 	system-configuration@0.7.0
 	system-deps@7.0.8
@@ -699,6 +729,7 @@ CRATES="
 	unicode-ccc@0.4.0
 	unicode-general-category@1.1.0
 	unicode-ident@1.0.26
+	unicode-normalization@0.1.26
 	unicode-properties@0.1.4
 	unicode-script@0.5.8
 	unicode-segmentation@1.13.3
@@ -716,7 +747,10 @@ CRATES="
 	utf8parse@0.2.2
 	uuid@1.26.1
 	v_frame@0.3.9
+	vello_common@0.0.8
+	vello_common@0.0.9
 	vello_common@0.2.0
+	vello_cpu@0.0.8
 	vello_cpu@0.2.0
 	verifysign@1.0.1
 	version-compare@0.2.1
@@ -808,6 +842,8 @@ CRATES="
 	winreg@0.55.0
 	winresource@0.1.34
 	winsafe@0.0.29
+	wintab-sys@0.1.0
+	wintab@0.1.1
 	winx@0.36.4
 	wit-bindgen@0.57.1
 	wl-clipboard-rs@0.9.4
@@ -874,6 +910,8 @@ declare -A GIT_CRATES=(
 	[craft-fonts-build]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/fonts-build'
 	[craft-i18n]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/i18n'
 	[craft-jpeg]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/jpeg'
+	[craft-pcraft-format]='https://github.com/storytold/craft-libs;b8f7d93b00dfb8f172938f3d2d796ae62dcfe123;craft-libs-%commit%/crates/pcraft-format'
+	[craft-pdf]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/pdf'
 	[craft-print]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/print'
 	[craft-ui]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/ui'
 	[craft-update]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/crates/update'
@@ -889,6 +927,10 @@ declare -A GIT_CRATES=(
 	[emath]='https://github.com/storytold/egui;6d518fc799681571963842f95b55a6b68431b15a;egui-%commit%/crates/emath'
 	[epaint]='https://github.com/storytold/egui;6d518fc799681571963842f95b55a6b68431b15a;egui-%commit%/crates/epaint'
 	[epaint_default_fonts]='https://github.com/storytold/egui;6d518fc799681571963842f95b55a6b68431b15a;egui-%commit%/crates/epaint_default_fonts'
+	[hayro-interpret]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/vendor/hayro-interpret'
+	[hayro-jbig2]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/vendor/hayro-jbig2'
+	[hayro-syntax]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/vendor/hayro-syntax'
+	[hayro]='https://github.com/storytold/craft-libs;c5a1cbfb5f9049f9270955caffb5bee5997aebf7;craft-libs-%commit%/vendor/hayro'
 	[winit]='https://github.com/storytold/winit;a517b3846ee8457d84ee4975110bfda6797c44dc;winit-%commit%'
 	[winprint]='https://github.com/storytold/winprint.rs;5f80b9baf6b58937c401656634e42d33f00ddf49;winprint.rs-%commit%'
 )
@@ -898,10 +940,11 @@ RUST_MIN_VER="1.95.0"
 inherit cargo desktop shell-completion xdg
 
 MY_PV="${PV/_beta/-ai-beta.}"
+MY_PV="${MY_PV//_p/.}"
 # Tag commit and date, embedded like the official builds' provenance
 # (crates/engine/src/build_info.rs) and used for the AppStream release entry.
-PHOTOCRAFT_COMMIT="2a04986e2b580e7bfe8e7f422d8bebc63bd5b489"
-PHOTOCRAFT_DATE="2026-11-02"
+PHOTOCRAFT_COMMIT="255af54c575444e3806f2a087d0e13a8e8747979"
+PHOTOCRAFT_DATE="2026-11-10"
 
 DESCRIPTION="PhotoCraft image editor fork with built-in AI editing"
 HOMEPAGE="https://github.com/BLEZZ0102/photocraft-ai"
@@ -952,19 +995,22 @@ QA_PRESTRIPPED="usr/bin/photocraft usr/bin/photocraft-cli"
 src_prepare() {
 	default
 
-	# Upstream pins its egui and winit forks through [patch.crates-io] git
-	# entries. Cargo resolves patch sources directly, so the [patch] tables
-	# cargo.eclass generates for GIT_CRATES cannot redirect them offline;
-	# point them at the unpacked tarballs instead. This also covers the
-	# unused egui_demo_lib, egui_inspection and egui_system_font_provider
+	# Upstream pins its egui, winit and craft-libs (hayro*) forks through
+	# [patch.crates-io] git entries. Cargo resolves patch sources directly, so
+	# the [patch] tables cargo.eclass generates for GIT_CRATES cannot redirect
+	# them offline; point them at the unpacked tarballs instead. This also covers
+	# the unused egui_demo_lib, egui_inspection and egui_system_font_provider
 	# patches, which pycargoebuild leaves out of GIT_CRATES.
-	local egui_commit winit_commit
+	local craft_commit egui_commit winit_commit
+	IFS=';' read -r _ craft_commit _ <<< "${GIT_CRATES[craft-ui]}"
 	IFS=';' read -r _ egui_commit _ <<< "${GIT_CRATES[egui]}"
 	IFS=';' read -r _ winit_commit _ <<< "${GIT_CRATES[winit]}"
+	local craft_git="git = \"https://github.com/storytold/craft-libs\", rev = \"${craft_commit}\""
 	local egui_git="git = \"https://github.com/storytold/egui.git\", rev = \"${egui_commit}\""
 	local winit_git="git = \"https://github.com/storytold/winit.git\", rev = \"${winit_commit}\""
 	sed -i \
 		-e "/^\[patch\.crates-io\]/,/^\[/{
+			s|^\(hayro[a-z0-9_-]*\) = { ${craft_git} }|\1 = { path = \"${WORKDIR}/craft-libs-${craft_commit}/vendor/\1\" }|
 			s|^\([a-z_-]*\) = { ${egui_git} }|\1 = { path = \"${WORKDIR}/egui-${egui_commit}/crates/\1\" }|
 			s|^winit = { ${winit_git} }|winit = { path = \"${WORKDIR}/winit-${winit_commit}\" }|
 		}" \
