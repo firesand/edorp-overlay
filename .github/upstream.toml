@@ -363,7 +363,7 @@ note = "Release tags may use a -hotfix suffix; keep MY_PV aligned with the publi
 source = "manual"
 manual = "9999"
 policy = "live"
-note = "Smoke-build the combined branch of firesand/misterdownloadmanager; rebase it onto each anefzaoui/misterdownloadmanager release, and add a versioned ebuild with CRATES/GIT_CRATES once the fork tags one."
+note = "Smoke-build the combined branch of firesand/misterdownloadmanager (on upstream main since 2026-11-13); rebase it onto each anefzaoui/misterdownloadmanager release or newer main, and add a versioned ebuild with CRATES/GIT_CRATES once the fork tags one."
 
 ["sys-kernel/kernelsmith"]
 source = "manual"

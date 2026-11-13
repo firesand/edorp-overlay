@@ -62,9 +62,9 @@ local machine configuration do not belong in the overlay.
   [firesand fork](https://github.com/firesand/misterdownloadmanager) of
   [upstream](https://github.com/anefzaoui/misterdownloadmanager). The fork's
   `combined` branch adds Plexo's Combine networks and Usenet (NZB) downloads
-  to upstream 0.5.2. Live ebuild `9999` only (`git-r3` +
-  `cargo_live_src_unpack`); requires Rust >= 1.95. See the Mister Download
-  Manager section.
+  to upstream's `main` branch. Live ebuild `9999` only (`git-r3` +
+  `cargo_live_src_unpack`); building needs Rust >= 1.98, CMake and clang.
+  See the Mister Download Manager section.
 - `games-util/dlss-updater`: DLSS, XeSS and FSR DLL updater for Linux games
   ([source](https://github.com/Recol/DLSS-Updater#linux)). Repackages the
   upstream amd64 Flatpak executable with its Flet client for native Gentoo
@@ -410,16 +410,18 @@ Live-only: the ebuild builds the `combined` branch of
 [firesand/misterdownloadmanager](https://github.com/firesand/misterdownloadmanager)
 and fetches its crates during unpack. The fork's `main` mirrors upstream
 [Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager);
-`combined` is upstream 0.5.2 plus:
+`combined` is upstream's `main` branch, its development between releases
+(0.5.2 plus 114 commits on 2026-11-13, so newer than any release), plus:
 
 - Combine networks (Downloads → Combine networks…): a file download goes
   through several networks at once, such as Ethernet and Wi-Fi, each with its
   own connections, name, speed limit and data allowance per day, week or
-  month. Also `misterdownloadmanager-cli get <url> --combine eno2,wlan0`.
+  month. A video that comes as one file is combined too. Also
+  `misterdownloadmanager-cli get <url> --combine eno2,wlan0`, and
+  `video-get` with the same option.
 - Usenet: Tasks → Open NZB file… downloads an NZB's files from the news
   server set in Tasks → Usenet server….
-- Three fixes: dark mode's white line under the menu bar, Download video
-  remembering its folder, and the clipboard watch's log warning each second.
+- One fix: the clipboard watch's log warning each second.
 
 ```bash
 echo "=net-misc/misterdownloadmanager-9999 **" | sudo tee \
@@ -439,11 +441,18 @@ such package exists in this overlay or its masters. Updates come through
 Portage: the program's own Update now leaves a copy in `/usr/bin` alone.
 
 The release profile uses fat LTO in one codegen unit: the build took about
-seven minutes on an i9-14900K and needs about 4 GiB of disk. yt-dlp, ffmpeg, gallery-dl and
-Node.js are optional; `pkg_postinst` lists what each one unlocks. Combine
-networks covers file downloads; torrents, video pages and galleries use the
-single adapter of Options → Proxy / Socks. Each combined network needs its
-own working route to the server.
+eight minutes on an i9-14900K and needs about 4 GiB of disk. It builds
+BoringSSL from source for the engine's browser-like connection, which is why
+CMake and clang (for libclang, one of LLVM 20 to 22: `llvm_slot_*`) are build
+dependencies. yt-dlp, ffmpeg, gallery-dl and Node.js are optional;
+`pkg_postinst` lists what each one unlocks.
+
+Combine networks covers file downloads and videos that come as one file. A
+video in pieces (HLS, DASH), a gallery's pictures, FTP and a site that only
+lets a browser-like connection through use the first ticked network;
+torrents, and what yt-dlp and gallery-dl fetch themselves, use the single
+adapter of Options → Proxy / Socks. Each combined network needs its own
+working route to the server.
 
 ### WinBoat
 
