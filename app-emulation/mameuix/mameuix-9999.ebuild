@@ -51,6 +51,7 @@ export ZSTD_SYS_USE_PKG_CONFIG=1
 
 src_unpack() {
 	git-r3_src_unpack
+	cd "${S}" || die
 	cargo_live_src_unpack
 }
 
