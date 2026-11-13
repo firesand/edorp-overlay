@@ -1634,14 +1634,73 @@ Branch `claude/misterdownloadmanager`, based on `main` at a932d51 (PR #35).
   package here. From the image, `misterdownloadmanager-cli get <100 MB url>
   --combine eno2,wlp0s20f3` saved the file in 9.5 s (33.7 MB over Ethernet,
   66.3 MB over Wi-Fi). `virtual/pkgconfig` was added to BDEPEND after that
-  build (x11-dl's and wayland-sys's build scripts probe with it). NOT done:
-  a real `emerge`, or opening the installed desktop entry.
+  build (x11-dl's and wayland-sys's build scripts probe with it).
+- Afterwards, the same day: pushed, PR #36, and a real `sudo emerge -av
+  net-misc/misterdownloadmanager` by the maintainer (it pulled in only
+  `virtual/imagemagick-tools`), 80 files merged, the installed CLI combined
+  both networks. #36 was merged on 2026-11-11 after #37. Still NOT done:
+  opening the installed desktop entry.
 - Do not probe the image with `misterdownloadmanager --version`: there is no
   such option and it opens the window with the real settings folder. Use
   `misterdownloadmanager-cli` with `MDM_DATA_DIR` set.
 - Next: when upstream tags a release, rebase `combined` onto it in the source
   repo and push; add a versioned ebuild with `CRATES`/`GIT_CRATES` (egui,
   rqbit and craft-libs forks) once the fork tags one.
+
+## Mister Download Manager on upstream's main (2026-11-13)
+
+Branch `claude/misterdownloadmanager-main`, based on `main` at 8a97171 (PR #36).
+
+- Asked for "the latest": upstream had no release after 0.5.2, so `combined`
+  was rebased onto upstream's `main` at `4328526e` (0.5.2 + 114 commits,
+  development code). The 0.5.2-based tip is kept in the fork as tag
+  `combined-v0.5.2` (`5f54562`); `combined` was force-pushed.
+- What changed in the source: upstream fixed #379 and #475 itself, so the
+  fork's own fixes for them are gone (the clipboard one stays). Upstream
+  rewrote the engine's download loop (browser-like connection, a disk
+  writer, a new yardstick for slow connections) and moved single-file videos,
+  HLS/DASH pieces and galleries onto its engine; Combine networks was fitted
+  into that by hand. Single-file videos now combine (`video-get --combine`
+  was added to test it); pieces, galleries and browser-like downloads use
+  the first usable network, and pieces and galleries are not counted against
+  a network's allowance. 1182 tests pass in the source repo, clippy clean.
+- Ebuild changes, all from upstream's new BoringSSL dependency (`btls-sys`,
+  under the browser-like connection) and its Rust floor:
+  `RUST_MIN_VER="1.98.0"`; `dev-build/cmake`; `LLVM_COMPAT=( {20..22} )` with
+  `llvm-r2` (llvm-r1 is deprecated) and `llvm-core/clang:${LLVM_SLOT}` for
+  libclang; `pkg_setup` calls `llvm-r2_pkg_setup` then `rust_pkg_setup`;
+  `src_configure` exports `LIBCLANG_PATH="$(get_llvm_prefix -b)/$(get_libdir)"`.
+  Without it bindgen asks the default `llvm-config`, and this machine's LLVM
+  23 has no clang: "Unable to find libclang". Go, NASM and Perl are NOT
+  needed (BoringSSL asks for Go only with FIPS or its own symbol prefixing).
+  The build script runs `git init`/`git apply` on the crate's vendored
+  BoringSSL; nothing is downloaded at build time.
+- The programs now also link `libstdc++.so.6` (BoringSSL is C++); no
+  RDEPEND for it, as for any gcc runtime library.
+- Upstream's own packaging did not change between 0.5.2 and `4328526e`:
+  `tools/extension/pack.ps1`, `tools/installer/build-linux.sh` and the
+  extension's file list are identical, so the install phases are unchanged.
+- To test an ebuild change before the fork's branch is pushed, point git-r3
+  at the local repo: `EGIT_OVERRIDE_REPO_FIRESAND_MISTERDOWNLOADMANAGER=file:///home/edo/Downloads/DownloadManager`
+  and `EGIT_OVERRIDE_BRANCH_FIRESAND_MISTERDOWNLOADMANAGER=<branch>`.
+- Checks on 2026-11-13, in a worktree with the CI-style pkgcheck setup (see
+  the Python 3.12 section): pkgcheck on the package exits 0 with no output;
+  `ebuild ... clean install` from the local branch completes in 7m 51s (the
+  whole run), build directory 4.1 GiB, image 64 MiB, 80 files, the only QA
+  notice "Pre-stripped files". The image's commit was `0545ae64` (the
+  pushed tip differs from it by one sentence in the Combine networks
+  window), its Chromium extension folder has every file of the source's
+  `extension/`.
+  From the image: `misterdownloadmanager-cli get <100 MB url> --combine
+  eno2,wlp0s20f3` in 9.0 s (47.8 MB Ethernet, 52.2 MB Wi-Fi), and `video-get
+  <YouTube url> -f b --combine eno2,wlp0s20f3` (24.3 MB Ethernet, 3.1 MB
+  Wi-Fi). The dev build's window was run on `Xvfb :97`: a 100 MB download
+  with Combine networks on, the networks and Usenet server windows, no
+  panic in its log. NOT done: a real `emerge` of this version (it will be
+  the first build of it inside Portage's network sandbox).
+- Run a test window under `dbus-run-session --`: on the real session bus it
+  puts its tray icon in the maintainer's Plasma tray and reads the keychain,
+  even with `DISPLAY` on Xvfb.
 
 ## Future Session Checklist
 

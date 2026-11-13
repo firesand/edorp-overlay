@@ -3,14 +3,16 @@
 
 EAPI=8
 
-RUST_MIN_VER="1.95.0"
+LLVM_COMPAT=( {20..22} )
+RUST_MIN_VER="1.98.0"
 
-inherit cargo desktop git-r3 optfeature xdg
+inherit cargo desktop git-r3 llvm-r2 optfeature xdg
 
 DESCRIPTION="Mister Download Manager with Plexo's network combining and Usenet downloads"
 HOMEPAGE="https://github.com/firesand/misterdownloadmanager"
 # The firesand fork's main branch mirrors upstream Mister Download Manager.
-# Its combined branch adds Combine networks and Usenet (NZB) downloads.
+# Its combined branch is upstream's main branch (development between releases)
+# plus Combine networks and Usenet (NZB) downloads.
 EGIT_REPO_URI="https://github.com/firesand/misterdownloadmanager.git"
 EGIT_BRANCH="combined"
 
@@ -30,10 +32,15 @@ SLOT="0"
 # and the release profile links every test program with fat LTO.
 RESTRICT="test"
 
+# The engine's browser-like connection builds BoringSSL from the btls-sys
+# crate: CMake for its C and C++, libclang for bindgen. Its build script
+# applies the crate's patches with git, which git-r3 already depends on.
 BDEPEND="
 	app-arch/zip
+	dev-build/cmake
 	virtual/imagemagick-tools[png]
 	virtual/pkgconfig
+	$(llvm_gen_dep 'llvm-core/clang:${LLVM_SLOT}')
 "
 # winit, glutin, xkbcommon and the tray load these with dlopen() at run time,
 # so they are not ELF NEEDED entries. File dialogs go through the desktop
@@ -54,6 +61,11 @@ RDEPEND="
 
 QA_FLAGS_IGNORED="usr/bin/misterdownloadmanager.*"
 
+pkg_setup() {
+	llvm-r2_pkg_setup
+	rust_pkg_setup
+}
+
 src_unpack() {
 	git-r3_src_unpack
 	# Vendors crates.io and the egui, rqbit and craft-libs git dependencies.
@@ -64,6 +76,9 @@ src_unpack() {
 }
 
 src_configure() {
+	# bindgen looks for libclang where the system's default llvm-config says,
+	# and that LLVM may be installed without clang.
+	export LIBCLANG_PATH="$(get_llvm_prefix -b)/$(get_libdir)"
 	cargo_src_configure --locked
 }
 
