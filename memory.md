@@ -1757,3 +1757,13 @@ local `PORTAGE_TMPDIR`.
   - `ci/pkgcheck-image`: held at `0.10.48` because `ghcr.io/pkgcore/pkgcheck:0.10.49` does not exist yet on GHCR.
   - `media-video/wolfcut`: `v0.2.11` held because the release assets return HTTP 404 (unpublished draft release).
 - Live `-9999.ebuild` fix: inserted `cd "${S}" || die` before `cargo_live_src_unpack` (where `EGIT_CHECKOUT_DIR` leaves `src_unpack` in `${WORKDIR}`) across `app-emulation/mameuix`, `media-gfx/photocraft-ai`, `sys-kernel/kernelsmith`, `sys-power/asusctl`, and `sys-power/supergfxctl`.
+
+## Upstream audit (2026-11-14)
+
+- Bumped 3 packages to current upstream releases (and dropped superseded ebuilds):
+  - `app-misc/claude-desktop`: `5.11492.2` -> `5.11492.5` (`amd64` & `arm64`, `/usr/lib/claude-desktop`, untagged weak `pidfd_spawnp`, max `GLIBC_2.34`).
+  - `app-misc/grok-bot`: `1.0.3` -> `1.1.0` (`GROK_BOT_BUILD="83d46d618ef4c12afa17edd8e3c29d6caf046d17"`, `amd64` & `arm64`, max `GLIBC_2.38`, tested both `USE=""` and `USE="apparmor suid"`).
+  - `media-video/wolfcut`: `0.2.10` -> `0.2.11` (Concat `v0.2.11` published `2026-11-13T23:50:00Z`; FFmpeg ABI `60.62.62`, max `GLIBC_2.35`, `THIRD_PARTY_NOTICES.md` & DeepFilterNet3 notices unchanged, tested both `USE="system-ffmpeg"` and `USE="-system-ffmpeg"`).
+- Held entries (1):
+  - `ci/pkgcheck-image`: still held at `0.10.48` because `ghcr.io/pkgcore/pkgcheck:0.10.49` still returns HTTP 404 (`latest` resolves to `0.10.48`).
+- Live `-9999` check: `anefzaoui/misterdownloadmanager` `main` gained commit `2947cfce546d` ahead of the `firesand/misterdownloadmanager:combined` fork (`a8c1f6e8a446`); left external repos untouched and smoke-unpacked `misterdownloadmanager-9999`.
