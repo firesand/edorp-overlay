@@ -46,7 +46,7 @@ CRATES="
 	asn1-rs@0.7.2
 	async-broadcast@0.7.2
 	async-channel@2.5.0
-	async-executor@1.14.0
+	async-executor@1.14.1
 	async-io@2.6.0
 	async-lock@3.4.2
 	async-process@2.5.0
@@ -115,7 +115,7 @@ CRATES="
 	clap_builder@4.6.7
 	clap_derive@4.6.7
 	clap_lex@1.1.0
-	clipboard-win@5.4.1
+	clipboard-win@5.4.3
 	cmake@0.1.58
 	cmov@0.5.4
 	cocoa-foundation@0.2.1
@@ -156,13 +156,8 @@ CRATES="
 	ctr@0.9.2
 	ctutils@0.4.5
 	cursor-icon@1.2.0
-	curve25519-dalek-derive@0.1.1
-	curve25519-dalek@5.0.0
-	darling@0.21.3
 	darling@0.24.1
-	darling_core@0.21.3
 	darling_core@0.24.1
-	darling_macro@0.21.3
 	darling_macro@0.24.1
 	dasp_sample@0.11.0
 	data-encoding@2.11.1
@@ -175,10 +170,11 @@ CRATES="
 	deranged@0.5.8
 	derive_more-impl@2.1.1
 	derive_more@2.1.1
-	diesel@2.3.14
-	diesel_derives@2.3.9
-	diesel_migrations@2.3.2
-	diesel_table_macro_syntax@0.3.0
+	diesel@2.4.0
+	diesel_attribute_parser@0.1.0
+	diesel_derives@2.4.0
+	diesel_migrations@2.4.0
+	diesel_table_macro_syntax@0.4.0
 	digest@0.10.7
 	digest@0.11.3
 	directories@6.0.0
@@ -191,7 +187,7 @@ CRATES="
 	downcast-rs@1.2.1
 	downcast-rs@2.0.2
 	dpi@0.1.2
-	dsl_auto_type@0.2.0
+	dsl_auto_type@0.3.0
 	either@1.18.0
 	emojis@0.9.1
 	encoding_rs@0.8.35
@@ -217,14 +213,12 @@ CRATES="
 	fax@0.2.7
 	fdeflate@0.3.7
 	fearless_simd@0.4.1
-	fiat-crypto@0.3.0
 	find-msvc-tools@0.1.11
 	fixedbitset@0.5.7
 	flate2@1.1.10
 	float-cmp@0.9.0
 	fluent-uri@0.4.1
 	flume@0.11.1
-	fnv@1.0.7
 	foldhash@0.1.5
 	foldhash@0.2.0
 	font-types@0.12.4
@@ -337,7 +331,7 @@ CRATES="
 	libredox@0.1.21
 	libspa-sys@0.10.1
 	libspa@0.10.1
-	libsqlite3-sys@0.38.2
+	libsqlite3-sys@0.40.0
 	libwebp-sys2@0.1.11
 	libwebp-sys2@0.2.0
 	linebender_resource_handle@0.1.1
@@ -348,6 +342,7 @@ CRATES="
 	litemap@0.8.3
 	litrs@1.0.0
 	lock_api@0.4.14
+	lock_api@0.5.0
 	log@0.4.34
 	lru-slab@0.1.3
 	mac-usernotifications@0.3.1
@@ -358,8 +353,8 @@ CRATES="
 	memmap2@0.9.11
 	memoffset@0.9.1
 	metal@0.18.0
-	migrations_internals@2.3.0
-	migrations_macros@2.3.0
+	migrations_internals@2.4.0
+	migrations_macros@2.4.0
 	mime@0.3.17
 	mime_guess2@2.3.1
 	minimal-lexical@0.2.1
@@ -452,6 +447,8 @@ CRATES="
 	owned_ttf_parser@0.25.1
 	parking@2.2.1
 	parking_lot@0.12.5
+	parking_lot@0.13.0
+	parking_lot_core@0.10.0
 	parking_lot_core@0.9.12
 	paste@1.0.15
 	pastey@0.2.3
@@ -500,8 +497,8 @@ CRATES="
 	qrcode@0.14.1
 	quick-error@2.0.1
 	quick-xml@0.41.0
-	quinn-proto@0.11.18
-	quinn-udp@0.5.15
+	quinn-proto@0.11.19
+	quinn-udp@0.5.16
 	quinn@0.11.12
 	quote@1.0.47
 	r-efi@5.3.0
@@ -537,15 +534,15 @@ CRATES="
 	rkyv_derive@0.8.18
 	ron@0.12.2
 	roxmltree@0.20.0
-	rsqlite-vfs@0.1.1
-	rtc-crypto@0.21.0
-	rtc-datachannel@0.21.0-beta.2
-	rtc-dtls@0.21.0-beta.2
-	rtc-sctp@0.21.0-beta.2
-	rtc-shared@0.21.0-beta.2
+	rsqlite-vfs@0.2.0
+	rtc-crypto@0.21.1
+	rtc-datachannel@0.21.1
+	rtc-dtls@0.21.1
+	rtc-sctp@0.21.1
+	rtc-shared@0.21.1
 	rtrb@0.3.5
 	rubato@3.0.0
-	rusqlite@0.40.2
+	rusqlite@0.43.0
 	rustc-hash@1.1.0
 	rustc-hash@2.1.3
 	rustc_version@0.4.1
@@ -560,7 +557,7 @@ CRATES="
 	safe_arch@1.2.0
 	same-file@1.0.6
 	sansio@1.0.1
-	scheduled-thread-pool@0.2.7
+	scheduled-thread-pool@0.2.8
 	scoped-tls@1.0.1
 	scopeguard@1.2.0
 	sctk-adwaita@0.10.1
@@ -607,7 +604,9 @@ CRATES="
 	sonora-simd@0.2.0
 	sonora@0.2.0
 	spin@0.9.9
-	sqlite-wasm-rs@0.5.5
+	sqlcipher-src@420.0.0+sqlcipher-4.20.0-sqlite-3.54.1-libtomcrypt-1.18.2
+	sqlite-wasm-rs@0.6.3
+	sqlstate@0.2.0
 	stable_deref_trait@1.2.1
 	static_assertions@1.1.0
 	strict-num@0.1.1
@@ -653,9 +652,7 @@ CRATES="
 	tokio-util@0.7.19
 	tokio-websockets@0.13.3
 	tokio@1.53.3
-	toml@0.9.12+spec-1.1.0
 	toml@1.1.4+spec-1.1.0
-	toml_datetime@0.7.5+spec-1.1.0
 	toml_datetime@1.1.1+spec-1.1.0
 	toml_edit@0.25.13+spec-1.1.0
 	toml_parser@1.1.3+spec-1.1.0
@@ -772,7 +769,6 @@ CRATES="
 	windows_x86_64_gnullvm@0.53.1
 	windows_x86_64_msvc@0.52.6
 	windows_x86_64_msvc@0.53.1
-	winnow@0.7.15
 	winnow@1.0.4
 	winresource@0.1.34
 	wit-bindgen@0.57.1
@@ -781,7 +777,6 @@ CRATES="
 	x11-dl@2.21.0
 	x11rb-protocol@0.13.2
 	x11rb@0.13.2
-	x25519-dalek@3.0.0
 	x509-parser@0.16.0
 	x509-parser@0.18.1
 	xcursor@0.3.11
@@ -820,53 +815,53 @@ CRATES="
 "
 
 declare -A GIT_CRATES=(
-	[cpal]="https://github.com/crmne/cpal;fcd8b6ebee9d822426fa8d6839cdd89af6e0d491;cpal-%commit%"
-	[dpi]="https://github.com/crmne/winit;59ebfb727b8c83fcd28f8ca59c3733e32b4b4e9b;winit-%commit%/dpi"
-	[ecolor]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/ecolor"
-	[eframe]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/eframe"
-	[egui]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/egui"
-	[egui-wgpu]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/egui-wgpu"
-	[egui-winit]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/egui-winit"
-	[egui_extras]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/egui_extras"
-	[egui_glow]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/egui_glow"
-	[emath]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/emath"
-	[epaint]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/epaint"
-	[epaint_default_fonts]="https://github.com/crmne/egui;1cc61c8a83625855b08cb8fed912900cf3b01b70;egui-%commit%/crates/epaint_default_fonts"
-	[fastframe-audio]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-audio"
-	[fastframe-autostart]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-autostart"
-	[fastframe-desktop]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-desktop"
-	[fastframe-dirs]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-dirs"
-	[fastframe-dock]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-dock"
-	[fastframe-emoji]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-emoji"
-	[fastframe-file]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-file"
-	[fastframe-fonts]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-fonts"
-	[fastframe-i18n]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-i18n"
-	[fastframe-icons]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-icons"
-	[fastframe-instance]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-instance"
-	[fastframe-log]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-log"
-	[fastframe-notifications]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-notifications"
-	[fastframe-power]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-power"
-	[fastframe-scroll]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-scroll"
-	[fastframe-shell]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-shell"
-	[fastframe-text]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-text"
-	[fastframe-theme]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-theme"
-	[fastframe-titlebar]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-titlebar"
-	[fastframe-tray]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-tray"
-	[fastframe-update]="https://github.com/crmne/fastframe;8faf6f99ba782b22916a118c77d1a25d97d1414f;fastframe-%commit%/crates/fastframe-update"
-	[mp4]="https://github.com/crmne/mp4-rust;35560e94f5e871a2b2d88bfe964013b39af131e8;mp4-rust-%commit%"
-	[rodio]="https://github.com/crmne/rodio;742090d57a4c83b23bd990ba0dcf939d09dbeb94;rodio-%commit%"
-	[wacore]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/wacore"
-	[wacore-appstate]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/wacore/appstate"
-	[wacore-binary]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/wacore/binary"
-	[wacore-derive]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/wacore/derive"
-	[wacore-libsignal]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/wacore/libsignal"
-	[wacore-noise]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/wacore/noise"
-	[waproto]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/waproto"
-	[whatsapp-rust]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%"
-	[whatsapp-rust-sqlite-storage]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/storages/sqlite-storage"
-	[whatsapp-rust-tokio-transport]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/transports/tokio-transport"
-	[whatsapp-rust-ureq-http-client]="https://github.com/crmne/whatsapp-rust;94f7c1376f8f6a77c55d85570a260600ad27de0b;whatsapp-rust-%commit%/http_clients/ureq-client"
-	[winit]="https://github.com/crmne/winit;59ebfb727b8c83fcd28f8ca59c3733e32b4b4e9b;winit-%commit%"
+	[cpal]='https://github.com/crmne/cpal;fcd8b6ebee9d822426fa8d6839cdd89af6e0d491;cpal-%commit%'
+	[dpi]='https://github.com/crmne/winit;dc09323e032a405a8a165aeda9ceb48b3251cebd;winit-%commit%/dpi'
+	[ecolor]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/ecolor'
+	[eframe]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/eframe'
+	[egui]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/egui'
+	[egui-wgpu]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/egui-wgpu'
+	[egui-winit]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/egui-winit'
+	[egui_extras]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/egui_extras'
+	[egui_glow]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/egui_glow'
+	[emath]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/emath'
+	[epaint]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/epaint'
+	[epaint_default_fonts]='https://github.com/crmne/egui;06da5ee2b57c16d5b2fb5240c7b22aaf305e1cfa;egui-%commit%/crates/epaint_default_fonts'
+	[fastframe-audio]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-audio'
+	[fastframe-autostart]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-autostart'
+	[fastframe-desktop]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-desktop'
+	[fastframe-dirs]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-dirs'
+	[fastframe-dock]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-dock'
+	[fastframe-emoji]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-emoji'
+	[fastframe-file]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-file'
+	[fastframe-fonts]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-fonts'
+	[fastframe-i18n]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-i18n'
+	[fastframe-icons]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-icons'
+	[fastframe-instance]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-instance'
+	[fastframe-log]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-log'
+	[fastframe-notifications]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-notifications'
+	[fastframe-power]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-power'
+	[fastframe-scroll]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-scroll'
+	[fastframe-shell]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-shell'
+	[fastframe-text]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-text'
+	[fastframe-theme]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-theme'
+	[fastframe-titlebar]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-titlebar'
+	[fastframe-tray]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-tray'
+	[fastframe-update]='https://github.com/crmne/fastframe;d5ae46d52f055ec8942765f64be4207c8c7c75bf;fastframe-%commit%/crates/fastframe-update'
+	[mp4]='https://github.com/crmne/mp4-rust;35560e94f5e871a2b2d88bfe964013b39af131e8;mp4-rust-%commit%'
+	[rodio]='https://github.com/crmne/rodio;742090d57a4c83b23bd990ba0dcf939d09dbeb94;rodio-%commit%'
+	[wacore]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/wacore'
+	[wacore-appstate]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/wacore/appstate'
+	[wacore-binary]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/wacore/binary'
+	[wacore-derive]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/wacore/derive'
+	[wacore-libsignal]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/wacore/libsignal'
+	[wacore-noise]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/wacore/noise'
+	[waproto]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/waproto'
+	[whatsapp-rust]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%'
+	[whatsapp-rust-sqlite-storage]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/storages/sqlite-storage'
+	[whatsapp-rust-tokio-transport]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/transports/tokio-transport'
+	[whatsapp-rust-ureq-http-client]='https://github.com/oxidezap/whatsapp-rust;719f29498124acaede51c555c8f1c7a1c423fb3d;whatsapp-rust-%commit%/http_clients/ureq-client'
+	[winit]='https://github.com/crmne/winit;dc09323e032a405a8a165aeda9ceb48b3251cebd;winit-%commit%'
 )
 
 LLVM_COMPAT=( {18..23} )
@@ -886,7 +881,7 @@ LICENSE="MIT GPL-2"
 LICENSE+="
 	0BSD Apache-2.0 Apache-2.0-with-LLVM-exceptions Boost-1.0 BSD BSD-1 BSD-2
 	CC0-1.0 CDLA-Permissive-2.0 ISC LGPL-2.1+ MIT-0 MPL-2.0 OFL-1.1
-	UbuntuFontLicense-1.0 Unicode-3.0 Unlicense ZLIB
+	UbuntuFontLicense-1.0 Unicode-3.0 Unlicense WTFPL-2 ZLIB public-domain
 "
 SLOT="0"
 KEYWORDS="~amd64"
@@ -952,6 +947,11 @@ src_configure() {
 
 src_test() {
 	# Unix socket tests need a short path on hosts with a deep PORTAGE_TMPDIR.
+	# Skip the VFR MP4 test whose final-frame duration varies by host ffmpeg
+	# muxer version (FFmpeg 8.1 writes 300 ms where the fixture expects 100 ms).
+	local CARGO_SKIP_TESTS=(
+		animation::tests::a_variable_duration_mp4_with_b_frames_keeps_its_timing
+	)
 	TMPDIR=/tmp cargo_src_test
 }
 
