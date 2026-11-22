@@ -26,6 +26,7 @@ S="${WORKDIR}"
 # Font License and two the Apache License, both already listed below, so the
 # identifiers are unchanged. 0.2.8 also dropped LICENSE-EXCEPTIONS.md.
 # 0.2.10 added DeepFilterNet3 (MIT OR Apache-2.0) and Spleeter (MIT) notices.
+# 0.2.12 added Beat This! small0 (MIT) beat-detection model notice.
 # The bundled FFmpeg reports GPL-3+, without --enable-nonfree.
 LICENSE="AGPL-3+ Apache-2.0 BSD BSD-2 GPL-3 GPL-3+ ISC MIT OFL-1.1 Unsplash"
 SLOT="0"
@@ -87,6 +88,8 @@ src_install() {
 	dodoc "${MY_S}"/src/crates/concat-text/fonts/LICENSE-*.txt
 	docinto deepfilternet3
 	dodoc "${MY_S}"/src/crates/concat-speech/assets/deepfilternet3/LICENSE-{APACHE,MIT}
+	docinto beat-this
+	dodoc "${MY_S}"/src/crates/concat-speech/assets/beat-this/LICENSE
 }
 
 pkg_postinst() {
