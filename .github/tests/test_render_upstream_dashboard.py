@@ -29,22 +29,23 @@ class RenderDashboardTest(unittest.TestCase):
         self.assertEqual(launcher["source"], "regex")
         self.assertEqual(
             launcher["url"],
-            "https://api.github.com/repos/shadps4-emu/shadps4-qtlauncher/releases?per_page=100",
+            "https://github.com/shadps4-emu/shadps4-qtlauncher/releases.atom",
         )
-        # The later release deliberately has a lower SHA. Asset and commit
-        # creation times must not replace the release publication time.
-        feed = json.dumps([
-            {
-                "tag_name": "shadPS4QtLauncher-2026-10-05-" + "1" * 40,
-                "published_at": "2026-10-05T21:00:00Z",
-                "assets": [{"created_at": "2026-10-06T01:00:00Z"}],
-            },
-            {
-                "tag_name": "shadPS4QtLauncher-2026-10-05-" + "f" * 40,
-                "published_at": "2026-10-05T20:51:54Z",
-            },
-            {"sha": "a" * 40, "commit": {"committer": {"date": "2026-10-07T00:00:00Z"}}},
-        ])
+        # The later release deliberately has a lower SHA. Feed-level timestamps
+        # outside <entry> must not replace release entry timestamps.
+        feed = (
+            "<feed>"
+            "<updated>2026-10-07T00:00:00Z</updated>"
+            "<entry>"
+            f"<id>tag:github.com,2008:Repository/1/shadPS4QtLauncher-2026-10-05-{'1' * 40}</id>"
+            "<updated>2026-10-05T21:00:00Z</updated>"
+            "</entry>"
+            "<entry>"
+            f"<id>tag:github.com,2008:Repository/1/shadPS4QtLauncher-2026-10-05-{'f' * 40}</id>"
+            "<updated>2026-10-05T20:51:54Z</updated>"
+            "</entry>"
+            "</feed>"
+        )
         versions = [
             re.sub(launcher["from_pattern"], launcher["to_pattern"], stamp)
             for stamp in re.findall(launcher["regex"], feed)
