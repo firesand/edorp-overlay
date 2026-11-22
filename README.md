@@ -108,7 +108,7 @@ local machine configuration do not belong in the overlay.
   release tarball or Git source URI exists.
 - `app-emulation/mame`: MAME 0.289-r1 ebuild imported from local LinuxMAMEUI
   packaging.
-- `app-emulation/hbmame`: HBMAME 0.289.4 ebuild imported from local LinuxMAMEUI
+- `app-emulation/hbmame`: HBMAME 0.289.6 ebuild imported from local LinuxMAMEUI
   packaging.
 - `app-emulation/mameuix`: modern Rust/egui frontend for MAME
   ([source](https://github.com/firesand/MAMEUIx)). Versioned ebuild `0.1.8`
@@ -145,7 +145,7 @@ local machine configuration do not belong in the overlay.
 - `app-emulation/winboat`: WinBoat 0.9.2 prebuilt Electron app that runs
   Windows apps on Linux via Docker/Podman + FreeRDP
   ([upstream](https://www.winboat.app/)).
-- `media-gfx/opencadstudio`: OpenCADStudio 2026.45, a Rust/iced 2D/3D CAD
+- `media-gfx/opencadstudio`: OpenCADStudio 2026.46, a Rust/iced 2D/3D CAD
   application with DWG/DXF support
   ([source](https://github.com/HakanSeven12/OpenCADStudio)). The ebuild builds
   from the pinned git tag; Cargo dependencies (crates.io plus the iced and
@@ -153,8 +153,8 @@ local machine configuration do not belong in the overlay.
   vendored in `src_unpack` because upstream pins git revisions that the
   `CRATES` mechanism cannot express. Requires Rust >= 1.92 and `~amd64`
   keywording (`metadata/package.accept_keywords/edorp-opencadstudio`).
-- `media-gfx/photocraft-ai`: PhotoCraft AI 0.20.1 beta 3.1.2
-  (`v0.20.1-ai-beta.3.1.2`, packaged as `0.20.1_beta3_p1_p2`),
+- `media-gfx/photocraft-ai`: PhotoCraft AI 0.23.1 beta 4
+  (`v0.23.1-ai-beta.4`, packaged as `0.23.1_beta4`),
   an unofficial community fork of the Rust PhotoCraft image editor with AI
   editing built into the interface
   ([source](https://github.com/BLEZZ0102/photocraft-ai)). Upstream only
@@ -166,7 +166,7 @@ local machine configuration do not belong in the overlay.
   ebuild builds the `ai-main` branch of the
   [firesand fork](https://github.com/firesand/photocraft-ai), which adds
   OpenAI-compatible and ComfyUI image services. See the PhotoCraft AI section.
-- `media-gfx/photon-studio`: Photon Studio 0.1.73, Tenzen Studio's offline image
+- `media-gfx/photon-studio`: Photon Studio 0.1.81, Tenzen Studio's offline image
   editor with layers, retouching and PSD support
   ([upstream](https://tenzen.studio/photon/)). The ebuild extracts the pinned
   Linux x64 Flatpak release and launches its bundled Electron application
@@ -215,7 +215,7 @@ local machine configuration do not belong in the overlay.
   edges, served on loopback and read in a browser
   ([source](https://github.com/evan-steinhilb/md2hd)). No npm dependencies;
   needs `~amd64` keywording (`metadata/package.accept_keywords/edorp-md2hd`).
-- `net-im/zapfast`: ZapFast 0.21.1, an unofficial native WhatsApp client
+- `net-im/zapfast`: ZapFast 0.21.3, an unofficial native WhatsApp client
   built with Rust and egui ([source](https://github.com/crmne/zapfast)).
   Built from pinned Cargo and git sources; needs `~amd64` keywording
   (`metadata/package.accept_keywords/edorp-zapfast`). Using an unofficial

@@ -1767,3 +1767,22 @@ local `PORTAGE_TMPDIR`.
 - Held entries (1):
   - `ci/pkgcheck-image`: still held at `0.10.48` because `ghcr.io/pkgcore/pkgcheck:0.10.49` still returns HTTP 404 (`latest` resolves to `0.10.48`).
 - Live `-9999` check: `anefzaoui/misterdownloadmanager` `main` gained commit `2947cfce546d` ahead of the `firesand/misterdownloadmanager:combined` fork (`a8c1f6e8a446`); left external repos untouched and smoke-unpacked `misterdownloadmanager-9999`.
+
+## Upstream audit (2026-11-22)
+
+- Updated all 15 upstream deltas (14 packages + CI `pkgcheck` container image, zero held items):
+  - `app-emulation/hbmame`: `0.289.4` -> `0.289.6` (commit `fa040eced0dea161bb4e5d55bdbcb85aaf8de632`, still MAME 0.289 base; all 3 CPS patches apply cleanly).
+  - `app-misc/chatgpt-desktop`: `26.1111.21308` -> `26.1117.41037` (`amd64` & `arm64`, max `GLIBC_2.28`, `NEEDED` & `cua_node` notices unchanged).
+  - `app-misc/claude-desktop`: `5.11492.5` -> `6.28899.6` (`amd64` & `arm64`, untagged weak `pidfd_spawnp`, max `GLIBC_2.34`).
+  - `app-misc/comfy-desktop`: `1.1.9` -> `1.2.1` (`BUILD_ID="261121uldis3ube"`, max `GLIBC_2.28`; ToDesktop serves `1.2.1` on staged rollout buckets).
+  - `app-misc/grok-bot`: `1.1.0` -> `1.2.3` (`GROK_BOT_BUILD="a5927fa2ba82336a29f9343babd28b4c903abbb2"`, `amd64` & `arm64`, max `GLIBC_2.34`, updated `RDEPEND` floor to `>=sys-libs/glibc-2.34`).
+  - `app-misc/unsloth-desktop`: `0.1.917_beta` -> `0.1.922_beta` (`amd64`, max `GLIBC_2.34`, same 14-file layout).
+  - `ci/pkgcheck-image`: `0.10.48` -> `0.10.50` (resolved GHCR digest `sha256:c8ae68267c7c74a6675691ddf048552b9b2c70d60d6032aa4ac131b9a26c6cef` in `.github/workflows/overlay-qa.yml`).
+  - `dev-python/pdfplumber`: `0.11.10` -> `0.11.11` (raised `Pillow` dep to `>=dev-python/pillow-13.0.0`, rebased optional-`pypdfium2` patch for `pypdfium2>=5.15.2`).
+  - `games-emulation/shadps4-qtlauncher-bin`: `0_p20261106063314` -> `0_p20261119130547` (release `shadPS4QtLauncher-2026-11-19-1c35b9b147a8e67474fba6500bdfc309bef6f8e1`, SquashFS offset `944632`, max `GLIBC_2.38`, baseline `20261119.133638`).
+  - `media-gfx/opencadstudio`: `2026.45` -> `2026.46` (`v2026.46`, hunspell patch & crate licenses unchanged).
+  - `media-gfx/photocraft-ai`: `0.20.1_beta3_p1_p2` -> `0.23.1_beta4` (`v0.23.1-ai-beta.4`, commit `a5be55cd3139681ca97386895de4cabaadb0b221`; added `craft-ai-integrations` & `vectorcraft` `GIT_CRATES`, expanded `[patch.crates-io]` `craft-libs` vendor rewrite for `krilla`, `hayro*`, `linesweeper`, `vello_*`, added `UbuntuFontLicense-1.0`).
+  - `media-gfx/photon-studio`: `0.1.73` -> `0.1.81` (`FLATPAK_COMMIT="e5e148d482f8a29565509d287a1dde7dcf344c8d866f2c575b25f4dcc5e68909"`, max `GLIBC_2.35`, models & licenses unchanged).
+  - `media-video/wolfcut`: `0.2.11` -> `0.2.12` (Concat `v0.2.12`, FFmpeg ABI `60.62.62`, max `GLIBC_2.35`, added `beat-this/LICENSE` doc install).
+  - `net-analyzer/bettercap`: `2.41.7` -> `2.42.0` (refreshed `EGO_SUM`, rebased `portage-managed-caplets` patch, caplets snapshot unchanged).
+  - `net-im/zapfast`: `0.21.1` -> `0.21.3` (refreshed `CRATES` & `GIT_CRATES` including `oxidezap/whatsapp-rust`, added `WTFPL-2 public-domain` for `sqlcipher-src`).
