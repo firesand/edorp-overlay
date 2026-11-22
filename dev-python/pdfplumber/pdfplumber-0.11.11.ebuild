@@ -24,7 +24,7 @@ KEYWORDS="~amd64"
 
 RDEPEND="
 	~app-text/pdfminer-20260107[${PYTHON_USEDEP}]
-	>=dev-python/pillow-12.2.0[${PYTHON_USEDEP}]
+	>=dev-python/pillow-13.0.0[${PYTHON_USEDEP}]
 "
 
 PATCHES=(
