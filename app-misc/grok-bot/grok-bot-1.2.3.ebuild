@@ -7,7 +7,7 @@ inherit desktop optfeature pax-utils unpacker xdg
 
 # The official release feed pins this version to a specific build. Its
 # download URLs are immutable, unlike the latest-download endpoint.
-GROK_BOT_BUILD="83d46d618ef4c12afa17edd8e3c29d6caf046d17"
+GROK_BOT_BUILD="a5927fa2ba82336a29f9343babd28b4c903abbb2"
 GROK_BOT_URI="https://downloads.cursor.com/grokbot/stable/${GROK_BOT_BUILD}/linux"
 
 DESCRIPTION="Grok Bot desktop client for persistent cloud AI agents"
@@ -58,7 +58,7 @@ RDEPEND="
 	x11-libs/libxkbcommon
 	x11-libs/pango
 	x11-misc/xdg-utils
-	elibc_glibc? ( >=sys-libs/glibc-2.38 )
+	elibc_glibc? ( >=sys-libs/glibc-2.34 )
 	apparmor? ( sys-apps/apparmor )
 "
 
